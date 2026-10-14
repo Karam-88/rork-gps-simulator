@@ -210,8 +210,8 @@ fun MapScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         // Never let the drawer steal horizontal drags from the map. The side
-        // menu now opens only from the hamburger button, leaving MapLibre with
-        // the full touch stream for smooth panning and fling gestures.
+        // menu now opens only from the hamburger button, leaving the native map
+        // with the full touch stream for smooth panning and fling gestures.
         gesturesEnabled = false,
         drawerContent = {
             ModalDrawerSheet(
@@ -408,18 +408,18 @@ fun MapScreen(
                             viewModel.startMock()
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp),
-                        shape = RoundedCornerShape(18.dp),
+                            .width(190.dp)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                         ),
                     ) {
-                        Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(10.dp))
+                        Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            text = strings[K.set_mock_location],
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "Google",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
