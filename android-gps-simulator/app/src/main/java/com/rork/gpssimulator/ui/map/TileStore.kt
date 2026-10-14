@@ -19,16 +19,15 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Map source metadata and legacy raster endpoints kept for attribution/fallback. */
+/**
+ * Legacy raster source metadata. The main map is rendered by Google Maps; the URLs
+ * below remain only for old fallback/utility code that is not used by MapScreen.
+ */
 enum class TileSource(val id: String, val maxZoom: Int, val attribution: String) {
-    STANDARD("openfreemap-bright", 19, "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors"),
-    SATELLITE("esri", 18, "© Esri, Maxar, Earthstar Geographics"),
-    TERRAIN("topo", 16, "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"),
-    DETAILED_STREETS(
-        "openfreemap-liberty",
-        19,
-        "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors",
-    );
+    STANDARD("legacy-standard", 19, "Google Maps"),
+    SATELLITE("legacy-satellite", 18, "Google Maps"),
+    TERRAIN("legacy-terrain", 16, "Google Maps"),
+    DETAILED_STREETS("legacy-detailed", 19, "Google Maps");
 
     fun url(z: Int, x: Int, y: Int): String = when (this) {
         STANDARD -> "https://tile.openstreetmap.org/$z/$x/$y.png"
@@ -48,10 +47,7 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
     }
 }
 
-/**
- * Legacy raster cache retained for non-MapLibre utility/fallback code.
- * The primary map screen is now rendered by MapLibre Native.
- */
+/** Legacy raster cache retained for fallback/utility code outside the primary map screen. */
 class TileStore(private val scope: CoroutineScope) {
 
     private val cache = object : LruCache<String, ImageBitmap>(360) {}
