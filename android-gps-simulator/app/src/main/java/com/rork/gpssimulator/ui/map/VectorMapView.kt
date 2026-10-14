@@ -114,9 +114,11 @@ private class GoogleMapHolder(
             }
             readyMap.isBuildingsEnabled = true
 
-            // Keep Google's required logo/attribution clear of the app's bottom action bar.
-            val bottomPadding = (104f * context.resources.displayMetrics.density).roundToInt()
-            readyMap.setPadding(0, 0, 0, bottomPadding)
+            // Keep Google's required logo/attribution clear of the bottom action bar
+            // without shifting the visual camera target away from the Compose crosshair.
+            // Symmetric top/bottom padding preserves the true geometric center.
+            val verticalPadding = (104f * context.resources.displayMetrics.density).roundToInt()
+            readyMap.setPadding(0, verticalPadding, 0, verticalPadding)
 
             readyMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition(cameraState)))
 
