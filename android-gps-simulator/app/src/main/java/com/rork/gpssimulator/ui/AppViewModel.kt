@@ -185,10 +185,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        // Bind eagerly (without starting it as foreground) so that by the time
-        // the user presses Start, the direct method-call path to the service is
-        // already available. Binding alone does not promote it to foreground —
-        // that only happens inside MockLocationService.startSession.
         app.bindService(Intent(app, MockLocationService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
 
         viewModelScope.launch {
@@ -218,7 +214,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Reflects the service's live session into every screen-facing StateFlow. */
     private fun applySession(session: MockSessionBus.Session?) {
         if (session != null) {
             _mockState.value = MockState.MOCK_ACTIVE
@@ -264,15 +259,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Permissions & readiness ----------
-
     fun refreshPermissionState() {
         val granted = realLocation.hasPermission()
         _permissionGranted.value = granted
-        // A readiness probe briefly installs/removes its own test provider,
-        // which would clobber the real provider MockLocationService is
-        // actively feeding. When a session is running, readiness is READY by
-        // definition — skip the probe entirely.
         _mockReadiness.value = if (MockSessionBus.session.value != null) {
             MockReadiness.READY
         } else {
@@ -287,17 +276,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun startRealUpdates() {
         if (!_permissionGranted.value) return
         realLocation.startUpdates(settings.value.usePlayServices, 2000L) { sample ->
-            // While mocking, the system feed echoes our own test location; keep the
-            // last genuine fix so "return to real GPS" still has somewhere to go.
             if (MockSessionBus.session.value == null) {
                 _realSample.value = sample
             }
         }
     }
 
-    // ---------- Selection ----------
-
-    /** Confirms the crosshair coordinate and moves to the SELECTED state. */
     fun selectPoint(point: LatLng) {
         if (!point.isValid()) {
             postMessage("Invalid coordinate", isError = true)
@@ -318,10 +302,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         moveCamera(location.point)
     }
 
-    /**
-     * Cancels only the pending candidate. A running mock session is never
-     * affected — stopping is exclusively the red X ([stopMock]).
-     */
     fun clearSelection() {
         resolveJob?.cancel()
         _selected.value = null
@@ -344,13 +324,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Mock session control (delegates to MockLocationService) ----------
-
-    /**
-     * Starts the system-level mock location. The MOCK_ACTIVE state is only
-     * reflected once [MockSessionBus] confirms the service actually started —
-     * this call itself only reports whether the *request* was accepted.
-     */
     fun startMock(kind: SessionKind = SessionKind.STATIC, route: SimRoute? = null) {
         val selection = _selected.value ?: run {
             postMessage("Select a location first", isError = true)
@@ -376,16 +349,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 postMessage(result.message, isError = true)
             }
             MockResult.Success -> {
-                // The candidate has been consumed by the service; a non-null
-                // selection from now on means "a new candidate is pending",
-                // which is what drives the Move Here action.
                 _selected.value = null
                 _mockReadiness.value = MockReadiness.READY
             }
         }
     }
 
-    /** Redirects the *already running* session to [point], or starts one if none is active. */
     fun moveMockTo(point: LatLng) {
         if (MockSessionBus.session.value == null) {
             startMock()
@@ -408,41 +377,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Stops mocking completely and returns the app to the REAL GPS state. */
     fun stopMock() {
         boundService?.stopSession()
     }
 
-    /**
-     * Freezes or resumes dynamic movement (route playback / joystick) while the
-     * mock session itself stays fully alive. This is deliberately NOT a stop —
-     * only [stopMock] returns the device to real GPS.
-     */
     fun togglePause() {
         boundService?.togglePause()
     }
 
-    /** Feeds a normalised joystick vector; (0,0) stops movement. */
     fun setJoystickVector(x: Float, y: Float) {
         boundService?.setJoystickVector(x, y)
     }
 
     /**
-     * Fetches the device's real position, optionally recentring the map on it.
-     * The "My Location" button always recentres; stopping a session honours the
-     * user's preference.
+     * Centres the map on the device's real location at a useful street-level
+     * zoom, similar to the behaviour users expect from mainstream map apps.
      */
     fun returnToRealLocation(recenter: Boolean = true) {
         val sample = realLocation.lastKnown(settings.value.usePlayServices) ?: _realSample.value
         if (sample != null) {
             _realSample.value = sample
-            if (recenter) moveCamera(sample.point)
+            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
         } else if (!_permissionGranted.value) {
             postMessage("Location permission is required", isError = true)
         }
     }
-
-    // ---------- Routes ----------
 
     fun startRoute(route: SimRoute) {
         if (route.points.size < 2) {
@@ -472,8 +431,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveRoute(route: SimRoute) = repository.upsertRoute(route)
 
     fun deleteRoute(id: String) = repository.deleteRoute(id)
-
-    // ---------- Saved locations ----------
 
     fun saveLocation(
         name: String,
@@ -516,13 +473,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun replaceRoutes(list: List<SimRoute>) = repository.replaceRoutes(list)
 
-    // ---------- History ----------
-
     fun deleteHistory(id: String) = repository.deleteHistory(id)
 
     fun clearHistory() = repository.clearHistory()
-
-    // ---------- Geofences ----------
 
     fun addGeofence(name: String, center: LatLng, radius: Double) {
         repository.upsertGeofence(
@@ -538,8 +491,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteGeofence(id: String) = repository.deleteGeofence(id)
 
-    // ---------- Search ----------
-
     fun search(query: String) {
         searchJob?.cancel()
         if (query.isBlank()) {
@@ -549,7 +500,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         searchJob = viewModelScope.launch {
             _isSearching.value = true
-            delay(320) // debounce keystrokes
+            delay(320)
             val results = geocoder.search(query)
             _searchResults.value = results
             _isSearching.value = false
@@ -563,8 +514,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _searchResults.value = emptyList()
         _isSearching.value = false
     }
-
-    // ---------- Camera ----------
 
     fun moveCamera(point: LatLng, zoom: Float? = null) {
         _cameraTarget.value = point to zoom
@@ -581,13 +530,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Diagnostics ----------
-
     fun runDiagnostics() {
         viewModelScope.launch {
             _isDiagnosticsRunning.value = true
             refreshPermissionState()
-            delay(650) // let a fresh fix arrive
+            delay(650)
             val granted = realLocation.hasPermission()
             val sample = realLocation.lastKnown(settings.value.usePlayServices) ?: _realSample.value
             _diagnostics.value = DiagnosticsReport(
@@ -612,8 +559,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun providerName(): String = realLocation.activeProviderName(settings.value.usePlayServices)
 
-    // ---------- Settings ----------
-
     fun updateSettings(transform: (AppSettings) -> AppSettings) {
         val before = settings.value
         repository.updateSettings(transform)
@@ -635,8 +580,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _diagnostics.value = null
     }
 
-    // ---------- Messages ----------
-
     fun postMessage(text: String, isError: Boolean = false) {
         _message.value = UiMessage(text, isError)
     }
@@ -644,8 +587,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun consumeMessage() {
         _message.value = null
     }
-
-    // ---------- Helpers ----------
 
     private fun requireBoundService(): MockLocationService? {
         val service = boundService
@@ -656,18 +597,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return service
     }
 
-    // ---------- Lifecycle ----------
-
     override fun onCleared() {
         super.onCleared()
         elapsedTickerJob?.cancel()
         realLocation.stopUpdates()
-        // Deliberately does NOT touch the mock session: MockLocationService
-        // owns that lifetime entirely, independent of this ViewModel.
         runCatching { getApplication<Application>().unbindService(serviceConnection) }
     }
 
     companion object {
         private const val TAG = "AppViewModel"
+        private const val MY_LOCATION_ZOOM = 16f
     }
 }

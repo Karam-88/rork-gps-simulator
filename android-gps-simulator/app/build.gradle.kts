@@ -33,8 +33,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -99,5 +99,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.koin.androidx.compose)
+
+    // Native vector map renderer for the primary street map. OpenGL is chosen
+    // for the widest device compatibility; OpenFreeMap provides the OSM data/style.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
+
     debugImplementation(libs.androidx.ui.tooling)
 }

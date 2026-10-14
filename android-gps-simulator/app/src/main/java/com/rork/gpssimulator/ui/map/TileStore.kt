@@ -19,25 +19,15 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Raster tile endpoints used for each map type. */
+/** Map source metadata and legacy raster endpoints kept for attribution/fallback. */
 enum class TileSource(val id: String, val maxZoom: Int, val attribution: String) {
-    STANDARD("osm", 19, "© OpenStreetMap contributors"),
+    STANDARD("openfreemap-bright", 19, "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors"),
     SATELLITE("esri", 18, "© Esri, Maxar, Earthstar Geographics"),
     TERRAIN("topo", 16, "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"),
-
-    /**
-     * A more detailed street basemap than [STANDARD]: the Humanitarian
-     * OpenStreetMap Team (HOT) style, which draws roads, buildings and place
-     * labels more prominently. It is served free of charge and without an API
-     * key by OpenStreetMap France, built directly on OpenStreetMap data, and
-     * requires attribution: the compact credit below is shown in the map's
-     * attribution chip, and the full wording is on the Licenses screen.
-     * Tiles are spread over the a/b/c hosts by tile coordinate.
-     */
     DETAILED_STREETS(
-        "hot",
+        "openfreemap-liberty",
         19,
-        "© OpenStreetMap contributors · Tiles: HOT, hosted by OSM France",
+        "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors",
     );
 
     fun url(z: Int, x: Int, y: Int): String = when (this) {
@@ -59,8 +49,8 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
 }
 
 /**
- * Downloads and caches map tiles in memory. Requests are de-duplicated and
- * throttled; [version] increments whenever tile state changes so the map redraws.
+ * Legacy raster cache retained for non-MapLibre utility/fallback code.
+ * The primary map screen is now rendered by MapLibre Native.
  */
 class TileStore(private val scope: CoroutineScope) {
 
@@ -68,17 +58,43 @@ class TileStore(private val scope: CoroutineScope) {
     private val inFlight = mutableSetOf<String>()
     private val failed = mutableMapOf<String, Int>()
     private val retryScheduled = mutableSetOf<String>()
-    private val semaphore = Semaphore(6)
+    private val semaphore = Semaphore(4)
 
     var version by mutableIntStateOf(0)
         private set
 
-    /** Returns a cached tile, scheduling a download when it is missing. */
     fun tile(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? {
-        val key = "${source.id}/$z/$x/$y"
+        val key = key(source, z, x, y)
         cache.get(key)?.let { return it }
+
+        if (z >= 4) {
+            val previewZ = z - 4
+            prefetch(source, previewZ, x shr 4, y shr 4)
+        }
+
         if (failed.getOrDefault(key, 0) >= MAX_RETRIES) return null
-        if (!inFlight.add(key)) return null
+        request(source, z, x, y, key, countFailures = true)
+        return null
+    }
+
+    fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
+        cache.get(key(source, z, x, y))
+
+    private fun prefetch(source: TileSource, z: Int, x: Int, y: Int) {
+        val key = key(source, z, x, y)
+        if (cache.get(key) != null || failed.getOrDefault(key, 0) >= MAX_RETRIES) return
+        request(source, z, x, y, key, countFailures = false)
+    }
+
+    private fun request(
+        source: TileSource,
+        z: Int,
+        x: Int,
+        y: Int,
+        key: String,
+        countFailures: Boolean,
+    ) {
+        if (!inFlight.add(key)) return
 
         scope.launch {
             val bitmap = semaphore.withPermit { download(source.url(z, x, y)) }
@@ -88,13 +104,9 @@ class TileStore(private val scope: CoroutineScope) {
                     failed.remove(key)
                     retryScheduled.remove(key)
                     version++
-                } else {
+                } else if (countFailures) {
                     val failureCount = failed.getOrDefault(key, 0) + 1
                     failed[key] = failureCount
-
-                    // A failed request also needs to invalidate drawing; otherwise
-                    // the same blank tile may never be requested again until the
-                    // user pans or changes location.
                     version++
 
                     if (failureCount >= MAX_RETRIES && retryScheduled.add(key)) {
@@ -104,12 +116,7 @@ class TileStore(private val scope: CoroutineScope) {
                 inFlight.remove(key)
             }
         }
-        return null
     }
-
-    /** Looks up a tile without triggering a download (used for low-res fallback). */
-    fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
-        cache.get("${source.id}/$z/$x/$y")
 
     private fun scheduleRetry(key: String) {
         scope.launch {
@@ -117,8 +124,6 @@ class TileStore(private val scope: CoroutineScope) {
             withContext(Dispatchers.Main) {
                 failed.remove(key)
                 retryScheduled.remove(key)
-                // Trigger a fresh draw so the tile is requested again even if
-                // the map camera has not moved at all.
                 version++
             }
         }
@@ -128,10 +133,11 @@ class TileStore(private val scope: CoroutineScope) {
         var connection: HttpURLConnection? = null
         try {
             connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 12_000
-                readTimeout = 12_000
+                connectTimeout = 3_000
+                readTimeout = 5_000
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", "image/png,image/jpeg,image/*")
+                setRequestProperty("Connection", "keep-alive")
             }
             if (connection.responseCode !in 200..299) return@withContext null
             val bytes = connection.inputStream.use { it.readBytes() }
@@ -144,10 +150,13 @@ class TileStore(private val scope: CoroutineScope) {
         }
     }
 
+    private fun key(source: TileSource, z: Int, x: Int, y: Int): String =
+        "${source.id}/$z/$x/$y"
+
     companion object {
         private const val TAG = "TileStore"
         private const val MAX_RETRIES = 3
-        private const val RETRY_COOLDOWN_MS = 5_000L
+        private const val RETRY_COOLDOWN_MS = 2_000L
         private const val USER_AGENT = "GPSSimulator/1.0 (Android developer testing tool)"
     }
 }
