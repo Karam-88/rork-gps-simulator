@@ -19,15 +19,15 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Raster tile endpoints used for each map type. */
+/** Map source metadata and legacy raster endpoints kept for attribution/fallback. */
 enum class TileSource(val id: String, val maxZoom: Int, val attribution: String) {
-    STANDARD("osm", 19, "© OpenStreetMap contributors"),
+    STANDARD("openfreemap-bright", 19, "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors"),
     SATELLITE("esri", 18, "© Esri, Maxar, Earthstar Geographics"),
     TERRAIN("topo", 16, "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"),
     DETAILED_STREETS(
-        "hot",
+        "openfreemap-liberty",
         19,
-        "© OpenStreetMap contributors · Tiles: HOT, hosted by OSM France",
+        "OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors",
     );
 
     fun url(z: Int, x: Int, y: Int): String = when (this) {
@@ -49,13 +49,8 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
 }
 
 /**
- * Downloads and caches map tiles in memory. Requests are de-duplicated and
- * throttled; [version] increments whenever tile state changes so the map redraws.
- *
- * Cold-start rendering deliberately requests a much coarser ancestor tile first.
- * One z-4 tile can cover a large part of the visible screen and MapView can stretch
- * it temporarily while the street-level tiles arrive. This avoids the grey/white
- * screen that was visible for several seconds after launch on slower networks.
+ * Legacy raster cache retained for non-MapLibre utility/fallback code.
+ * The primary map screen is now rendered by MapLibre Native.
  */
 class TileStore(private val scope: CoroutineScope) {
 
@@ -63,21 +58,15 @@ class TileStore(private val scope: CoroutineScope) {
     private val inFlight = mutableSetOf<String>()
     private val failed = mutableMapOf<String, Int>()
     private val retryScheduled = mutableSetOf<String>()
-
-    // Keep connection pressure moderate. Too many simultaneous OSM requests can
-    // actually make startup slower on mobile networks and may trigger throttling.
     private val semaphore = Semaphore(4)
 
     var version by mutableIntStateOf(0)
         private set
 
-    /** Returns a cached tile, scheduling a download when it is missing. */
     fun tile(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? {
         val key = key(source, z, x, y)
         cache.get(key)?.let { return it }
 
-        // Fetch a very coarse preview first. MapView searches up to four parent
-        // levels for a fallback, so z-4 is the fastest useful ancestor.
         if (z >= 4) {
             val previewZ = z - 4
             prefetch(source, previewZ, x shr 4, y shr 4)
@@ -88,7 +77,6 @@ class TileStore(private val scope: CoroutineScope) {
         return null
     }
 
-    /** Looks up a tile without triggering a download (used for low-res fallback). */
     fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
         cache.get(key(source, z, x, y))
 
