@@ -200,6 +200,9 @@ fun MapView(
             .background(if (mapType == MapType.SATELLITE) Color(0xFF0E1620) else Color(0xFFE8EAED))
             .onSizeChanged { camera.sizePx = it }
             .pointerInput(camera, onMapTap) {
+                var lastTapTime = 0L
+                var lastTapPosition: Offset? = null
+
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var pastTouchSlop = false
@@ -233,9 +236,35 @@ fun MapView(
                     camera.isUserInteracting = false
 
                     val wasTap = !pastTouchSlop && pointerCount == 1
-                    if (wasTap && onMapTap != null && camera.sizePx != IntSize.Zero) {
-                        val projector = projectorFor(camera, density.density)
-                        onMapTap(projector.toLatLng(down.position))
+                    if (wasTap && camera.sizePx != IntSize.Zero) {
+                        val previousTap = lastTapPosition
+                        val elapsedSinceTap = down.uptimeMillis - lastTapTime
+                        val closeEnough = previousTap != null &&
+                            (down.position - previousTap).getDistance() <= touchSlop * 2f
+                        val isDoubleTap = previousTap != null &&
+                            elapsedSinceTap in 1..viewConfiguration.doubleTapTimeoutMillis &&
+                            closeEnough
+
+                        if (isDoubleTap) {
+                            // Match the familiar map behaviour: zoom one full level
+                            // around the touched point so that point stays under the finger.
+                            applyGesture(
+                                camera = camera,
+                                pan = Offset.Zero,
+                                zoomChange = 2f,
+                                centroid = down.position,
+                                displayDensity = density.density,
+                            )
+                            lastTapTime = 0L
+                            lastTapPosition = null
+                        } else {
+                            lastTapTime = down.uptimeMillis
+                            lastTapPosition = down.position
+                            if (onMapTap != null) {
+                                val projector = projectorFor(camera, density.density)
+                                onMapTap(projector.toLatLng(down.position))
+                            }
+                        }
                     }
                 }
             },
