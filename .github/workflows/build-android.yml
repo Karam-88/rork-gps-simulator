@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK and Release AAB
 
 on:
   workflow_dispatch:
@@ -12,6 +12,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     defaults:
       run:
@@ -37,9 +43,57 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: gps-simulator-debug-apk
           path: android-gps-simulator/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Check Play signing secrets
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || \
+             [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
+             [ -z "$ANDROID_KEY_ALIAS" ] || \
+             [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "SIGNED_RELEASE_READY=false" >> "$GITHUB_ENV"
+            echo "Release AAB skipped: add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD repository secrets."
+          else
+            echo "SIGNED_RELEASE_READY=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Restore release keystore
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
+          chmod 600 release-keystore.jks
+          test -s release-keystore.jks
+
+      - name: Create signing configuration
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          cat > key.properties <<EOF
+          storeFile=../release-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+          chmod 600 key.properties
+
+      - name: Build signed Release AAB
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: ./gradlew clean bundleRelease
+
+      - name: Upload signed Release AAB
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-release-aab
+          path: android-gps-simulator/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Clean signing files
+        if: always() && github.event_name != 'pull_request'
+        run: rm -f release-keystore.jks key.properties
