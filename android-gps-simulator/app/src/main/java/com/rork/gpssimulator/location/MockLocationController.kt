@@ -8,8 +8,10 @@ import android.location.provider.ProviderProperties
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MockReadiness
+import java.util.Locale
 
 /**
  * Result of attempting to start or push a system-level mock location.
@@ -128,6 +130,7 @@ class MockLocationController(context: Context) {
         } catch (e: SecurityException) {
             isRunning = false
             removeAllQuietly()
+            showMockSetupToast()
             MockResult.Failure(
                 MockFailure.NOT_SELECTED_AS_MOCK_APP,
                 "App is not selected as the mock location app",
@@ -157,6 +160,7 @@ class MockLocationController(context: Context) {
             }
             MockResult.Success
         } catch (e: SecurityException) {
+            showMockSetupToast()
             MockResult.Failure(
                 MockFailure.NOT_SELECTED_AS_MOCK_APP,
                 "Mock location permission was revoked",
@@ -180,6 +184,15 @@ class MockLocationController(context: Context) {
         }
         installedProviders.clear()
         isRunning = false
+    }
+
+    private fun showMockSetupToast() {
+        val message = if (Locale.getDefault().language == "ar") {
+            "يرجى تفعيل خيارات المطور ثم اختيار GPS Simulator كتطبيق الموقع الوهمي"
+        } else {
+            "Enable Developer Options, then select GPS Simulator as the mock location app"
+        }
+        Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
     }
 
     private fun addTestProvider(manager: LocationManager, provider: String) {
