@@ -66,7 +66,7 @@ jobs:
              [ -z "$ANDROID_KEY_ALIAS" ] || \
              [ -z "$ANDROID_KEY_PASSWORD" ]; then
             echo "SIGNED_RELEASE_READY=false" >> "$GITHUB_ENV"
-            echo "Release AAB skipped: add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD repository secrets."
+            echo "Signed release skipped: add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD repository secrets."
           else
             echo "SIGNED_RELEASE_READY=true" >> "$GITHUB_ENV"
           fi
@@ -89,9 +89,18 @@ jobs:
           EOF
           chmod 600 key.properties
 
-      - name: Build signed Release AAB
+      - name: Build signed Release APK and AAB
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
-        run: ./gradlew clean bundleRelease
+        run: ./gradlew clean assembleRelease bundleRelease
+
+      - name: Upload signed Release APK
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-release-apk
+          path: android-gps-simulator/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload signed Release AAB
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
