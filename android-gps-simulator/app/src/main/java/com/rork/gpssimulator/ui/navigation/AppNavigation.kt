@@ -6,24 +6,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Route
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -33,25 +20,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.i18n.AppLanguage
-import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.i18n.Strings
 import com.rork.gpssimulator.ui.AppViewModel
@@ -85,22 +67,6 @@ object Routes {
     const val ABOUT = "about"
     const val LICENSES = "licenses"
 }
-
-private data class TabItem(
-    val route: String,
-    val icon: ImageVector,
-    val labelKey: K,
-)
-
-private val Tabs = listOf(
-    TabItem(Routes.MAP, Icons.Default.Map, K.tab_map),
-    TabItem(Routes.ROUTES, Icons.Default.Route, K.tab_routes),
-    TabItem(Routes.PRESETS, Icons.Default.Star, K.favorites),
-    TabItem(Routes.HISTORY, Icons.Default.History, K.tab_history),
-    TabItem(Routes.SETTINGS, Icons.Default.Settings, K.tab_settings),
-)
-
-private val BottomBarContentHeight = 80.dp
 
 @Composable
 fun AppNavigation() {
@@ -161,13 +127,9 @@ private fun AppScaffold(
     onFirstRealFixCentered: () -> Unit,
 ) {
     val navController = rememberNavController()
-    val strings = LocalStrings.current
     val snackbarHostState = remember { SnackbarHostState() }
-
     val message by viewModel.message.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -186,10 +148,6 @@ private fun AppScaffold(
         permissionLauncher.launch(permissions.toTypedArray())
     }
 
-    // On a fresh install, wait for the first genuine location fix and then frame
-    // it at the same useful street-level zoom as the My Location button. This is
-    // persisted separately from the onboarding flag so later launches can keep
-    // the user's last map position instead of recentering every time.
     LaunchedEffect(realSample, centerOnFirstRealFix) {
         if (centerOnFirstRealFix && realSample != null) {
             viewModel.returnToRealLocation(recenter = true)
@@ -203,25 +161,15 @@ private fun AppScaffold(
 
     LaunchedEffect(message) {
         val current = message ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(
-            message = current.text,
-            duration = SnackbarDuration.Short,
-        )
+        snackbarHostState.showSnackbar(current.text, duration = SnackbarDuration.Short)
         viewModel.consumeMessage()
     }
-
-    val showBottomBar = currentRoute in Tabs.map { it.route }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (showBottomBar) {
-                AppBottomBar(navController = navController, currentRoute = currentRoute)
-            }
-        },
     ) { _ ->
-        val bottomInset = if (showBottomBar) BottomBarContentHeight else 0.dp
+        val bottomInset = 0.dp
 
         NavHost(
             navController = navController,
@@ -233,28 +181,31 @@ private fun AppScaffold(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
-                    onOpenFavorites = { navController.navigateToTab(Routes.PRESETS) },
+                    onOpenFavorites = { navController.navigateToTopLevel(Routes.PRESETS) },
+                    onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
+                    onOpenHistory = { navController.navigateToTopLevel(Routes.HISTORY) },
+                    onOpenSettings = { navController.navigateToTopLevel(Routes.SETTINGS) },
                 )
             }
             composable(Routes.ROUTES) {
                 RoutesScreen(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
-                    onRouteStarted = { navController.navigateToTab(Routes.MAP) },
+                    onRouteStarted = { navController.navigateToTopLevel(Routes.MAP) },
                 )
             }
             composable(Routes.PRESETS) {
                 PresetsScreen(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
-                    onUseLocation = { navController.navigateToTab(Routes.MAP) },
+                    onUseLocation = { navController.navigateToTopLevel(Routes.MAP) },
                 )
             }
             composable(Routes.HISTORY) {
                 HistoryScreen(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
-                    onRestore = { navController.navigateToTab(Routes.MAP) },
+                    onRestore = { navController.navigateToTopLevel(Routes.MAP) },
                 )
             }
             composable(Routes.SETTINGS) {
@@ -267,8 +218,8 @@ private fun AppScaffold(
                     onOpenMockSetup = { navController.navigate(Routes.MOCK_SETUP) },
                     onOpenAbout = { navController.navigate(Routes.ABOUT) },
                     onOpenLicenses = { navController.navigate(Routes.LICENSES) },
-                    onOpenPresets = { navController.navigateToTab(Routes.PRESETS) },
-                    onOpenRoutes = { navController.navigateToTab(Routes.ROUTES) },
+                    onOpenPresets = { navController.navigateToTopLevel(Routes.PRESETS) },
+                    onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
                 )
             }
             composable(Routes.SEARCH) {
@@ -284,7 +235,7 @@ private fun AppScaffold(
                 CoordinateToolsScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
-                    onUseCoordinate = { navController.navigateToTab(Routes.MAP) },
+                    onUseCoordinate = { navController.navigateToTopLevel(Routes.MAP) },
                 )
             }
             composable(Routes.MOCK_SETUP) {
@@ -304,49 +255,7 @@ private fun AppScaffold(
     }
 }
 
-@Composable
-private fun AppBottomBar(
-    navController: NavHostController,
-    currentRoute: String?,
-) {
-    val strings = LocalStrings.current
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = NavigationBarDefaults.Elevation,
-    ) {
-        val backStackEntry by navController.currentBackStackEntryAsState()
-        Tabs.forEach { tab ->
-            val selected = backStackEntry?.destination?.hierarchy?.any { it.route == tab.route } == true
-            NavigationBarItem(
-                selected = selected,
-                onClick = { navController.navigateToTab(tab.route) },
-                icon = {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = strings[tab.labelKey],
-                        modifier = Modifier.size(26.dp),
-                    )
-                },
-                label = {
-                    Text(
-                        text = strings[tab.labelKey],
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                },
-                alwaysShowLabel = true,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            )
-        }
-    }
-}
-
-private fun NavHostController.navigateToTab(route: String) {
+private fun NavHostController.navigateToTopLevel(route: String) {
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
