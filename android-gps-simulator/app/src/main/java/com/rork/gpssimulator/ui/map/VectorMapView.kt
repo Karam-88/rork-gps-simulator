@@ -12,69 +12,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapView as NativeMapView
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.CircleOptions
+import com.google.android.gms.maps.model.LatLng as GoogleLatLng
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PolylineOptions
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MapType
-import org.maplibre.android.MapLibre
-import org.maplibre.android.annotations.Icon
-import org.maplibre.android.annotations.IconFactory
-import org.maplibre.android.annotations.MarkerOptions
-import org.maplibre.android.annotations.PolygonOptions
-import org.maplibre.android.annotations.PolylineOptions
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.geometry.LatLng as MlLatLng
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView as NativeMapView
-import org.maplibre.android.maps.Style
-import kotlin.math.PI
-import kotlin.math.cos
+import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sin
-
-private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
-private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
-
-private const val SATELLITE_STYLE = """
-{
-  "version": 8,
-  "sources": {
-    "satellite": {
-      "type": "raster",
-      "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-      "tileSize": 256,
-      "attribution": "© Esri, Maxar, Earthstar Geographics"
-    }
-  },
-  "layers": [
-    {"id":"satellite","type":"raster","source":"satellite"}
-  ]
-}
-"""
-
-private const val TERRAIN_STYLE = """
-{
-  "version": 8,
-  "sources": {
-    "terrain": {
-      "type": "raster",
-      "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"
-    }
-  },
-  "layers": [
-    {"id":"terrain","type":"raster","source":"terrain"}
-  ]
-}
-"""
 
 /**
- * Native map implementation.
+ * Native Google Maps renderer.
  *
- * Standard and detailed street maps use MapLibre vector rendering with OpenFreeMap.
- * Satellite and terrain stay available through raster sources inside MapLibre, so
- * every map type now shares the same reliable gesture/camera engine.
+ * Google Maps is intentionally used only for visual map rendering and gestures.
+ * Search, reverse geocoding, routes and the mock-location engine remain on the
+ * app's existing services and do not call Places, Geocoding or Routes APIs.
  */
-@Suppress("DEPRECATION")
 @Composable
 internal fun VectorMapView(
     camera: MapCameraState,
@@ -88,8 +47,7 @@ internal fun VectorMapView(
 ) {
     val context = LocalContext.current
     val holder = remember {
-        MapLibre.getInstance(context.applicationContext)
-        VectorMapHolder(context, camera, onMapTap, onCameraIdle)
+        GoogleMapHolder(context, camera, onMapTap, onCameraIdle)
     }
 
     DisposableEffect(holder) {
@@ -103,14 +61,14 @@ internal fun VectorMapView(
     }
 
     LaunchedEffect(mapType) {
-        holder.setStyle(mapType)
+        holder.setMapType(mapType)
     }
 
     LaunchedEffect(camera.centerLat, camera.centerLng, camera.zoom) {
         holder.syncCameraFromCompose(camera)
     }
 
-    LaunchedEffect(markers, polylines, circles, mapType) {
+    LaunchedEffect(markers, polylines, circles) {
         holder.setOverlays(markers, polylines, circles)
     }
 
@@ -121,8 +79,7 @@ internal fun VectorMapView(
     )
 }
 
-@Suppress("DEPRECATION")
-private class VectorMapHolder(
+private class GoogleMapHolder(
     context: Context,
     private val cameraState: MapCameraState,
     onMapTap: ((LatLng) -> Unit)?,
@@ -132,8 +89,8 @@ private class VectorMapHolder(
     var onMapTap = onMapTap
     var onCameraIdle = onCameraIdle
 
-    private var map: MapLibreMap? = null
-    private var currentStyle: MapType? = null
+    private var map: GoogleMap? = null
+    private var currentMapType: MapType? = null
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
@@ -144,48 +101,53 @@ private class VectorMapHolder(
         mapView.onCreate(null)
         mapView.getMapAsync { readyMap ->
             map = readyMap
+
             readyMap.uiSettings.apply {
                 isCompassEnabled = false
-                isLogoEnabled = false
-                isAttributionEnabled = false
+                isMapToolbarEnabled = false
+                isMyLocationButtonEnabled = false
+                isZoomControlsEnabled = false
                 isRotateGesturesEnabled = false
                 isTiltGesturesEnabled = false
                 isZoomGesturesEnabled = true
                 isScrollGesturesEnabled = true
-                isDoubleTapGesturesEnabled = true
-                isQuickZoomGesturesEnabled = true
             }
+            readyMap.isBuildingsEnabled = true
 
-            readyMap.cameraPosition = cameraPosition(cameraState)
+            // Keep Google's required logo/attribution clear of the app's bottom action bar.
+            val bottomPadding = (104f * context.resources.displayMetrics.density).roundToInt()
+            readyMap.setPadding(0, 0, 0, bottomPadding)
 
-            readyMap.addOnCameraMoveStartedListener {
-                if (!updatingFromCompose) cameraState.isUserInteracting = true
-            }
-            readyMap.addOnCameraMoveListener {
-                if (updatingFromCompose) return@addOnCameraMoveListener
-                val position = readyMap.cameraPosition
-                position.target?.let { target ->
-                    cameraState.centerLat = clampLatitude(target.latitude)
-                    cameraState.centerLng = target.longitude
+            readyMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition(cameraState)))
+
+            readyMap.setOnCameraMoveStartedListener { reason ->
+                if (!updatingFromCompose) {
+                    cameraState.isUserInteracting =
+                        reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE
                 }
-                cameraState.zoom = position.zoom.toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
             }
-            readyMap.addOnCameraIdleListener {
+            readyMap.setOnCameraMoveListener {
+                if (updatingFromCompose) return@setOnCameraMoveListener
+                val position = readyMap.cameraPosition
+                cameraState.centerLat = clampLatitude(position.target.latitude)
+                cameraState.centerLng = position.target.longitude
+                cameraState.zoom = position.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            }
+            readyMap.setOnCameraIdleListener {
                 cameraState.isUserInteracting = false
                 val position = readyMap.cameraPosition
-                val target = position.target ?: return@addOnCameraIdleListener
-                val point = LatLng(target.latitude, target.longitude)
+                val point = LatLng(position.target.latitude, position.target.longitude)
                 cameraState.centerLat = point.lat
                 cameraState.centerLng = point.lng
-                cameraState.zoom = position.zoom.toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
+                cameraState.zoom = position.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
                 onCameraIdle?.invoke(point, cameraState.zoom)
             }
-            readyMap.addOnMapClickListener { point ->
+            readyMap.setOnMapClickListener { point ->
                 onMapTap?.invoke(LatLng(point.latitude, point.longitude))
-                true
             }
 
-            setStyle(currentStyle ?: MapType.STANDARD)
+            setMapType(currentMapType ?: MapType.STANDARD)
+            redrawOverlays()
         }
     }
 
@@ -205,19 +167,14 @@ private class VectorMapHolder(
         mapView.onDestroy()
     }
 
-    fun setStyle(type: MapType) {
-        if (currentStyle == type && map?.style != null) return
-        currentStyle = type
+    fun setMapType(type: MapType) {
+        currentMapType = type
         val readyMap = map ?: return
-
-        val builder = when (type) {
-            MapType.STANDARD -> Style.Builder().fromUri(OPENFREEMAP_BRIGHT)
-            MapType.DETAILED_STREETS -> Style.Builder().fromUri(OPENFREEMAP_LIBERTY)
-            MapType.SATELLITE -> Style.Builder().fromJson(SATELLITE_STYLE)
-            MapType.TERRAIN -> Style.Builder().fromJson(TERRAIN_STYLE)
-        }
-        readyMap.setStyle(builder) {
-            redrawOverlays()
+        readyMap.mapType = when (type) {
+            MapType.STANDARD -> GoogleMap.MAP_TYPE_NORMAL
+            MapType.DETAILED_STREETS -> GoogleMap.MAP_TYPE_NORMAL
+            MapType.SATELLITE -> GoogleMap.MAP_TYPE_SATELLITE
+            MapType.TERRAIN -> GoogleMap.MAP_TYPE_TERRAIN
         }
     }
 
@@ -226,15 +183,14 @@ private class VectorMapHolder(
         if (camera.isUserInteracting) return
 
         val current = readyMap.cameraPosition
-        val target = current.target
-        val latDiff = target?.let { kotlin.math.abs(it.latitude - camera.centerLat) } ?: Double.MAX_VALUE
-        val lngDiff = target?.let { kotlin.math.abs(it.longitude - camera.centerLng) } ?: Double.MAX_VALUE
-        val zoomDiff = kotlin.math.abs(current.zoom - camera.zoom.toDouble())
-        if (latDiff < 0.000001 && lngDiff < 0.000001 && zoomDiff < 0.001) return
+        val latDiff = abs(current.target.latitude - camera.centerLat)
+        val lngDiff = abs(current.target.longitude - camera.centerLng)
+        val zoomDiff = abs(current.zoom - camera.zoom)
+        if (latDiff < 0.000001 && lngDiff < 0.000001 && zoomDiff < 0.001f) return
 
         updatingFromCompose = true
         try {
-            readyMap.cameraPosition = cameraPosition(camera)
+            readyMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition(camera)))
         } finally {
             updatingFromCompose = false
         }
@@ -253,56 +209,60 @@ private class VectorMapHolder(
 
     private fun redrawOverlays() {
         val readyMap = map ?: return
-        if (readyMap.style == null) return
-
-        readyMap.removeAnnotations()
+        readyMap.clear()
 
         pendingCircles.forEach { circle ->
-            readyMap.addPolygon(
-                PolygonOptions()
-                    .addAll(circlePoints(circle.center, circle.radiusMeters))
+            readyMap.addCircle(
+                CircleOptions()
+                    .center(GoogleLatLng(circle.center.lat, circle.center.lng))
+                    .radius(circle.radiusMeters)
+                    .strokeColor(circle.strokeColor.toArgb())
                     .fillColor(circle.fillColor.toArgb())
-                    .strokeColor(circle.strokeColor.toArgb()),
+                    .strokeWidth(2f),
             )
         }
 
         pendingPolylines.forEach { line ->
             if (line.points.size < 2) return@forEach
-            val options = PolylineOptions()
-                .color(line.color.toArgb())
-                .width(line.widthPx)
-            line.points.forEach { point ->
-                options.add(MlLatLng(point.lat, point.lng))
-            }
-            readyMap.addPolyline(options)
+            readyMap.addPolyline(
+                PolylineOptions()
+                    .addAll(line.points.map { GoogleLatLng(it.lat, it.lng) })
+                    .color(line.color.toArgb())
+                    .width(line.widthPx)
+                    .geodesic(true),
+            )
         }
 
         pendingMarkers.forEach { marker ->
             if (marker.radiusMeters > 0.0) {
-                val haloColor = marker.color.copy(alpha = 0.14f).toArgb()
-                readyMap.addPolygon(
-                    PolygonOptions()
-                        .addAll(circlePoints(marker.point, marker.radiusMeters))
-                        .fillColor(haloColor)
-                        .strokeColor(marker.color.copy(alpha = 0.30f).toArgb()),
+                readyMap.addCircle(
+                    CircleOptions()
+                        .center(GoogleLatLng(marker.point.lat, marker.point.lng))
+                        .radius(marker.radiusMeters)
+                        .strokeColor(marker.color.copy(alpha = 0.30f).toArgb())
+                        .fillColor(marker.color.copy(alpha = 0.14f).toArgb())
+                        .strokeWidth(2f),
                 )
             }
             readyMap.addMarker(
                 MarkerOptions()
-                    .position(MlLatLng(marker.point.lat, marker.point.lng))
-                    .icon(markerIcon(mapView.context, marker)),
+                    .position(GoogleLatLng(marker.point.lat, marker.point.lng))
+                    .icon(markerIcon(mapView.context, marker))
+                    .anchor(0.5f, 0.5f),
             )
         }
     }
 
     private fun cameraPosition(camera: MapCameraState): CameraPosition =
         CameraPosition.Builder()
-            .target(MlLatLng(camera.centerLat, camera.centerLng))
-            .zoom(camera.zoom.toDouble())
+            .target(GoogleLatLng(camera.centerLat, camera.centerLng))
+            .zoom(camera.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM))
+            .bearing(0f)
+            .tilt(0f)
             .build()
 }
 
-private fun markerIcon(context: Context, marker: MapMarker): Icon {
+private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
     val density = context.resources.displayMetrics.density
     val px = (34f * density).roundToInt().coerceAtLeast(24)
     val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -340,25 +300,5 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
         }
     }
 
-    return IconFactory.getInstance(context).fromBitmap(bitmap)
-}
-
-private fun circlePoints(center: LatLng, radiusMeters: Double): List<MlLatLng> {
-    if (radiusMeters <= 0.0) return emptyList()
-    val earthRadius = 6_378_137.0
-    val angular = radiusMeters / earthRadius
-    val lat1 = Math.toRadians(center.lat)
-    val lon1 = Math.toRadians(center.lng)
-
-    return (0..48).map { step ->
-        val bearing = 2.0 * PI * step / 48.0
-        val lat2 = kotlin.math.asin(
-            sin(lat1) * cos(angular) + cos(lat1) * sin(angular) * cos(bearing),
-        )
-        val lon2 = lon1 + kotlin.math.atan2(
-            sin(bearing) * sin(angular) * cos(lat1),
-            cos(angular) - sin(lat1) * sin(lat2),
-        )
-        MlLatLng(Math.toDegrees(lat2), Math.toDegrees(lon2))
-    }
+    return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
