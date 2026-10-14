@@ -25,6 +25,18 @@ if (!hasReleaseSigning && gradle.startParameter.taskNames.any { it.contains("rel
     )
 }
 
+// The Maps key is injected by GitHub Actions from GOOGLE_MAPS_API_KEY. Developers can
+// also provide the same name as a Gradle property for local builds. The key itself is
+// never committed; the production key is restricted in Google Cloud to this Android app.
+val googleMapsApiKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
+    .orElse(providers.gradleProperty("GOOGLE_MAPS_API_KEY"))
+    .orElse("")
+    .get()
+
+if (googleMapsApiKey.isBlank()) {
+    logger.warn("WARNING: GOOGLE_MAPS_API_KEY is not configured; Google Maps will not render.")
+}
+
 android {
     namespace = "com.rork.gpssimulator"
     compileSdk = 36
@@ -35,6 +47,7 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "1.1.0"
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     signingConfigs {
@@ -100,9 +113,9 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.koin.androidx.compose)
 
-    // Native vector map renderer for the primary street map. OpenGL is chosen
-    // for the widest device compatibility; OpenFreeMap provides the OSM data/style.
-    implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
+    // Google is used only as the map renderer. Search/geocoding/routes continue to use
+    // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
 
     debugImplementation(libs.androidx.ui.tooling)
 }
