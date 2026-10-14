@@ -61,6 +61,11 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
 /**
  * Downloads and caches map tiles in memory. Requests are de-duplicated and
  * throttled; [version] increments whenever tile state changes so the map redraws.
+ *
+ * When a detailed tile is first requested we also prefetch its z-2 parent. The
+ * renderer can stretch that parent as a temporary low-resolution fallback, so a
+ * cold launch shows a recognizable map quickly instead of a blank background
+ * while the street-level tiles are still arriving.
  */
 class TileStore(private val scope: CoroutineScope) {
 
@@ -68,17 +73,48 @@ class TileStore(private val scope: CoroutineScope) {
     private val inFlight = mutableSetOf<String>()
     private val failed = mutableMapOf<String, Int>()
     private val retryScheduled = mutableSetOf<String>()
-    private val semaphore = Semaphore(6)
+    private val semaphore = Semaphore(8)
 
     var version by mutableIntStateOf(0)
         private set
 
     /** Returns a cached tile, scheduling a download when it is missing. */
     fun tile(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? {
-        val key = "${source.id}/$z/$x/$y"
+        val key = key(source, z, x, y)
         cache.get(key)?.let { return it }
+
+        // On a cold start, ask for a much cheaper parent tile first. MapView's
+        // existing fallback renderer will use it as soon as it arrives, while
+        // this exact tile continues loading in parallel.
+        if (z >= 2) {
+            val parentZ = z - 2
+            prefetch(source, parentZ, x shr 2, y shr 2)
+        }
+
         if (failed.getOrDefault(key, 0) >= MAX_RETRIES) return null
-        if (!inFlight.add(key)) return null
+        request(source, z, x, y, key, countFailures = true)
+        return null
+    }
+
+    /** Looks up a tile without triggering a download (used for low-res fallback). */
+    fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
+        cache.get(key(source, z, x, y))
+
+    private fun prefetch(source: TileSource, z: Int, x: Int, y: Int) {
+        val key = key(source, z, x, y)
+        if (cache.get(key) != null || failed.getOrDefault(key, 0) >= MAX_RETRIES) return
+        request(source, z, x, y, key, countFailures = false)
+    }
+
+    private fun request(
+        source: TileSource,
+        z: Int,
+        x: Int,
+        y: Int,
+        key: String,
+        countFailures: Boolean,
+    ) {
+        if (!inFlight.add(key)) return
 
         scope.launch {
             val bitmap = semaphore.withPermit { download(source.url(z, x, y)) }
@@ -88,7 +124,7 @@ class TileStore(private val scope: CoroutineScope) {
                     failed.remove(key)
                     retryScheduled.remove(key)
                     version++
-                } else {
+                } else if (countFailures) {
                     val failureCount = failed.getOrDefault(key, 0) + 1
                     failed[key] = failureCount
 
@@ -104,12 +140,7 @@ class TileStore(private val scope: CoroutineScope) {
                 inFlight.remove(key)
             }
         }
-        return null
     }
-
-    /** Looks up a tile without triggering a download (used for low-res fallback). */
-    fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
-        cache.get("${source.id}/$z/$x/$y")
 
     private fun scheduleRetry(key: String) {
         scope.launch {
@@ -128,8 +159,11 @@ class TileStore(private val scope: CoroutineScope) {
         var connection: HttpURLConnection? = null
         try {
             connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 12_000
-                readTimeout = 12_000
+                // Do not leave the whole map blank for a long network timeout.
+                // Failed tiles can retry automatically, so shorter timeouts give
+                // a much better startup experience on weak/mobile connections.
+                connectTimeout = 4_000
+                readTimeout = 6_000
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", "image/png,image/jpeg,image/*")
             }
@@ -144,10 +178,13 @@ class TileStore(private val scope: CoroutineScope) {
         }
     }
 
+    private fun key(source: TileSource, z: Int, x: Int, y: Int): String =
+        "${source.id}/$z/$x/$y"
+
     companion object {
         private const val TAG = "TileStore"
         private const val MAX_RETRIES = 3
-        private const val RETRY_COOLDOWN_MS = 5_000L
+        private const val RETRY_COOLDOWN_MS = 3_000L
         private const val USER_AGENT = "GPSSimulator/1.0 (Android developer testing tool)"
     }
 }
