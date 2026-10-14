@@ -95,19 +95,11 @@ private data class TabItem(
 private val Tabs = listOf(
     TabItem(Routes.MAP, Icons.Default.Map, K.tab_map),
     TabItem(Routes.ROUTES, Icons.Default.Route, K.tab_routes),
-    // This destination contains both Favorites and developer Presets, but Favorites
-    // are the user-facing saved locations. Expose them directly in the bottom bar
-    // so a newly saved favorite is always easy to find.
     TabItem(Routes.PRESETS, Icons.Default.Star, K.favorites),
     TabItem(Routes.HISTORY, Icons.Default.History, K.tab_history),
     TabItem(Routes.SETTINGS, Icons.Default.Settings, K.tab_settings),
 )
 
-/**
- * Content height of the Material bottom navigation bar, excluding the system
- * navigation inset the bar adds underneath itself. Callers add the measured
- * inset so floating controls clear the bar on every navigation mode.
- */
 private val BottomBarContentHeight = 80.dp
 
 @Composable
@@ -120,6 +112,9 @@ fun AppNavigation() {
     }
     var onboardingComplete by remember {
         mutableStateOf(onboardingPrefs.getBoolean("completed", false))
+    }
+    var shouldCenterOnFirstRealFix by remember {
+        mutableStateOf(!onboardingPrefs.getBoolean("initial_map_centered", false))
     }
 
     val darkTheme = when (settings.theme) {
@@ -146,19 +141,31 @@ fun AppNavigation() {
                     },
                 )
             } else {
-                AppScaffold(viewModel)
+                AppScaffold(
+                    viewModel = viewModel,
+                    centerOnFirstRealFix = shouldCenterOnFirstRealFix,
+                    onFirstRealFixCentered = {
+                        onboardingPrefs.edit().putBoolean("initial_map_centered", true).apply()
+                        shouldCenterOnFirstRealFix = false
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AppScaffold(viewModel: AppViewModel) {
+private fun AppScaffold(
+    viewModel: AppViewModel,
+    centerOnFirstRealFix: Boolean,
+    onFirstRealFixCentered: () -> Unit,
+) {
     val navController = rememberNavController()
     val strings = LocalStrings.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     val message by viewModel.message.collectAsState()
+    val realSample by viewModel.realSample.collectAsState()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
@@ -168,10 +175,6 @@ private fun AppScaffold(viewModel: AppViewModel) {
         viewModel.refreshPermissionState()
     }
 
-    // Ask for location access on first composition. Also request notification
-    // permission on API 33+ so the "Mock location active" foreground-service
-    // notification can actually be shown; the mock session itself does not
-    // depend on this being granted.
     LaunchedEffect(Unit) {
         val permissions = buildList {
             add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -183,22 +186,21 @@ private fun AppScaffold(viewModel: AppViewModel) {
         permissionLauncher.launch(permissions.toTypedArray())
     }
 
-    // Re-check readiness whenever the app returns to the foreground, since the
-    // user may have just selected this app in Developer Options.
-    //
-    // Deliberately no ON_STOP handling here: ON_STOP fires on ordinary
-    // backgrounding (switching to another app, pressing Home) — tying the mock
-    // session's lifetime to it was the root cause of mocking silently
-    // reverting to real GPS. The active session now lives in
-    // MockLocationService, independent of this screen's lifecycle; the
-    // "stop when app closes" preference is honoured in the service's
-    // onTaskRemoved, which only fires when the task is actually removed from
-    // Recents.
+    // On a fresh install, wait for the first genuine location fix and then frame
+    // it at the same useful street-level zoom as the My Location button. This is
+    // persisted separately from the onboarding flag so later launches can keep
+    // the user's last map position instead of recentering every time.
+    LaunchedEffect(realSample, centerOnFirstRealFix) {
+        if (centerOnFirstRealFix && realSample != null) {
+            viewModel.returnToRealLocation(recenter = true)
+            onFirstRealFixCentered()
+        }
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshPermissionState()
     }
 
-    // Surface one-shot messages.
     LaunchedEffect(message) {
         val current = message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(
@@ -208,9 +210,6 @@ private fun AppScaffold(viewModel: AppViewModel) {
         viewModel.consumeMessage()
     }
 
-    // The tab bar stays available during MOCK ACTIVE so the user can jump to
-    // Favorites / History and redirect the running session with "Move Here".
-    // The red X sits above it via bottomInset and is never covered.
     val showBottomBar = currentRoute in Tabs.map { it.route }
 
     Scaffold(
@@ -222,12 +221,6 @@ private fun AppScaffold(viewModel: AppViewModel) {
             }
         },
     ) { _ ->
-        // The map is full-bleed, so screens handle their own insets instead of
-        // consuming the scaffold padding.
-        //
-        // This is the bar's *content* height only. Screens that use their own
-        // Scaffold already receive the system navigation inset through its content
-        // padding; the full-bleed map adds that inset itself.
         val bottomInset = if (showBottomBar) BottomBarContentHeight else 0.dp
 
         NavHost(
@@ -278,8 +271,6 @@ private fun AppScaffold(viewModel: AppViewModel) {
                     onOpenRoutes = { navController.navigateToTab(Routes.ROUTES) },
                 )
             }
-
-            // ---- Detail destinations (no bottom bar) ----
             composable(Routes.SEARCH) {
                 SearchScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
             }
@@ -355,7 +346,6 @@ private fun AppBottomBar(
     }
 }
 
-/** Switches top-level tabs without stacking duplicate destinations. */
 private fun NavHostController.navigateToTab(route: String) {
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
