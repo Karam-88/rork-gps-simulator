@@ -5,14 +5,17 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.rork.gpssimulator.data.model.Geofence
 import com.rork.gpssimulator.data.model.HistoryEntry
+import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MockSessionRecord
 import com.rork.gpssimulator.data.model.SavedKind
 import com.rork.gpssimulator.data.model.SavedLocation
+import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.data.model.SimRoute
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import java.util.UUID
 
 /**
  * Single local persistence surface. Everything is stored on-device in
@@ -55,9 +58,36 @@ class AppRepository(context: Context) {
      * Persists the active-session snapshot so it survives process death. This is
      * a best-effort record only: while [MockLocationService] is alive, its own
      * in-memory state (via MockSessionBus) is authoritative.
+     *
+     * When a running STATIC mock is redirected to another fixed coordinate,
+     * preserve the point being left in History before replacing the durable
+     * snapshot. Route/joystick movement is deliberately excluded so their
+     * frequent coordinate updates do not flood History with hundreds of rows.
      */
     fun updateMockSession(transform: (MockSessionRecord) -> MockSessionRecord) {
-        val next = transform(_mockSession.value)
+        val previous = _mockSession.value
+        val next = transform(previous)
+
+        if (
+            previous.active && next.active &&
+            previous.kind == SessionKind.STATIC && next.kind == SessionKind.STATIC &&
+            !previous.lat.isNaN() && !previous.lng.isNaN() &&
+            (previous.lat != next.lat || previous.lng != next.lng)
+        ) {
+            val now = System.currentTimeMillis()
+            addHistory(
+                HistoryEntry(
+                    id = UUID.randomUUID().toString(),
+                    name = previous.placeName.ifBlank { "Dropped pin" },
+                    address = previous.placeAddress,
+                    point = LatLng(previous.lat, previous.lng),
+                    startedAt = previous.sessionStartedAt,
+                    durationMs = (now - previous.sessionStartedAt).coerceAtLeast(0L),
+                    kind = SessionKind.STATIC,
+                ),
+            )
+        }
+
         _mockSession.value = next
         store(KEY_MOCK_SESSION, next)
     }
