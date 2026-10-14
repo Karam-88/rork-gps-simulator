@@ -209,7 +209,10 @@ fun MapScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = true,
+        // Never let the drawer steal horizontal drags from the map. The side
+        // menu now opens only from the hamburger button, leaving MapLibre with
+        // the full touch stream for smooth panning and fling gestures.
+        gesturesEnabled = false,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier
