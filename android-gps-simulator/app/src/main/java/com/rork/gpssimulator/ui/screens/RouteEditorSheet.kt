@@ -30,10 +30,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -84,6 +82,7 @@ fun RouteEditorSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val settings by viewModel.settings.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    val activePoint by viewModel.activePoint.collectAsState()
 
     var name by remember { mutableStateOf(existing?.name ?: "") }
     var profile by remember { mutableStateOf(existing?.profile ?: settings.speedProfile) }
@@ -95,9 +94,10 @@ fun RouteEditorSheet(
         mutableStateListOf<LatLng>().apply { existing?.points?.let { addAll(it) } }
     }
 
+    val currentLocation = activePoint ?: realSample?.point
     val camera = rememberMapCameraState(
         initialCenter = existing?.points?.firstOrNull()
-            ?: realSample?.point
+            ?: currentLocation
             ?: LatLng(settings.lastCameraLat, settings.lastCameraLng),
         initialZoom = 14f,
     )
@@ -192,7 +192,7 @@ fun RouteEditorSheet(
                         }
                     }
                     SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
-                        realSample?.point?.let { point ->
+                        (activePoint ?: realSample?.point)?.let { point ->
                             camera.snapTo(point)
                         }
                     }
