@@ -142,7 +142,6 @@ fun MapScreen(
     )
 
     var showLayerSheet by remember { mutableStateOf(false) }
-    var showPreview by remember { mutableStateOf(false) }
 
     val isMockActive = mockState == MockState.MOCK_ACTIVE
 
@@ -182,12 +181,6 @@ fun MapScreen(
         if (sessionKind == SessionKind.ROUTE || sessionKind == SessionKind.JOYSTICK) {
             camera.snapTo(point)
         }
-    }
-
-    // Open the preview sheet whenever a fresh candidate appears — including while
-    // a session is running, where it offers "Move Here" instead of "Start".
-    LaunchedEffect(selected?.point) {
-        if (selected != null) showPreview = true
     }
 
     val markers = buildList {
@@ -358,20 +351,28 @@ fun MapScreen(
             }
 
             if (isMockActive) {
-                // Select aims a new candidate without interrupting the running session.
+                // Apply the map centre immediately to the running mock session.
                 ActiveControls(
                     showPause = isMotionSession,
                     isPaused = isPaused,
                     selectPointLabel = strings[K.select_point_short],
                     pauseLabel = if (isPaused) strings[K.resume] else strings[K.pause],
                     stopLabel = strings[K.stop],
-                    onSelectPoint = { viewModel.selectPoint(camera.center) },
+                    onSelectPoint = {
+                        val point = camera.center
+                        viewModel.selectPoint(point)
+                        viewModel.moveMockTo(point)
+                    },
                     onPause = { viewModel.togglePause() },
                     onStop = { viewModel.stopMock() },
                 )
             } else {
                 Button(
-                    onClick = { viewModel.selectPoint(camera.center) },
+                    onClick = {
+                        // Start directly from the crosshair without opening a preview sheet.
+                        viewModel.selectPoint(camera.center)
+                        viewModel.startMock()
+                    },
                     modifier = Modifier.fillMaxWidth().height(58.dp),
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
@@ -402,35 +403,6 @@ fun MapScreen(
             selected = settings.mapType,
             onSelect = { type -> viewModel.updateSettings { it.copy(mapType = type) } },
             onDismiss = { showLayerSheet = false },
-        )
-    }
-
-    val selection = selected
-    if (showPreview && selection != null) {
-        LocationPreviewSheet(
-            selection = selection,
-            units = settings.units,
-            mapType = settings.mapType,
-            isMockActive = isMockActive,
-            // Dismissing cancels the candidate only; a running session survives.
-            onDismiss = {
-                showPreview = false
-                viewModel.clearSelection()
-            },
-            onSaveFavorite = {
-                viewModel.saveCurrentSelectionAsFavorite()
-                viewModel.postMessage(strings[K.saved])
-            },
-            onCopied = { viewModel.postMessage(strings[K.copied]) },
-            // One explicit action — no second confirmation dialog.
-            onPrimary = {
-                showPreview = false
-                if (isMockActive) {
-                    viewModel.moveMockTo(selection.point)
-                } else {
-                    viewModel.startMock()
-                }
-            },
         )
     }
 }
