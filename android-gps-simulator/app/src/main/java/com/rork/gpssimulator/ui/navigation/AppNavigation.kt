@@ -1,6 +1,7 @@
 package com.rork.gpssimulator.ui.navigation
 
 import android.Manifest
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -28,9 +29,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
@@ -54,6 +58,7 @@ import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.screens.AboutScreen
 import com.rork.gpssimulator.ui.screens.CoordinateToolsScreen
 import com.rork.gpssimulator.ui.screens.DiagnosticsScreen
+import com.rork.gpssimulator.ui.screens.FirstRunOnboardingScreen
 import com.rork.gpssimulator.ui.screens.GeofenceScreen
 import com.rork.gpssimulator.ui.screens.HistoryScreen
 import com.rork.gpssimulator.ui.screens.LicensesScreen
@@ -64,6 +69,7 @@ import com.rork.gpssimulator.ui.screens.RoutesScreen
 import com.rork.gpssimulator.ui.screens.SearchScreen
 import com.rork.gpssimulator.ui.screens.SettingsScreen
 import com.rork.gpssimulator.ui.theme.AppTheme
+import java.util.Locale
 
 object Routes {
     const val MAP = "map"
@@ -108,6 +114,13 @@ private val BottomBarContentHeight = 80.dp
 fun AppNavigation() {
     val viewModel: AppViewModel = viewModel()
     val settings by viewModel.settings.collectAsState()
+    val context = LocalContext.current
+    val onboardingPrefs = remember {
+        context.getSharedPreferences("gps_simulator_onboarding", Context.MODE_PRIVATE)
+    }
+    var onboardingComplete by remember {
+        mutableStateOf(onboardingPrefs.getBoolean("completed", false))
+    }
 
     val darkTheme = when (settings.theme) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -115,18 +128,26 @@ fun AppNavigation() {
         ThemeMode.DARK -> true
     }
     val strings = remember(settings.language) { Strings(settings.language) }
-    val layoutDirection = if (settings.language == AppLanguage.ARABIC) {
-        LayoutDirection.Rtl
-    } else {
-        LayoutDirection.Ltr
-    }
+    val isArabic = settings.language == AppLanguage.ARABIC ||
+        Locale.getDefault().language.equals("ar", ignoreCase = true)
+    val layoutDirection = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
 
     AppTheme(darkTheme = darkTheme) {
         CompositionLocalProvider(
             LocalStrings provides strings,
             LocalLayoutDirection provides layoutDirection,
         ) {
-            AppScaffold(viewModel)
+            if (!onboardingComplete) {
+                FirstRunOnboardingScreen(
+                    isArabic = isArabic,
+                    onFinished = {
+                        onboardingPrefs.edit().putBoolean("completed", true).apply()
+                        onboardingComplete = true
+                    },
+                )
+            } else {
+                AppScaffold(viewModel)
+            }
         }
     }
 }
