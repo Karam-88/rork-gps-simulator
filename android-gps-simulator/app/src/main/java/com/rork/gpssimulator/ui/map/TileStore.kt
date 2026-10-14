@@ -1,16 +1,17 @@
 package com.rork.gpssimulator.ui.map
 
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.util.LruCache
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import android.util.Log
 import com.rork.gpssimulator.data.model.MapType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -59,13 +60,14 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
 
 /**
  * Downloads and caches map tiles in memory. Requests are de-duplicated and
- * throttled; [version] increments whenever new pixels arrive so the map redraws.
+ * throttled; [version] increments whenever tile state changes so the map redraws.
  */
 class TileStore(private val scope: CoroutineScope) {
 
     private val cache = object : LruCache<String, ImageBitmap>(360) {}
     private val inFlight = mutableSetOf<String>()
     private val failed = mutableMapOf<String, Int>()
+    private val retryScheduled = mutableSetOf<String>()
     private val semaphore = Semaphore(6)
 
     var version by mutableIntStateOf(0)
@@ -84,9 +86,20 @@ class TileStore(private val scope: CoroutineScope) {
                 if (bitmap != null) {
                     cache.put(key, bitmap)
                     failed.remove(key)
+                    retryScheduled.remove(key)
                     version++
                 } else {
-                    failed[key] = failed.getOrDefault(key, 0) + 1
+                    val failureCount = failed.getOrDefault(key, 0) + 1
+                    failed[key] = failureCount
+
+                    // A failed request also needs to invalidate drawing; otherwise
+                    // the same blank tile may never be requested again until the
+                    // user pans or changes location.
+                    version++
+
+                    if (failureCount >= MAX_RETRIES && retryScheduled.add(key)) {
+                        scheduleRetry(key)
+                    }
                 }
                 inFlight.remove(key)
             }
@@ -97,6 +110,19 @@ class TileStore(private val scope: CoroutineScope) {
     /** Looks up a tile without triggering a download (used for low-res fallback). */
     fun cached(source: TileSource, z: Int, x: Int, y: Int): ImageBitmap? =
         cache.get("${source.id}/$z/$x/$y")
+
+    private fun scheduleRetry(key: String) {
+        scope.launch {
+            delay(RETRY_COOLDOWN_MS)
+            withContext(Dispatchers.Main) {
+                failed.remove(key)
+                retryScheduled.remove(key)
+                // Trigger a fresh draw so the tile is requested again even if
+                // the map camera has not moved at all.
+                version++
+            }
+        }
+    }
 
     private suspend fun download(url: String): ImageBitmap? = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
@@ -121,6 +147,7 @@ class TileStore(private val scope: CoroutineScope) {
     companion object {
         private const val TAG = "TileStore"
         private const val MAX_RETRIES = 3
+        private const val RETRY_COOLDOWN_MS = 5_000L
         private const val USER_AGENT = "GPSSimulator/1.0 (Android developer testing tool)"
     }
 }
