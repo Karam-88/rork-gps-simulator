@@ -24,6 +24,7 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng as MlLatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView as NativeMapView
+import org.maplibre.android.maps.Style
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -32,13 +33,46 @@ import kotlin.math.sin
 private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
 private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
 
+private const val SATELLITE_STYLE = """
+{
+  "version": 8,
+  "sources": {
+    "satellite": {
+      "type": "raster",
+      "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      "tileSize": 256,
+      "attribution": "© Esri, Maxar, Earthstar Geographics"
+    }
+  },
+  "layers": [
+    {"id":"satellite","type":"raster","source":"satellite"}
+  ]
+}
+"""
+
+private const val TERRAIN_STYLE = """
+{
+  "version": 8,
+  "sources": {
+    "terrain": {
+      "type": "raster",
+      "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "attribution": "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"
+    }
+  },
+  "layers": [
+    {"id":"terrain","type":"raster","source":"terrain"}
+  ]
+}
+"""
+
 /**
- * Vector-map implementation for the two street-map modes.
+ * Native map implementation.
  *
- * Using MapLibre + OpenFreeMap removes the cold-start dependency on many raster
- * PNG requests, which is the main reason the old renderer could sit on a blank
- * background for several seconds. It also gives familiar double-tap/pinch/fling
- * gestures and a cleaner Google-like street-map appearance.
+ * Standard and detailed street maps use MapLibre vector rendering with OpenFreeMap.
+ * Satellite and terrain stay available through raster sources inside MapLibre, so
+ * every map type now shares the same reliable gesture/camera engine.
  */
 @Suppress("DEPRECATION")
 @Composable
@@ -99,7 +133,7 @@ private class VectorMapHolder(
     var onCameraIdle = onCameraIdle
 
     private var map: MapLibreMap? = null
-    private var currentStyle: String? = null
+    private var currentStyle: MapType? = null
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
@@ -119,6 +153,7 @@ private class VectorMapHolder(
                 isZoomGesturesEnabled = true
                 isScrollGesturesEnabled = true
                 isDoubleTapGesturesEnabled = true
+                isQuickZoomGesturesEnabled = true
             }
 
             readyMap.cameraPosition = cameraPosition(cameraState)
@@ -150,7 +185,7 @@ private class VectorMapHolder(
                 true
             }
 
-            setStyle(MapType.STANDARD)
+            setStyle(currentStyle ?: MapType.STANDARD)
         }
     }
 
@@ -171,22 +206,26 @@ private class VectorMapHolder(
     }
 
     fun setStyle(type: MapType) {
-        val style = when (type) {
-            MapType.DETAILED_STREETS -> OPENFREEMAP_LIBERTY
-            else -> OPENFREEMAP_BRIGHT
+        if (currentStyle == type && map?.style != null) return
+        currentStyle = type
+        val readyMap = map ?: return
+
+        val builder = when (type) {
+            MapType.STANDARD -> Style.Builder().fromUri(OPENFREEMAP_BRIGHT)
+            MapType.DETAILED_STREETS -> Style.Builder().fromUri(OPENFREEMAP_LIBERTY)
+            MapType.SATELLITE -> Style.Builder().fromJson(SATELLITE_STYLE)
+            MapType.TERRAIN -> Style.Builder().fromJson(TERRAIN_STYLE)
         }
-        if (currentStyle == style) return
-        currentStyle = style
-        map?.setStyle(style) {
+        readyMap.setStyle(builder) {
             redrawOverlays()
         }
     }
 
     fun syncCameraFromCompose(camera: MapCameraState) {
-        val map = map ?: return
+        val readyMap = map ?: return
         if (camera.isUserInteracting) return
 
-        val current = map.cameraPosition
+        val current = readyMap.cameraPosition
         val target = current.target
         val latDiff = target?.let { kotlin.math.abs(it.latitude - camera.centerLat) } ?: Double.MAX_VALUE
         val lngDiff = target?.let { kotlin.math.abs(it.longitude - camera.centerLng) } ?: Double.MAX_VALUE
@@ -195,7 +234,7 @@ private class VectorMapHolder(
 
         updatingFromCompose = true
         try {
-            map.cameraPosition = cameraPosition(camera)
+            readyMap.cameraPosition = cameraPosition(camera)
         } finally {
             updatingFromCompose = false
         }
@@ -213,13 +252,13 @@ private class VectorMapHolder(
     }
 
     private fun redrawOverlays() {
-        val map = map ?: return
-        if (map.style == null) return
+        val readyMap = map ?: return
+        if (readyMap.style == null) return
 
-        map.removeAnnotations()
+        readyMap.removeAnnotations()
 
         pendingCircles.forEach { circle ->
-            map.addPolygon(
+            readyMap.addPolygon(
                 PolygonOptions()
                     .addAll(circlePoints(circle.center, circle.radiusMeters))
                     .fillColor(circle.fillColor.toArgb())
@@ -229,25 +268,26 @@ private class VectorMapHolder(
 
         pendingPolylines.forEach { line ->
             if (line.points.size < 2) return@forEach
-            map.addPolyline(
-                PolylineOptions()
-                    .add(line.points.map { MlLatLng(it.lat, it.lng) }.toTypedArray())
-                    .color(line.color.toArgb())
-                    .width(line.widthPx),
-            )
+            val options = PolylineOptions()
+                .color(line.color.toArgb())
+                .width(line.widthPx)
+            line.points.forEach { point ->
+                options.add(MlLatLng(point.lat, point.lng))
+            }
+            readyMap.addPolyline(options)
         }
 
         pendingMarkers.forEach { marker ->
             if (marker.radiusMeters > 0.0) {
                 val haloColor = marker.color.copy(alpha = 0.14f).toArgb()
-                map.addPolygon(
+                readyMap.addPolygon(
                     PolygonOptions()
                         .addAll(circlePoints(marker.point, marker.radiusMeters))
                         .fillColor(haloColor)
                         .strokeColor(marker.color.copy(alpha = 0.30f).toArgb()),
                 )
             }
-            map.addMarker(
+            readyMap.addMarker(
                 MarkerOptions()
                     .position(MlLatLng(marker.point.lat, marker.point.lng))
                     .icon(markerIcon(mapView.context, marker)),
