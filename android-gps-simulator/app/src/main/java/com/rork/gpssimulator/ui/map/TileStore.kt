@@ -24,16 +24,6 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
     STANDARD("osm", 19, "© OpenStreetMap contributors"),
     SATELLITE("esri", 18, "© Esri, Maxar, Earthstar Geographics"),
     TERRAIN("topo", 16, "© OpenTopoMap (CC-BY-SA), data © OpenStreetMap contributors, SRTM"),
-
-    /**
-     * A more detailed street basemap than [STANDARD]: the Humanitarian
-     * OpenStreetMap Team (HOT) style, which draws roads, buildings and place
-     * labels more prominently. It is served free of charge and without an API
-     * key by OpenStreetMap France, built directly on OpenStreetMap data, and
-     * requires attribution: the compact credit below is shown in the map's
-     * attribution chip, and the full wording is on the Licenses screen.
-     * Tiles are spread over the a/b/c hosts by tile coordinate.
-     */
     DETAILED_STREETS(
         "hot",
         19,
@@ -62,10 +52,10 @@ enum class TileSource(val id: String, val maxZoom: Int, val attribution: String)
  * Downloads and caches map tiles in memory. Requests are de-duplicated and
  * throttled; [version] increments whenever tile state changes so the map redraws.
  *
- * When a detailed tile is first requested we also prefetch its z-2 parent. The
- * renderer can stretch that parent as a temporary low-resolution fallback, so a
- * cold launch shows a recognizable map quickly instead of a blank background
- * while the street-level tiles are still arriving.
+ * Cold-start rendering deliberately requests a much coarser ancestor tile first.
+ * One z-4 tile can cover a large part of the visible screen and MapView can stretch
+ * it temporarily while the street-level tiles arrive. This avoids the grey/white
+ * screen that was visible for several seconds after launch on slower networks.
  */
 class TileStore(private val scope: CoroutineScope) {
 
@@ -73,7 +63,10 @@ class TileStore(private val scope: CoroutineScope) {
     private val inFlight = mutableSetOf<String>()
     private val failed = mutableMapOf<String, Int>()
     private val retryScheduled = mutableSetOf<String>()
-    private val semaphore = Semaphore(8)
+
+    // Keep connection pressure moderate. Too many simultaneous OSM requests can
+    // actually make startup slower on mobile networks and may trigger throttling.
+    private val semaphore = Semaphore(4)
 
     var version by mutableIntStateOf(0)
         private set
@@ -83,12 +76,11 @@ class TileStore(private val scope: CoroutineScope) {
         val key = key(source, z, x, y)
         cache.get(key)?.let { return it }
 
-        // On a cold start, ask for a much cheaper parent tile first. MapView's
-        // existing fallback renderer will use it as soon as it arrives, while
-        // this exact tile continues loading in parallel.
-        if (z >= 2) {
-            val parentZ = z - 2
-            prefetch(source, parentZ, x shr 2, y shr 2)
+        // Fetch a very coarse preview first. MapView searches up to four parent
+        // levels for a fallback, so z-4 is the fastest useful ancestor.
+        if (z >= 4) {
+            val previewZ = z - 4
+            prefetch(source, previewZ, x shr 4, y shr 4)
         }
 
         if (failed.getOrDefault(key, 0) >= MAX_RETRIES) return null
@@ -127,10 +119,6 @@ class TileStore(private val scope: CoroutineScope) {
                 } else if (countFailures) {
                     val failureCount = failed.getOrDefault(key, 0) + 1
                     failed[key] = failureCount
-
-                    // A failed request also needs to invalidate drawing; otherwise
-                    // the same blank tile may never be requested again until the
-                    // user pans or changes location.
                     version++
 
                     if (failureCount >= MAX_RETRIES && retryScheduled.add(key)) {
@@ -148,8 +136,6 @@ class TileStore(private val scope: CoroutineScope) {
             withContext(Dispatchers.Main) {
                 failed.remove(key)
                 retryScheduled.remove(key)
-                // Trigger a fresh draw so the tile is requested again even if
-                // the map camera has not moved at all.
                 version++
             }
         }
@@ -159,13 +145,11 @@ class TileStore(private val scope: CoroutineScope) {
         var connection: HttpURLConnection? = null
         try {
             connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                // Do not leave the whole map blank for a long network timeout.
-                // Failed tiles can retry automatically, so shorter timeouts give
-                // a much better startup experience on weak/mobile connections.
-                connectTimeout = 4_000
-                readTimeout = 6_000
+                connectTimeout = 3_000
+                readTimeout = 5_000
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", "image/png,image/jpeg,image/*")
+                setRequestProperty("Connection", "keep-alive")
             }
             if (connection.responseCode !in 200..299) return@withContext null
             val bytes = connection.inputStream.use { it.readBytes() }
@@ -184,7 +168,7 @@ class TileStore(private val scope: CoroutineScope) {
     companion object {
         private const val TAG = "TileStore"
         private const val MAX_RETRIES = 3
-        private const val RETRY_COOLDOWN_MS = 3_000L
+        private const val RETRY_COOLDOWN_MS = 2_000L
         private const val USER_AGENT = "GPSSimulator/1.0 (Android developer testing tool)"
     }
 }
