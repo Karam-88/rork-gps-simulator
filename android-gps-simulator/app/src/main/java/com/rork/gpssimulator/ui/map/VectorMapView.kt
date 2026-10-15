@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,7 +74,24 @@ internal fun VectorMapView(
     }
 
     AndroidView(
-        factory = { holder.mapView },
+        factory = {
+            holder.mapView.apply {
+                // Embedded maps can live inside vertically scrolling sheets. While the
+                // user is touching the map, keep the parent from stealing pinch/pan
+                // gestures; release interception as soon as the gesture ends.
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN,
+                        MotionEvent.ACTION_POINTER_DOWN,
+                        MotionEvent.ACTION_MOVE -> view.parent?.requestDisallowInterceptTouchEvent(true)
+
+                        MotionEvent.ACTION_UP,
+                        MotionEvent.ACTION_CANCEL -> view.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                    false
+                }
+            }
+        },
         modifier = modifier,
         update = { holder.syncCameraFromCompose(camera) },
     )
