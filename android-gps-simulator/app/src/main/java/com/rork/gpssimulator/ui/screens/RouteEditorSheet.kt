@@ -118,13 +118,18 @@ fun RouteEditorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        sheetGesturesEnabled = false,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                // The route map is an interactive AndroidView. A scrollable Compose
+                // parent competes for the same finger stream and makes pinch/pan feel
+                // sticky. Keep this sheet stationary so Google Maps receives the full
+                // gesture sequence without the parent stealing vertical movement.
+                .verticalScroll(rememberScrollState(), enabled = false)
                 .padding(horizontal = 20.dp),
         ) {
             Text(
