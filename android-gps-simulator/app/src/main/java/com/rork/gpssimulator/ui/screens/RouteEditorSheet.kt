@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -150,8 +149,6 @@ fun RouteEditorSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            // Keep the map outside the scroll container. This lets Google Maps own
-            // pinch/zoom/pan gestures while the controls below can scroll independently.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
