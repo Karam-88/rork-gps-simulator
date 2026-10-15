@@ -209,9 +209,6 @@ fun MapScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        // Keep edge-swipe opening disabled while the drawer is closed so map
-        // gestures remain smooth, but allow normal scrim taps and swipe-to-close
-        // once the drawer is open.
         gesturesEnabled = drawerState.currentValue == DrawerValue.Open,
         drawerContent = {
             ModalDrawerSheet(
@@ -421,7 +418,7 @@ fun MapScreen(
                         Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Google",
+                            text = "Set Location",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
