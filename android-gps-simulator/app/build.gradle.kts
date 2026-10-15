@@ -45,8 +45,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.1.5"
+        versionCode = 8
+        versionName = "1.1.6"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
