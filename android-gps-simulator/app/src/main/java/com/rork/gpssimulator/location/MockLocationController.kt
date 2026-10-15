@@ -9,9 +9,10 @@ import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
+import com.rork.gpssimulator.data.AppRepository
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MockReadiness
-import java.util.Locale
+import com.rork.gpssimulator.i18n.AppLanguage
 
 /**
  * Result of attempting to start or push a system-level mock location.
@@ -187,7 +188,8 @@ class MockLocationController(context: Context) {
     }
 
     private fun showMockSetupToast() {
-        val message = if (Locale.getDefault().language == "ar") {
+        val language = AppRepository.getInstance(appContext).settings.value.language
+        val message = if (language == AppLanguage.ARABIC) {
             "يرجى تفعيل خيارات المطور ثم اختيار GPS Simulator كتطبيق الموقع الوهمي"
         } else {
             "Enable Developer Options, then select GPS Simulator as the mock location app"
