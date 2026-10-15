@@ -125,12 +125,30 @@ fun MapScreen(
     val currentSpeed by viewModel.currentSpeedKmh.collectAsState()
     val cameraTarget by viewModel.cameraTarget.collectAsState()
 
+    val isFreshDefaultCamera =
+        settings.lastCameraLat == 37.7749 && settings.lastCameraLng == -122.4194
+    val initialCenter = realSample?.point ?: if (isFreshDefaultCamera) {
+        // Do not flash San Francisco on a brand-new install while Android is still
+        // resolving the first real location fix. A neutral world view is less misleading.
+        LatLng(20.0, 0.0)
+    } else {
+        LatLng(settings.lastCameraLat, settings.lastCameraLng)
+    }
+    val initialZoom = if (isFreshDefaultCamera && realSample == null) {
+        2.5f
+    } else if (settings.rememberLastPosition) {
+        settings.lastCameraZoom
+    } else {
+        settings.defaultZoom
+    }
+
     val camera = rememberMapCameraState(
-        initialCenter = LatLng(settings.lastCameraLat, settings.lastCameraLng),
-        initialZoom = if (settings.rememberLastPosition) settings.lastCameraZoom else settings.defaultZoom,
+        initialCenter = initialCenter,
+        initialZoom = initialZoom,
     )
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
+    var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
         sessionKind == SessionKind.JOYSTICK || settings.joystickEnabled
@@ -152,6 +170,22 @@ fun MapScreen(
             animate = settings.animateMap,
         )
         viewModel.consumeCameraTarget()
+    }
+
+    // On a brand-new install, automatically replace the neutral/world seed with the
+    // first genuine device fix as soon as Android provides it. This prevents the app
+    // from appearing to start in the United States.
+    LaunchedEffect(realSample, mockState, isFreshDefaultCamera) {
+        val sample = realSample ?: return@LaunchedEffect
+        if (!centeredOnInitialRealFix && isFreshDefaultCamera && mockState == MockState.REAL_GPS) {
+            camera.animateTo(
+                point = sample.point,
+                newZoom = settings.defaultZoom,
+                animate = false,
+            )
+            viewModel.persistCamera(sample.point, settings.defaultZoom)
+            centeredOnInitialRealFix = true
+        }
     }
 
     LaunchedEffect(activePoint, sessionKind) {
@@ -287,21 +321,29 @@ fun MapScreen(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     ) { showMenuPanel = false },
             )
-            FloatingMapMenu(
+
+            // Use an absolute-right arrangement so the menu remains on the physical
+            // right edge even when the device/system layout direction is RTL.
+            Row(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 78.dp),
-                mapLabel = strings[K.tab_map],
-                routesLabel = strings[K.tab_routes],
-                favoritesLabel = strings[K.favorites],
-                historyLabel = strings[K.tab_history],
-                settingsLabel = strings[K.tab_settings],
-                onMap = { showMenuPanel = false },
-                onRoutes = { showMenuPanel = false; onOpenRoutes() },
-                onFavorites = { showMenuPanel = false; onOpenFavorites() },
-                onHistory = { showMenuPanel = false; onOpenHistory() },
-                onSettings = { showMenuPanel = false; onOpenSettings() },
-            )
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.Absolute.Right,
+            ) {
+                FloatingMapMenu(
+                    mapLabel = strings[K.tab_map],
+                    routesLabel = strings[K.tab_routes],
+                    favoritesLabel = strings[K.favorites],
+                    historyLabel = strings[K.tab_history],
+                    settingsLabel = strings[K.tab_settings],
+                    onMap = { showMenuPanel = false },
+                    onRoutes = { showMenuPanel = false; onOpenRoutes() },
+                    onFavorites = { showMenuPanel = false; onOpenFavorites() },
+                    onHistory = { showMenuPanel = false; onOpenHistory() },
+                    onSettings = { showMenuPanel = false; onOpenSettings() },
+                )
+            }
         }
 
         AttributionChip(
