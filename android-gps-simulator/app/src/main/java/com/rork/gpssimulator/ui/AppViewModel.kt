@@ -246,9 +246,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         realRecoveryJob?.cancel()
-        _realSample.value = null
-        var acceptedFreshFix = false
 
+        // Keep the last known genuine position visible instead of clearing it while
+        // Android reacquires a fresh fix after the mock provider is removed.
+        val cachedReal = _realSample.value
+        if (recenter && cachedReal != null) {
+            moveCamera(cachedReal.point, MY_LOCATION_ZOOM)
+        }
+
+        var acceptedFreshFix = false
         realLocation.startUpdates(settings.value.usePlayServices, 250L) { sample ->
             if (MockSessionBus.session.value != null || acceptedFreshFix) return@startUpdates
             acceptedFreshFix = true
