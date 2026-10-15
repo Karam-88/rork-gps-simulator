@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/** The coordinate the user has aimed at and confirmed, awaiting start. */
 data class SelectedLocation(
     val point: LatLng,
     val name: String,
@@ -47,7 +46,6 @@ data class SelectedLocation(
     val isResolving: Boolean = false,
 )
 
-/** Live progress of a running route simulation. */
 data class RouteProgress(
     val route: SimRoute,
     val traveledMeters: Double,
@@ -60,10 +58,8 @@ data class RouteProgress(
         get() = if (speedKmh <= 0.0) 0.0 else remainingMeters / (speedKmh / 3.6)
 }
 
-/** One-shot user-facing message. */
 data class UiMessage(val text: String, val isError: Boolean = false, val id: Long = System.nanoTime())
 
-/** Result rows for the diagnostics screen. */
 data class DiagnosticsReport(
     val realGpsAvailable: Boolean,
     val permissionGranted: Boolean,
@@ -75,21 +71,9 @@ data class DiagnosticsReport(
     val ranAt: Long,
 )
 
-/**
- * UI-facing state holder. The active mock session itself is no longer owned
- * here — it lives in [MockLocationService], a foreground service independent
- * of this ViewModel's lifecycle. This class only:
- *  - manages the pending "candidate" location the user is aiming at (a UI
- *    concept that never touches the system location, so it belongs here),
- *  - sends start/move/pause/stop/joystick commands to the bound service, and
- *  - mirrors [MockSessionBus]'s live state into the StateFlows the screens
- *    already read, so no screen needed to change.
- */
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = AppRepository.getInstance(app)
-
-    /** Used only for the read-only "is mocking possible right now" probe — never to start/push a session. */
     private val readinessProbe = MockLocationController(app)
     private val realLocation = RealLocationSource(app)
     private val geocoder = GeocodingService()
@@ -107,7 +91,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _selected = MutableStateFlow<SelectedLocation?>(null)
     val selected: StateFlow<SelectedLocation?> = _selected.asStateFlow()
 
-    /** The coordinate currently being pushed to the system. */
     private val _activePoint = MutableStateFlow<LatLng?>(null)
     val activePoint: StateFlow<LatLng?> = _activePoint.asStateFlow()
 
@@ -156,20 +139,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _isDiagnosticsRunning = MutableStateFlow(false)
     val isDiagnosticsRunning: StateFlow<Boolean> = _isDiagnosticsRunning.asStateFlow()
 
-    /** Geofence membership is evaluated inside the service's push loop; this just mirrors it. */
     val geofenceEvents: StateFlow<List<GeofenceEvent>> = MockSessionBus.geofenceEvents
     val geofenceInside: StateFlow<Set<String>> = MockSessionBus.geofenceInside
 
-    /** Set when the map should recentre (e.g. after "my location" or stop). */
     private val _cameraTarget = MutableStateFlow<Pair<LatLng, Float?>?>(null)
     val cameraTarget: StateFlow<Pair<LatLng, Float?>?> = _cameraTarget.asStateFlow()
 
     private var searchJob: Job? = null
     private var resolveJob: Job? = null
     private var elapsedTickerJob: Job? = null
+    private var realRecoveryJob: Job? = null
     private var wasSessionActive = false
-
-    // ---------- Service binding ----------
 
     @Volatile
     private var boundService: MockLocationService? = null
@@ -216,6 +196,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applySession(session: MockSessionBus.Session?) {
         if (session != null) {
+            realRecoveryJob?.cancel()
             _mockState.value = MockState.MOCK_ACTIVE
             _activePoint.value = session.point
             _activePlace.value = SelectedLocation(session.point, session.placeName, session.placeAddress)
@@ -242,8 +223,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
             if (wasActive) {
                 _selected.value = null
-                returnToRealLocation(recenter = settings.value.returnToRealOnStop)
-                refreshPermissionState()
+                recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
             }
         }
         wasSessionActive = session != null
@@ -256,6 +236,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 _elapsedMs.value = System.currentTimeMillis() - sessionStartedAt
                 delay(1000L)
             }
+        }
+    }
+
+    private fun recoverRealLocationAfterMockStop(recenter: Boolean) {
+        if (!_permissionGranted.value) {
+            refreshPermissionState()
+            return
+        }
+
+        realRecoveryJob?.cancel()
+        _realSample.value = null
+        var acceptedFreshFix = false
+
+        realLocation.startUpdates(settings.value.usePlayServices, 250L) { sample ->
+            if (MockSessionBus.session.value != null || acceptedFreshFix) return@startUpdates
+            acceptedFreshFix = true
+            _realSample.value = sample
+            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+            startRealUpdates()
+        }
+
+        realRecoveryJob = viewModelScope.launch {
+            delay(1500L)
+            if (!acceptedFreshFix && MockSessionBus.session.value == null) {
+                realLocation.lastKnown(settings.value.usePlayServices)?.let { sample ->
+                    _realSample.value = sample
+                    if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+                }
+                startRealUpdates()
+            }
+            _mockReadiness.value = readinessProbe.checkReadiness(_permissionGranted.value)
         }
     }
 
@@ -389,10 +400,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         boundService?.setJoystickVector(x, y)
     }
 
-    /**
-     * Centres the map on the device's real location at a useful street-level
-     * zoom, similar to the behaviour users expect from mainstream map apps.
-     */
     fun returnToRealLocation(recenter: Boolean = true) {
         val sample = realLocation.lastKnown(settings.value.usePlayServices) ?: _realSample.value
         if (sample != null) {
@@ -600,6 +607,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         super.onCleared()
         elapsedTickerJob?.cancel()
+        realRecoveryJob?.cancel()
         realLocation.stopUpdates()
         runCatching { getApplication<Application>().unbindService(serviceConnection) }
     }
