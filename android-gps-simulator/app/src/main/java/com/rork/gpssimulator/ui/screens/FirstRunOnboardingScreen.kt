@@ -31,10 +31,9 @@ import com.rork.gpssimulator.R
 /**
  * Full-screen first-run onboarding artwork.
  *
- * The artwork is intentionally rendered with Crop so it fills the entire phone
- * screen instead of looking like a poster with empty bars above and below it.
- * On taller/narrower phones only the far left/right decorative edges are cropped;
- * the centered titles, phone mockups, progress dots and CTA remain visible.
+ * The four replacement images are designed with a wider safe area around all
+ * important content. Crop keeps the screen edge-to-edge while preserving the
+ * centered artwork across common Android aspect ratios.
  */
 @Composable
 fun FirstRunOnboardingScreen(
@@ -47,10 +46,10 @@ fun FirstRunOnboardingScreen(
 
     val pages = remember {
         intArrayOf(
-            R.drawable.onboarding_welcome,
-            R.drawable.onboarding_location,
-            R.drawable.onboarding_routes,
-            R.drawable.onboarding_mock_setup,
+            R.drawable.onboarding_1,
+            R.drawable.onboarding_2,
+            R.drawable.onboarding_3,
+            R.drawable.onboarding_4,
         )
     }
 
@@ -82,14 +81,13 @@ fun FirstRunOnboardingScreen(
             alignment = Alignment.Center,
         )
 
-        // Tap target follows the CTA position baked into the image. Because Crop
-        // scales by height on narrow phones, this remains aligned across devices.
+        // Transparent tap target over the CTA baked into the artwork.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = maxHeight * 0.045f)
-                .fillMaxWidth(0.88f)
-                .height(maxHeight * 0.09f)
+                .padding(bottom = maxHeight * 0.055f)
+                .fillMaxWidth(0.62f)
+                .height(maxHeight * 0.075f)
                 .clickable(
                     role = Role.Button,
                     onClickLabel = if (page == pages.lastIndex) "Get Started" else "Next",
