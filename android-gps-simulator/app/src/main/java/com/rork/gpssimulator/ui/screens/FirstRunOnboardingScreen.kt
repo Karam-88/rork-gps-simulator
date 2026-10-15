@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -24,7 +24,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.rork.gpssimulator.R
@@ -32,10 +31,10 @@ import com.rork.gpssimulator.R
 /**
  * Full-screen first-run onboarding artwork.
  *
- * The artwork is 1024x1792 and contains all visual copy/progress/button styling.
- * We keep it letterboxed with ContentScale.Fit so no title, map, or button can be
- * cropped on short, tall, or wide Android displays. Only the visible bottom CTA
- * area is tappable; accidental taps elsewhere no longer advance the onboarding.
+ * The artwork is intentionally rendered with Crop so it fills the entire phone
+ * screen instead of looking like a poster with empty bars above and below it.
+ * On taller/narrower phones only the far left/right decorative edges are cropped;
+ * the centered titles, phone mockups, progress dots and CTA remain visible.
  */
 @Composable
 fun FirstRunOnboardingScreen(
@@ -55,9 +54,8 @@ fun FirstRunOnboardingScreen(
         )
     }
 
-    // The onboarding artwork intentionally contains no status, signal or battery
-    // graphics. Hide Android system bars while it is visible so those icons do not
-    // sit on top of the artwork either, then restore them when onboarding finishes.
+    // The artwork itself contains no battery, signal or status icons. Hide Android
+    // system bars while onboarding is visible, then restore them afterwards.
     DisposableEffect(activity) {
         val window = activity?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
@@ -75,44 +73,33 @@ fun FirstRunOnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF071426)),
-        contentAlignment = Alignment.Center,
     ) {
-        val artworkAspect = 1024f / 1792f
-        val containerAspect = maxWidth.value / maxHeight.value
-        val artworkWidth = if (containerAspect > artworkAspect) maxHeight * artworkAspect else maxWidth
-        val artworkHeight = if (containerAspect > artworkAspect) maxHeight else maxWidth / artworkAspect
+        Image(
+            painter = painterResource(pages[page]),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center,
+        )
 
+        // Tap target follows the CTA position baked into the image. Because Crop
+        // scales by height on narrow phones, this remains aligned across devices.
         Box(
             modifier = Modifier
-                .width(artworkWidth)
-                .height(artworkHeight),
-        ) {
-            Image(
-                painter = painterResource(pages[page]),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
-
-            // Matches the large visual CTA baked into each 1024x1792 artwork.
-            // The touch target scales with the fitted artwork and remains comfortably
-            // larger than Android's minimum target on normal phone sizes.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(0.91f)
-                    .height(artworkHeight * 0.105f)
-                    .clickable(
-                        role = Role.Button,
-                        onClickLabel = if (page == pages.lastIndex) "Get Started" else "Next",
-                    ) {
-                        if (page < pages.lastIndex) {
-                            page++
-                        } else {
-                            onFinished()
-                        }
-                    },
-            )
-        }
+                .align(Alignment.BottomCenter)
+                .padding(bottom = maxHeight * 0.045f)
+                .fillMaxWidth(0.88f)
+                .height(maxHeight * 0.09f)
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = if (page == pages.lastIndex) "Get Started" else "Next",
+                ) {
+                    if (page < pages.lastIndex) {
+                        page++
+                    } else {
+                        onFinished()
+                    }
+                },
+        )
     }
 }
