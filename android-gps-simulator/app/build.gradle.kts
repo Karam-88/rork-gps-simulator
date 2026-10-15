@@ -45,8 +45,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.1.7"
+        versionCode = 10
+        versionName = "1.1.8"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
@@ -55,7 +55,7 @@ android {
             create("release") {
                 storeFile = file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyAlias = keystoreProperties.getProperty("keyAlias"))
                 keyPassword = keystoreProperties.getProperty("keyPassword")
             }
         }
