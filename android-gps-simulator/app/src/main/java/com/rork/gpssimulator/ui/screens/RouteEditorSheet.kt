@@ -1,6 +1,8 @@
 package com.rork.gpssimulator.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,27 +11,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -46,9 +47,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.SimRoute
@@ -66,8 +67,8 @@ import com.rork.gpssimulator.util.Format
 import java.util.UUID
 
 /**
- * Route builder: tap the embedded map to append waypoints, pick a speed profile,
- * and optionally loop the route.
+ * Route builder styled to match the onboarding artwork: a dark rounded
+ * "Create Route" panel plus illuminated movement-profile buttons.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,9 +86,13 @@ fun RouteEditorSheet(
     val activePoint by viewModel.activePoint.collectAsState()
 
     var name by remember { mutableStateOf(existing?.name ?: "") }
-    var profile by remember { mutableStateOf(existing?.profile ?: settings.speedProfile) }
-    var customSpeed by remember {
-        mutableStateOf((existing?.customSpeedKmh ?: settings.customSpeedKmh.toDouble()).toString())
+    var profile by remember {
+        mutableStateOf(
+            when (existing?.profile ?: settings.speedProfile) {
+                SpeedProfile.CUSTOM -> SpeedProfile.RUNNING
+                else -> existing?.profile ?: settings.speedProfile
+            },
+        )
     }
     var loop by remember { mutableStateOf(existing?.loop ?: false) }
     val points = remember {
@@ -102,18 +107,15 @@ fun RouteEditorSheet(
         initialZoom = 14f,
     )
 
-    val customSpeedValue = customSpeed.trim().toDoubleOrNull() ?: 0.0
-    val isValid = name.isNotBlank() && points.size >= 2 &&
-        (profile != SpeedProfile.CUSTOM || customSpeedValue > 0)
-
     val draft = SimRoute(
         id = existing?.id ?: "",
         name = name,
         points = points.toList(),
         profile = profile,
-        customSpeedKmh = customSpeedValue,
+        customSpeedKmh = existing?.customSpeedKmh ?: settings.customSpeedKmh.toDouble(),
         loop = loop,
     )
+    val isValid = name.isNotBlank() && points.size >= 2
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -125,45 +127,34 @@ fun RouteEditorSheet(
             modifier = Modifier
                 .navigationBarsPadding()
                 .imePadding()
-                // The route map is an interactive AndroidView. A scrollable Compose
-                // parent competes for the same finger stream and makes pinch/pan feel
-                // sticky. Keep this sheet stationary so Google Maps receives the full
-                // gesture sequence without the parent stealing vertical movement.
-                .verticalScroll(rememberScrollState(), enabled = false)
                 .padding(horizontal = 20.dp),
         ) {
             Text(
                 text = strings[K.create_route],
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(strings[K.route_name], style = MaterialTheme.typography.bodyLarge) },
+                placeholder = { Text(strings[K.route_name]) },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = strings[K.tap_map_to_add],
-                style = MaterialTheme.typography.bodyMedium,
-                color = appColors.muted,
-            )
-
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(14.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
-                    .clip(RoundedCornerShape(18.dp)),
+                    .height(300.dp)
+                    .clip(RoundedCornerShape(22.dp)),
             ) {
                 MapView(
                     camera = camera,
@@ -182,120 +173,66 @@ fun RouteEditorSheet(
                         listOf(MapPolyline(points.toList(), MaterialTheme.colorScheme.primary))
                     } else emptyList(),
                     onMapTap = { tapped -> points.add(tapped) },
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
                 )
 
                 Row(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.BottomStart)
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    SmallMapAction(Icons.Default.Add, strings[K.add_waypoint]) {
+                        points.add(camera.center)
+                    }
+                    SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
+                        (activePoint ?: realSample?.point)?.let { camera.snapTo(it) }
+                    }
                     if (points.isNotEmpty()) {
                         SmallMapAction(Icons.Default.Close, strings[K.delete]) {
                             points.removeAt(points.lastIndex)
                         }
                     }
-                    SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
-                        (activePoint ?: realSample?.point)?.let { point ->
-                            camera.snapTo(point)
-                        }
-                    }
-                    SmallMapAction(Icons.Default.Add, strings[K.add_waypoint]) {
-                        points.add(camera.center)
-                    }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "${points.size} ${strings[K.waypoints]}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                if (points.size >= 2) {
-                    Text(
-                        text = Format.distance(draft.distanceMeters, settings.units),
-                        style = MonoValueStyle.copy(
-                            fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-
-            if (points.isEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = strings[K.route_points_required],
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = appColors.muted,
-                )
-            }
-
-            Spacer(Modifier.height(18.dp))
-
-            Text(
-                text = strings[K.speed_profile],
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+            RoutePointsPanel(
+                pointsCount = points.size,
+                onAdd = { points.add(camera.center) },
             )
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SpeedProfile.entries.forEach { option ->
-                    FilterChip(
-                        selected = profile == option,
-                        onClick = { profile = option },
-                        label = {
-                            Text(profileLabel(option), style = MaterialTheme.typography.bodyMedium)
-                        },
-                        leadingIcon = if (profile == option) {
-                            {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        } else null,
-                    )
-                }
-            }
 
-            if (profile == SpeedProfile.CUSTOM) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = customSpeed,
-                    onValueChange = { customSpeed = it },
-                    label = {
-                        Text(strings[K.custom_speed], style = MaterialTheme.typography.bodyLarge)
-                    },
-                    suffix = { Text("km/h", style = MaterialTheme.typography.bodyLarge) },
-                    singleLine = true,
-                    isError = customSpeed.isNotBlank() && customSpeedValue <= 0,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            Spacer(Modifier.height(14.dp))
 
-            Spacer(Modifier.height(16.dp))
+            MovementProfilePanel(
+                selected = profile,
+                onSelected = { profile = it },
+            )
+
+            Spacer(Modifier.height(14.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = strings[K.loop_route],
                         style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+                    if (points.size >= 2) {
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            text = Format.distance(draft.distanceMeters, settings.units),
+                            style = MonoValueStyle,
+                            color = appColors.muted,
+                        )
+                    }
                 }
                 Switch(checked = loop, onCheckedChange = { loop = it })
             }
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
@@ -307,33 +244,222 @@ fun RouteEditorSheet(
                     )
                 },
                 enabled = isValid,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(50),
+                modifier = Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                 ),
             ) {
                 Text(
                     text = strings[K.save],
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun RoutePointsPanel(
+    pointsCount: Int,
+    onAdd: () -> Unit,
+) {
+    val strings = LocalStrings.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.surfaceContainerHigh,
+                RoundedCornerShape(22.dp),
+            )
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                RoundedCornerShape(22.dp),
+            )
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = strings[K.create_route],
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), CircleShape)
+                    .clickable(role = Role.Button, onClick = onAdd),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = strings[K.add_waypoint],
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (pointsCount == 0) {
+            Text(
+                text = strings[K.tap_map_to_add],
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            repeat(pointsCount.coerceAtMost(5)) { index ->
+                val isLast = index == pointsCount - 1 && pointsCount > 1
+                val label = when {
+                    index == 0 -> strings[K.start_point]
+                    isLast -> strings[K.destination]
+                    else -> "Waypoint $index"
+                }
+                WaypointRow(number = index + 1, label = label, highlighted = index == 0)
+                if (index < pointsCount.coerceAtMost(5) - 1) Spacer(Modifier.height(8.dp))
+            }
+            if (pointsCount > 5) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "+${pointsCount - 5} ${strings[K.waypoints]}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WaypointRow(number: Int, label: String, highlighted: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(
+                    if (highlighted) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = number.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (highlighted) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun MovementProfilePanel(
+    selected: SpeedProfile,
+    onSelected: (SpeedProfile) -> Unit,
+) {
+    val strings = LocalStrings.current
+    val profiles = listOf(
+        Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
+        Triple(SpeedProfile.DRIVING, Icons.Default.DirectionsCar, strings[K.driving]),
+        Triple(SpeedProfile.CYCLING, Icons.Default.DirectionsBike, strings[K.cycling]),
+        Triple(SpeedProfile.RUNNING, Icons.Default.DirectionsRun, "Run"),
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.surfaceContainerHigh,
+                RoundedCornerShape(22.dp),
+            )
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                RoundedCornerShape(22.dp),
+            )
+            .padding(16.dp),
+    ) {
+        Text(
+            text = "Movement Profile",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            profiles.forEach { (profile, icon, label) ->
+                val active = selected == profile
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(role = Role.Button) { onSelected(profile) },
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(58.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            .border(
+                                width = if (active) 2.dp else 1.dp,
+                                color = if (active) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.28f),
+                                shape = RoundedCornerShape(16.dp),
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (active) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(30.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                        color = if (active) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun SmallMapAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     description: String,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(46.dp)
             .background(MaterialTheme.colorScheme.surface, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -342,7 +468,7 @@ private fun SmallMapAction(
             imageVector = icon,
             contentDescription = description,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(22.dp),
         )
     }
 }
