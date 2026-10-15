@@ -18,9 +18,10 @@ import com.rork.gpssimulator.data.model.LocationSample
 /**
  * Reads the device's real location through the platform LocationManager.
  *
- * Play Services fused provider is used when [preferPlayServices] is set and the
- * platform exposes FUSED_PROVIDER (API 31+); otherwise the option degrades
- * gracefully to GPS/network rather than erroring.
+ * We listen to every enabled real provider (fused/network/GPS) instead of only
+ * one provider. This gives a fast coarse fix indoors and lets GPS improve it
+ * when available. Mock fixes are always ignored so a stopped simulation cannot
+ * remain visible as the user's real position.
  */
 class RealLocationSource(context: Context) {
 
@@ -67,7 +68,6 @@ class RealLocationSource(context: Context) {
         }
     }
 
-    /** True when the platform exposes a fused provider we can prefer. */
     fun isPlayServicesProviderAvailable(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
         return try {
@@ -77,22 +77,21 @@ class RealLocationSource(context: Context) {
         }
     }
 
-    /** Name of the provider currently used for real-location reads. */
     fun activeProviderName(preferPlayServices: Boolean): String = when {
         preferPlayServices && isPlayServicesProviderAvailable() -> "Google Play Services (fused)"
+        locationManager?.allProviders?.contains(LocationManager.NETWORK_PROVIDER) == true -> "Network + GPS"
         isGpsProviderEnabled() -> "GPS"
-        locationManager?.allProviders?.contains(LocationManager.NETWORK_PROVIDER) == true -> "Network"
         else -> "Unavailable"
     }
 
     private fun providerOrder(preferPlayServices: Boolean): List<String> = buildList {
         if (preferPlayServices && isPlayServicesProviderAvailable()) add(LocationManager.FUSED_PROVIDER)
-        add(LocationManager.GPS_PROVIDER)
         add(LocationManager.NETWORK_PROVIDER)
+        add(LocationManager.GPS_PROVIDER)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
     }.distinct()
 
-    /** Best last-known fix across the available providers. */
+    /** Best non-mock last-known fix across all providers. */
     fun lastKnown(preferPlayServices: Boolean): LocationSample? {
         if (!hasPermission()) return null
         val manager = locationManager ?: return null
@@ -101,6 +100,7 @@ class RealLocationSource(context: Context) {
                 .mapNotNull { provider ->
                     runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
                 }
+                .filterNot { it.isMockFix() }
                 .maxByOrNull { it.time }
                 ?.toSample()
         } catch (e: SecurityException) {
@@ -110,8 +110,8 @@ class RealLocationSource(context: Context) {
     }
 
     /**
-     * Starts continuous real-location updates. Safe to call repeatedly; the
-     * previous listener is removed first.
+     * Starts continuous real-location updates from all enabled providers.
+     * Safe to call repeatedly; the previous listener is removed first.
      */
     fun startUpdates(preferPlayServices: Boolean, intervalMs: Long, onSample: (LocationSample) -> Unit) {
         if (!hasPermission()) return
@@ -119,7 +119,10 @@ class RealLocationSource(context: Context) {
         stopUpdates()
 
         val newListener = object : LocationListener {
-            override fun onLocationChanged(location: Location) = onSample(location.toSample())
+            override fun onLocationChanged(location: Location) {
+                if (!location.isMockFix()) onSample(location.toSample())
+            }
+
             override fun onProviderEnabled(provider: String) {}
             override fun onProviderDisabled(provider: String) {}
 
@@ -127,32 +130,42 @@ class RealLocationSource(context: Context) {
             override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
         }
 
-        try {
-            val provider = providerOrder(preferPlayServices).firstOrNull { p ->
-                runCatching { manager.isProviderEnabled(p) }.getOrDefault(false)
-            } ?: return
-            manager.requestLocationUpdates(
-                provider,
-                intervalMs,
-                0f,
-                newListener,
-                Looper.getMainLooper(),
-            )
+        var registered = false
+        providerOrder(preferPlayServices).forEach { provider ->
+            val enabled = runCatching { manager.isProviderEnabled(provider) }.getOrDefault(false)
+            if (!enabled) return@forEach
+            try {
+                manager.requestLocationUpdates(
+                    provider,
+                    intervalMs,
+                    0f,
+                    newListener,
+                    Looper.getMainLooper(),
+                )
+                registered = true
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Cannot request location updates without permission")
+            } catch (e: Exception) {
+                Log.d(TAG, "Provider $provider unavailable for real updates")
+            }
+        }
+
+        if (registered) {
             listener = newListener
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Cannot request location updates without permission")
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to request location updates: ${e.javaClass.simpleName}")
+            // Show a valid real marker immediately while a fresher fix is acquired.
+            lastKnown(preferPlayServices)?.let(onSample)
         }
     }
 
     fun stopUpdates() {
         val manager = locationManager ?: return
-        listener?.let {
-            runCatching { manager.removeUpdates(it) }
-        }
+        listener?.let { runCatching { manager.removeUpdates(it) } }
         listener = null
     }
+
+    @Suppress("DEPRECATION")
+    private fun Location.isMockFix(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock else isFromMockProvider
 
     private fun Location.toSample(): LocationSample = LocationSample(
         point = LatLng(latitude, longitude),
