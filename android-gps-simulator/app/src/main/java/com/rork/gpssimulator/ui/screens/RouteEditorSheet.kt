@@ -9,15 +9,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -30,7 +34,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -66,10 +69,6 @@ import com.rork.gpssimulator.ui.theme.MonoValueStyle
 import com.rork.gpssimulator.util.Format
 import java.util.UUID
 
-/**
- * Route builder styled to match the onboarding artwork: a dark rounded
- * "Create Route" panel plus illuminated movement-profile buttons.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteEditorSheet(
@@ -125,6 +124,7 @@ fun RouteEditorSheet(
     ) {
         Column(
             modifier = Modifier
+                .fillMaxHeight(0.96f)
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 20.dp),
@@ -136,7 +136,7 @@ fun RouteEditorSheet(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = name,
@@ -148,12 +148,14 @@ fun RouteEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
 
+            // Keep the map outside the scroll container. This lets Google Maps own
+            // pinch/zoom/pan gestures while the controls below can scroll independently.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
+                    .height(260.dp)
                     .clip(RoundedCornerShape(22.dp)),
             ) {
                 MapView(
@@ -173,7 +175,7 @@ fun RouteEditorSheet(
                         listOf(MapPolyline(points.toList(), MaterialTheme.colorScheme.primary))
                     } else emptyList(),
                     onMapTap = { tapped -> points.add(tapped) },
-                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
                 )
 
                 Row(
@@ -196,68 +198,74 @@ fun RouteEditorSheet(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
 
-            RoutePointsPanel(
-                pointsCount = points.size,
-                onAdd = { points.add(camera.center) },
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            MovementProfilePanel(
-                selected = profile,
-                onSelected = { profile = it },
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = strings[K.loop_route],
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (points.size >= 2) {
-                        Spacer(Modifier.height(3.dp))
-                        Text(
-                            text = Format.distance(draft.distanceMeters, settings.units),
-                            style = MonoValueStyle,
-                            color = appColors.muted,
-                        )
-                    }
-                }
-                Switch(checked = loop, onCheckedChange = { loop = it })
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    onSave(
-                        draft.copy(
-                            id = existing?.id ?: UUID.randomUUID().toString(),
-                            createdAt = existing?.createdAt ?: System.currentTimeMillis(),
-                        ),
-                    )
-                },
-                enabled = isValid,
-                modifier = Modifier.fillMaxWidth().height(58.dp),
-                shape = RoundedCornerShape(22.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ),
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
             ) {
-                Text(
-                    text = strings[K.save],
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                RoutePointsPanel(
+                    pointsCount = points.size,
+                    onAdd = { points.add(camera.center) },
                 )
-            }
 
-            Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
+
+                MovementProfilePanel(
+                    selected = profile,
+                    onSelected = { profile = it },
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = strings[K.loop_route],
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (points.size >= 2) {
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = Format.distance(draft.distanceMeters, settings.units),
+                                style = MonoValueStyle,
+                                color = appColors.muted,
+                            )
+                        }
+                    }
+                    Switch(checked = loop, onCheckedChange = { loop = it })
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        onSave(
+                            draft.copy(
+                                id = existing?.id ?: UUID.randomUUID().toString(),
+                                createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                            ),
+                        )
+                    },
+                    enabled = isValid,
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                    ),
+                ) {
+                    Text(
+                        text = strings[K.save],
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                Spacer(Modifier.height(28.dp))
+            }
         }
     }
 }
