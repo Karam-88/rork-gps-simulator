@@ -209,10 +209,10 @@ fun MapScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        // Never let the drawer steal horizontal drags from the map. The side
-        // menu now opens only from the hamburger button, leaving the native map
-        // with the full touch stream for smooth panning and fling gestures.
-        gesturesEnabled = false,
+        // Keep edge-swipe opening disabled while the drawer is closed so map
+        // gestures remain smooth, but allow normal scrim taps and swipe-to-close
+        // once the drawer is open.
+        gesturesEnabled = drawerState.currentValue == DrawerValue.Open,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier
@@ -315,7 +315,10 @@ fun MapScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 MapControlButton(Icons.Default.Menu, "Menu") {
-                    scope.launch { drawerState.open() }
+                    scope.launch {
+                        if (drawerState.currentValue == DrawerValue.Open) drawerState.close()
+                        else drawerState.open()
+                    }
                 }
                 MapControlButton(Icons.Default.Search, strings[K.search_places], onOpenSearch)
                 MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
