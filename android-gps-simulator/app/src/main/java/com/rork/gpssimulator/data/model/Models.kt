@@ -75,6 +75,7 @@ enum class SpeedProfile(val kmh: Double) {
     WALKING(5.0),
     CYCLING(18.0),
     DRIVING(60.0),
+    RUNNING(10.0),
     CUSTOM(30.0),
 }
 
