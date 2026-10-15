@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.MoreVert
@@ -74,6 +75,7 @@ fun profileIcon(profile: SpeedProfile): ImageVector = when (profile) {
     SpeedProfile.WALKING -> Icons.Default.DirectionsWalk
     SpeedProfile.CYCLING -> Icons.Default.DirectionsBike
     SpeedProfile.DRIVING -> Icons.Default.DirectionsCar
+    SpeedProfile.RUNNING -> Icons.Default.DirectionsRun
     SpeedProfile.CUSTOM -> Icons.Default.Speed
 }
 
@@ -84,6 +86,7 @@ fun profileLabel(profile: SpeedProfile): String {
         SpeedProfile.WALKING -> strings[K.walking]
         SpeedProfile.CYCLING -> strings[K.cycling]
         SpeedProfile.DRIVING -> strings[K.driving]
+        SpeedProfile.RUNNING -> "Run"
         SpeedProfile.CUSTOM -> strings[K.custom]
     }
 }
@@ -146,7 +149,6 @@ fun RoutesScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Live progress panel while a route session is running.
             progress?.let { running ->
                 RouteProgressPanel(
                     routeName = running.route.name,
@@ -404,8 +406,6 @@ private fun RouteProgressPanel(
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
-            // Stop reads as the same red X used on the map, never a delete icon:
-            // the two actions must look identical everywhere they appear.
             IconButton(onClick = onStop) {
                 Icon(
                     Icons.Default.Close,
