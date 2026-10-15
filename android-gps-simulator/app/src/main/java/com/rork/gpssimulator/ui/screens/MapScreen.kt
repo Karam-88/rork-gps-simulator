@@ -37,22 +37,16 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,7 +83,6 @@ import com.rork.gpssimulator.ui.map.rememberMapCameraState
 import com.rork.gpssimulator.ui.theme.LocalAppColors
 import com.rork.gpssimulator.ui.theme.MonoValueStyle
 import com.rork.gpssimulator.util.Format
-import kotlinx.coroutines.launch
 
 @Composable
 private fun rememberReducedMotion(): Boolean {
@@ -118,8 +111,6 @@ fun MapScreen(
 ) {
     val strings = LocalStrings.current
     val appColors = LocalAppColors.current
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
 
     val settings by viewModel.settings.collectAsState()
     val mockState by viewModel.mockState.collectAsState()
@@ -139,6 +130,7 @@ fun MapScreen(
         initialZoom = if (settings.rememberLastPosition) settings.lastCameraZoom else settings.defaultZoom,
     )
     var showLayerSheet by remember { mutableStateOf(false) }
+    var showMenuPanel by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
         sessionKind == SessionKind.JOYSTICK || settings.joystickEnabled
@@ -207,222 +199,198 @@ fun MapScreen(
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = drawerState.currentValue == DrawerValue.Open,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(300.dp),
-            ) {
-                Spacer(Modifier.height(28.dp))
-                Text(
-                    text = "GPS Simulator",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
+    Box(modifier = modifier.fillMaxSize()) {
+        MapView(
+            camera = camera,
+            mapType = settings.mapType,
+            markers = markers,
+            polylines = polylines,
+            pulseFraction = { pulse.value },
+            onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        Crosshair(
+            color = MaterialTheme.colorScheme.primary,
+            isActive = camera.isUserInteracting,
+            modifier = Modifier.align(Alignment.Center),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            if (isMockActive) {
+                MockActiveBanner(
+                    lat = activePoint?.lat ?: 0.0,
+                    lng = activePoint?.lng ?: 0.0,
+                    accuracy = settings.accuracyM,
+                    altitude = settings.altitudeM,
+                    speedKmh = currentSpeed,
+                    elapsedMs = elapsedMs,
+                    isPaused = isPaused,
+                    units = settings.units,
                 )
-                DrawerEntry(Icons.Default.Map, strings[K.tab_map], true) {
-                    scope.launch { drawerState.close() }
-                }
-                DrawerEntry(Icons.Default.Route, strings[K.tab_routes], false) {
-                    scope.launch { drawerState.close(); onOpenRoutes() }
-                }
-                DrawerEntry(Icons.Default.Star, strings[K.favorites], false) {
-                    scope.launch { drawerState.close(); onOpenFavorites() }
-                }
-                DrawerEntry(Icons.Default.History, strings[K.tab_history], false) {
-                    scope.launch { drawerState.close(); onOpenHistory() }
-                }
-                DrawerEntry(Icons.Default.Settings, strings[K.tab_settings], false) {
-                    scope.launch { drawerState.close(); onOpenSettings() }
-                }
-            }
-        },
-    ) {
-        Box(modifier = modifier.fillMaxSize()) {
-            MapView(
-                camera = camera,
-                mapType = settings.mapType,
-                markers = markers,
-                polylines = polylines,
-                pulseFraction = { pulse.value },
-                onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
-                modifier = Modifier.fillMaxSize(),
-            )
-
-            Crosshair(
-                color = MaterialTheme.colorScheme.primary,
-                isActive = camera.isUserInteracting,
-                modifier = Modifier.align(Alignment.Center),
-            )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                if (isMockActive) {
-                    MockActiveBanner(
-                        lat = activePoint?.lat ?: 0.0,
-                        lng = activePoint?.lng ?: 0.0,
-                        accuracy = settings.accuracyM,
-                        altitude = settings.altitudeM,
-                        speedKmh = currentSpeed,
-                        elapsedMs = elapsedMs,
-                        isPaused = isPaused,
-                        units = settings.units,
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StatusPill(
+                        text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
+                        dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
                     )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        StatusPill(
-                            text = if (mockState == MockState.SELECTED) {
-                                strings[K.location_selected]
-                            } else {
-                                strings[K.real_gps]
-                            },
-                            dotColor = if (mockState == MockState.SELECTED) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                appColors.success
-                            },
-                        )
-                        CoordinatePill(
-                            lat = camera.centerLat,
-                            lng = camera.centerLng,
-                            latLabel = strings[K.lat],
-                            lngLabel = strings[K.lng],
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                    }
+                    CoordinatePill(
+                        lat = camera.centerLat,
+                        lng = camera.centerLng,
+                        latLabel = strings[K.lat],
+                        lngLabel = strings[K.lng],
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                 }
             }
+        }
 
-            Column(
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MapControlButton(Icons.Default.Menu, "Menu") {
+                showMenuPanel = !showMenuPanel
+            }
+            MapControlButton(Icons.Default.Search, strings[K.search_places]) {
+                showMenuPanel = false
+                onOpenSearch()
+            }
+            MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
+                showMenuPanel = false
+                viewModel.returnToRealLocation()
+            }
+            MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
+                showMenuPanel = false
+                showLayerSheet = true
+            }
+        }
+
+        if (showMenuPanel) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    ) { showMenuPanel = false },
+            )
+            FloatingMapMenu(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                MapControlButton(Icons.Default.Menu, "Menu") {
-                    scope.launch {
-                        if (drawerState.currentValue == DrawerValue.Open) drawerState.close()
-                        else drawerState.open()
-                    }
-                }
-                MapControlButton(Icons.Default.Search, strings[K.search_places], onOpenSearch)
-                MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
-                    viewModel.returnToRealLocation()
-                }
-                MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
-                    showLayerSheet = true
-                }
+                    .padding(end = 78.dp),
+                mapLabel = strings[K.tab_map],
+                routesLabel = strings[K.tab_routes],
+                favoritesLabel = strings[K.favorites],
+                historyLabel = strings[K.tab_history],
+                settingsLabel = strings[K.tab_settings],
+                onMap = { showMenuPanel = false },
+                onRoutes = { showMenuPanel = false; onOpenRoutes() },
+                onFavorites = { showMenuPanel = false; onOpenFavorites() },
+                onHistory = { showMenuPanel = false; onOpenHistory() },
+                onSettings = { showMenuPanel = false; onOpenSettings() },
+            )
+        }
+
+        AttributionChip(
+            text = TileSource.of(settings.mapType).attribution,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .navigationBarsPadding()
+                .padding(start = 8.dp, bottom = 100.dp + bottomInset),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (settings.joystickEnabled && isMockActive) {
+                JoystickControl(
+                    speedLabel = Format.speed(currentSpeed, settings.units),
+                    isPaused = isPaused,
+                    onVector = { x, y -> viewModel.setJoystickVector(x, y) },
+                    onTogglePause = { viewModel.togglePause() },
+                    onClose = {
+                        viewModel.setJoystickVector(0f, 0f)
+                        viewModel.updateSettings { it.copy(joystickEnabled = false) }
+                    },
+                    modifier = Modifier.align(Alignment.Start).padding(bottom = 10.dp),
+                )
             }
 
-            AttributionChip(
-                text = TileSource.of(settings.mapType).attribution,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(start = 8.dp, bottom = 100.dp + bottomInset),
-            )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (settings.joystickEnabled && isMockActive) {
-                    JoystickControl(
-                        speedLabel = Format.speed(currentSpeed, settings.units),
-                        isPaused = isPaused,
-                        onVector = { x, y -> viewModel.setJoystickVector(x, y) },
-                        onTogglePause = { viewModel.togglePause() },
-                        onClose = {
-                            viewModel.setJoystickVector(0f, 0f)
-                            viewModel.updateSettings { it.copy(joystickEnabled = false) }
-                        },
-                        modifier = Modifier
-                            .align(Alignment.Start)
-                            .padding(bottom = 10.dp),
-                    )
+            if (isMockActive) {
+                if (isMotionSession) {
+                    Button(
+                        onClick = { viewModel.togglePause() },
+                        modifier = Modifier.fillMaxWidth().height(44.dp).padding(bottom = 6.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Icon(
+                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isPaused) strings[K.resume] else strings[K.pause])
+                    }
                 }
 
-                if (isMockActive) {
-                    if (isMotionSession) {
-                        Button(
-                            onClick = { viewModel.togglePause() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
-                                .padding(bottom = 6.dp),
-                            shape = RoundedCornerShape(14.dp),
-                        ) {
-                            Icon(
-                                if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                ActiveMockActionBar(
+                    stopLabel = strings[K.stop],
+                    selectLabel = strings[K.select_point_short],
+                    favoriteLabel = strings[K.favorites],
+                    dangerColor = appColors.danger,
+                    onStop = { viewModel.stopMock() },
+                    onSelect = {
+                        val point = camera.center
+                        viewModel.selectPoint(point)
+                        viewModel.moveMockTo(point)
+                    },
+                    onFavorite = {
+                        activePoint?.let { point ->
+                            viewModel.saveLocation(
+                                name = activePlace?.name.orEmpty(),
+                                address = activePlace?.address.orEmpty(),
+                                point = point,
+                                kind = SavedKind.FAVORITE,
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isPaused) strings[K.resume] else strings[K.pause])
+                            viewModel.postMessage(strings[K.saved])
                         }
-                    }
-
-                    ActiveMockActionBar(
-                        stopLabel = strings[K.stop],
-                        selectLabel = strings[K.select_point_short],
-                        favoriteLabel = strings[K.favorites],
-                        dangerColor = appColors.danger,
-                        onStop = { viewModel.stopMock() },
-                        onSelect = {
-                            val point = camera.center
-                            viewModel.selectPoint(point)
-                            viewModel.moveMockTo(point)
-                        },
-                        onFavorite = {
-                            activePoint?.let { point ->
-                                viewModel.saveLocation(
-                                    name = activePlace?.name.orEmpty(),
-                                    address = activePlace?.address.orEmpty(),
-                                    point = point,
-                                    kind = SavedKind.FAVORITE,
-                                )
-                                viewModel.postMessage(strings[K.saved])
-                            }
-                        },
+                    },
+                )
+            } else {
+                Button(
+                    onClick = {
+                        viewModel.selectPoint(camera.center)
+                        viewModel.startMock()
+                    },
+                    modifier = Modifier.width(190.dp).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Set Location",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
                     )
-                } else {
-                    Button(
-                        onClick = {
-                            viewModel.selectPoint(camera.center)
-                            viewModel.startMock()
-                        },
-                        modifier = Modifier
-                            .width(190.dp)
-                            .height(52.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    ) {
-                        Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Set Location",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
                 }
             }
         }
@@ -445,19 +413,71 @@ fun MapScreen(
 }
 
 @Composable
-private fun DrawerEntry(
+private fun FloatingMapMenu(
+    modifier: Modifier = Modifier,
+    mapLabel: String,
+    routesLabel: String,
+    favoritesLabel: String,
+    historyLabel: String,
+    settingsLabel: String,
+    onMap: () -> Unit,
+    onRoutes: () -> Unit,
+    onFavorites: () -> Unit,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    Surface(
+        modifier = modifier
+            .width(230.dp)
+            .shadow(14.dp, RoundedCornerShape(30.dp)),
+        shape = RoundedCornerShape(30.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 10.dp,
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            FloatingMenuEntry(Icons.Default.Map, mapLabel, true, onMap)
+            FloatingMenuEntry(Icons.Default.Route, routesLabel, false, onRoutes)
+            FloatingMenuEntry(Icons.Default.Star, favoritesLabel, false, onFavorites)
+            FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
+            FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
+        }
+    }
+}
+
+@Composable
+private fun FloatingMenuEntry(
     icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    NavigationDrawerItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Icon(icon, contentDescription = null) },
-        label = { Text(label, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
-    )
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clickable(role = Role.Button, onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
+                modifier = Modifier.size(25.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
+            )
+        }
+    }
 }
 
 @Composable
@@ -471,35 +491,12 @@ private fun ActiveMockActionBar(
     onFavorite: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(78.dp),
+        modifier = Modifier.fillMaxWidth().height(78.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        BottomActionButton(
-            icon = Icons.Default.Close,
-            label = stopLabel,
-            containerColor = dangerColor,
-            contentColor = Color.White,
-            onClick = onStop,
-            modifier = Modifier.weight(1f),
-        )
-        BottomActionButton(
-            icon = Icons.Default.MyLocation,
-            label = selectLabel,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            onClick = onSelect,
-            modifier = Modifier.weight(1f),
-        )
-        BottomActionButton(
-            icon = Icons.Default.Star,
-            label = favoriteLabel,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            onClick = onFavorite,
-            modifier = Modifier.weight(1f),
-        )
+        BottomActionButton(Icons.Default.Close, stopLabel, dangerColor, Color.White, onStop, Modifier.weight(1f))
+        BottomActionButton(Icons.Default.MyLocation, selectLabel, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, onSelect, Modifier.weight(1f))
+        BottomActionButton(Icons.Default.Star, favoriteLabel, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, onFavorite, Modifier.weight(1f))
     }
 }
 
