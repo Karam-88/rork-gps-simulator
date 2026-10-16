@@ -51,7 +51,6 @@ import com.rork.gpssimulator.ui.screens.RoutesScreen
 import com.rork.gpssimulator.ui.screens.SearchScreen
 import com.rork.gpssimulator.ui.screens.SettingsScreen
 import com.rork.gpssimulator.ui.theme.AppTheme
-import java.util.Locale
 
 object Routes {
     const val MAP = "map"
@@ -89,9 +88,10 @@ fun AppNavigation() {
         ThemeMode.DARK -> true
     }
     val strings = remember(settings.language) { Strings(settings.language) }
-    val isArabic = settings.language == AppLanguage.ARABIC ||
-        Locale.getDefault().language.equals("ar", ignoreCase = true)
-    val layoutDirection = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+    val isArabic = settings.language == AppLanguage.ARABIC
+    // Keep the complete application UI physically left-to-right even when
+    // Android itself is using an RTL system language.
+    val layoutDirection = LayoutDirection.Ltr
 
     AppTheme(darkTheme = darkTheme) {
         CompositionLocalProvider(

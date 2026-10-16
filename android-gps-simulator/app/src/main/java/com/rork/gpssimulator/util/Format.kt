@@ -74,12 +74,12 @@ object Format {
     }
 
     fun timestamp(millis: Long): String {
-        val formatter = java.text.SimpleDateFormat("d MMM yyyy · HH:mm", Locale.getDefault())
+        val formatter = java.text.SimpleDateFormat("d MMM yyyy · HH:mm", root)
         return formatter.format(java.util.Date(millis))
     }
 
     fun clockTime(millis: Long): String {
-        val formatter = java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+        val formatter = java.text.SimpleDateFormat("HH:mm", root)
         return formatter.format(java.util.Date(millis))
     }
 }

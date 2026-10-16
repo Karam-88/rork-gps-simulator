@@ -322,14 +322,14 @@ fun MapScreen(
                     ) { showMenuPanel = false },
             )
 
-            // Use an absolute-right arrangement so the menu remains on the physical
-            // right edge even when the device/system layout direction is RTL.
+            // Keep the four map control buttons on the physical right side,
+            // while opening the floating navigation panel on the physical left.
             Row(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Absolute.Right,
+                horizontalArrangement = Arrangement.Absolute.Left,
             ) {
                 FloatingMapMenu(
                     mapLabel = strings[K.tab_map],
