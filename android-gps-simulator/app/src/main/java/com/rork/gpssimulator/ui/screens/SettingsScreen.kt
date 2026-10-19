@@ -1257,7 +1257,7 @@ private fun openPlayStoreRating(context: android.content.Context) {
 
 private fun sendSupportFeedback(context: android.content.Context) {
     val subject = "GPS Simulator feedback"
-    val body = "App: GPS Simulator\\nVersion: ${com.rork.gpssimulator.BuildConfig.VERSION_NAME}\\nAndroid: ${android.os.Build.VERSION.RELEASE}\n\nFeedback:\\n"
+    val body = "App: GPS Simulator\nVersion: ${com.rork.gpssimulator.BuildConfig.VERSION_NAME}\nAndroid: ${android.os.Build.VERSION.RELEASE}\n\nFeedback:\n"
     val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gps.simulator.support@gmail.com")).apply {
         putExtra(Intent.EXTRA_SUBJECT, subject)
         putExtra(Intent.EXTRA_TEXT, body)
