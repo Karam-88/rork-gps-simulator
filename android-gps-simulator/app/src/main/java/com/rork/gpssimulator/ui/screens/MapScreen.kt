@@ -1,5 +1,8 @@
 package com.rork.gpssimulator.ui.screens
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -33,9 +36,13 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -111,6 +118,10 @@ fun MapScreen(
 ) {
     val strings = LocalStrings.current
     val appColors = LocalAppColors.current
+    val context = LocalContext.current
+    val ratingPrefs = remember(context) { context.getSharedPreferences("gps_simulator_rating", android.content.Context.MODE_PRIVATE) }
+    var userConfirmedRating by remember { mutableStateOf(ratingPrefs.getBoolean("confirmed_rating", false)) }
+    var showRatingConfirmation by remember { mutableStateOf(false) }
 
     val settings by viewModel.settings.collectAsState()
     val mockState by viewModel.mockState.collectAsState()
@@ -337,13 +348,54 @@ fun MapScreen(
                     favoritesLabel = strings[K.favorites],
                     historyLabel = strings[K.tab_history],
                     settingsLabel = strings[K.tab_settings],
+                    shareLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "مشاركة التطبيق" else "Share app",
+                    rateLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تقييم التطبيق" else "Rate app",
+                    ratingConfirmed = userConfirmedRating,
                     onMap = { showMenuPanel = false },
                     onRoutes = { showMenuPanel = false; onOpenRoutes() },
                     onFavorites = { showMenuPanel = false; onOpenFavorites() },
                     onHistory = { showMenuPanel = false; onOpenHistory() },
                     onSettings = { showMenuPanel = false; onOpenSettings() },
+                    onShare = {
+                        showMenuPanel = false
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "https://play.google.com/store/apps/details?id=com.rork.gpssimulator")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, null))
+                    },
+                    onRate = {
+                        showMenuPanel = false
+                        showRatingConfirmation = true
+                        val browserUrl = Uri.parse("https://play.google.com/store/apps/details?id=com.rork.gpssimulator")
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.rork.gpssimulator")))
+                        } catch (_: ActivityNotFoundException) {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, browserUrl)) }
+                        }
+                    },
                 )
             }
+        }
+
+        if (showRatingConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showRatingConfirmation = false },
+                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تقييم التطبيق" else "Rate GPS Simulator") },
+                text = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "هل قمت بتقييم التطبيق بالفعل على Google Play؟" else "Have you submitted a rating on Google Play?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        userConfirmedRating = true
+                        ratingPrefs.edit().putBoolean("confirmed_rating", true).apply()
+                        showRatingConfirmation = false
+                    }) { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "نعم، قيّمته" else "Yes, I rated it") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRatingConfirmation = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "ليس بعد" else "Not yet")
+                    }
+                },
+            )
         }
 
         AttributionChip(
@@ -462,6 +514,11 @@ private fun FloatingMapMenu(
     favoritesLabel: String,
     historyLabel: String,
     settingsLabel: String,
+    shareLabel: String,
+    rateLabel: String,
+    ratingConfirmed: Boolean,
+    onShare: () -> Unit,
+    onRate: () -> Unit,
     onMap: () -> Unit,
     onRoutes: () -> Unit,
     onFavorites: () -> Unit,
@@ -482,6 +539,8 @@ private fun FloatingMapMenu(
             FloatingMenuEntry(Icons.Default.Star, favoritesLabel, false, onFavorites)
             FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
             FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
+            FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
+            FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate)
         }
     }
 }
