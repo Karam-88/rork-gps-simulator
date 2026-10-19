@@ -51,6 +51,18 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
+      - name: Verify R8 Release build (PR only)
+        if: github.event_name == 'pull_request'
+        run: ./gradlew assembleRelease bundleRelease
+
+      - name: Upload R8 test AAB (not signed for Play)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-r8-test-aab-not-for-play
+          path: android-gps-simulator/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
