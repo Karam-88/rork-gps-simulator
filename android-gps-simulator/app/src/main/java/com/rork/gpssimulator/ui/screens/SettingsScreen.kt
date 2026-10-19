@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -170,9 +171,49 @@ fun SettingsScreen(
     var numberDialog by remember { mutableStateOf(OpenNumberDialog.NONE) }
     var confirm by remember { mutableStateOf(OpenConfirm.NONE) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var showTerms by remember { mutableStateOf(false) }
 
     val filter = SettingsFilter(query)
     val playServicesAvailable = remember { viewModel.isPlayServicesAvailable() }
+
+    if (showTerms) {
+        val arabic = settings.language == AppLanguage.ARABIC
+        AlertDialog(
+            onDismissRequest = { showTerms = false },
+            title = { Text(strings[K.terms_of_service]) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        if (arabic) {
+                            "شروط استخدام GPS Simulator\n\n" +
+                                "هذا التطبيق مخصص لاختبار المواقع والمسارات على أجهزة Android التي تملكها أو يحق لك اختبارها. " +
+                                "يجب تفعيل الموقع الوهمي من إعدادات المطور بموافقة المستخدم.\n\n" +
+                                "استخدم التطبيق بما يتوافق مع القوانين وشروط الخدمات الأخرى. " +
+                                "لا تستخدمه للخداع أو انتهاك خصوصية الآخرين أو التحايل على الخدمات.\n\n" +
+                                "تُقدَّم الخدمة كما هي دون ضمان لاستمرار عملها على جميع الأجهزة أو التطبيقات. " +
+                                "قد تؤثر إعدادات النظام وتطبيقات أخرى في دقة المحاكاة.\n\n" +
+                                "للاستفسارات: gps.simulator.support@gmail.com"
+                        } else {
+                            "GPS Simulator Terms of Use\n\n" +
+                                "This app is intended for testing locations and routes on Android devices " +
+                                "you own or are authorized to test. Mock location must be enabled voluntarily " +
+                                "in Android developer options.\n\n" +
+                                "Use the app in compliance with applicable laws and third-party service terms. " +
+                                "Do not use it for deception, privacy violations or bypassing service rules.\n\n" +
+                                "The app is provided as-is without a guarantee of compatibility with every " +
+                                "device or third-party app. System settings may affect simulated location behavior.\n\n" +
+                                "Questions: gps.simulator.support@gmail.com"
+                        },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTerms = false }) {
+                    Text(if (arabic) "إغلاق" else "Close")
+                }
+            },
+        )
+    }
 
     // ---- File pickers ----
     val exportLocationsLauncher = rememberLauncherForActivityResult(
@@ -874,8 +915,8 @@ fun SettingsScreen(
                             icon = Icons.Default.StarRate,
                             title = strings[K.rate_app],
                             description = strings[K.rate_app_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { openPlayStoreRating(context) },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -884,8 +925,8 @@ fun SettingsScreen(
                             icon = Icons.Default.Description,
                             title = strings[K.send_feedback],
                             description = strings[K.send_feedback_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { sendSupportFeedback(context) },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -902,8 +943,8 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Gavel,
                             title = strings[K.terms_of_service],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { showTerms = true },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -1195,5 +1236,35 @@ private fun openPrivacyPolicy(context: android.content.Context) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
     } catch (e: ActivityNotFoundException) {
         // No browser available on this device.
+    }
+}
+
+private fun openPlayStoreRating(context: android.content.Context) {
+    val packageName = context.packageName
+    val urls = listOf(
+        Uri.parse("market://details?id=$packageName"),
+        Uri.parse("https://play.google.com/store/apps/details?id=$packageName"),
+    )
+    for (uri in urls) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+            return
+        } catch (_: ActivityNotFoundException) {
+            // Fall back to the browser when Play Store is unavailable.
+        }
+    }
+}
+
+private fun sendSupportFeedback(context: android.content.Context) {
+    val subject = "GPS Simulator feedback"
+    val body = "App: GPS Simulator\\nVersion: ${com.rork.gpssimulator.BuildConfig.VERSION_NAME}\\nAndroid: ${android.os.Build.VERSION.RELEASE}\n\nFeedback:\\n"
+    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gps.simulator.support@gmail.com")).apply {
+        putExtra(Intent.EXTRA_SUBJECT, subject)
+        putExtra(Intent.EXTRA_TEXT, body)
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, null))
+    } catch (_: ActivityNotFoundException) {
+        // No configured email app; the settings screen remains usable.
     }
 }
