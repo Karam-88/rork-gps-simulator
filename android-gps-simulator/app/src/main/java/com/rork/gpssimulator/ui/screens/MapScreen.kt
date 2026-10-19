@@ -540,7 +540,7 @@ private fun FloatingMapMenu(
             FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
             FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
             FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
-            FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate)
+            FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate, iconTint = Color(0xFFFFC107))
         }
     }
 }
@@ -551,6 +551,7 @@ private fun FloatingMenuEntry(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    iconTint: Color? = null,
 ) {
     Surface(
         modifier = Modifier
@@ -567,7 +568,7 @@ private fun FloatingMenuEntry(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
+                tint = iconTint ?: if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
                 modifier = Modifier.size(25.dp),
             )
             Spacer(Modifier.width(16.dp))
