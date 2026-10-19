@@ -63,7 +63,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
             // assembleRelease keeps working; such a build cannot be uploaded to Google Play.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
