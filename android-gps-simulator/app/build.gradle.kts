@@ -64,6 +64,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             // Bundle native debug symbols when available from native dependencies.
             ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
