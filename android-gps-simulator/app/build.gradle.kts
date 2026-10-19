@@ -64,6 +64,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            // Bundle native debug symbols when available from native dependencies.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
             // assembleRelease keeps working; such a build cannot be uploaded to Google Play.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
