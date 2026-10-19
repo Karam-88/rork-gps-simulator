@@ -45,8 +45,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "1.1.14"
+        versionCode = 17
+        versionName = "1.1.15"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
@@ -63,7 +63,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            // Bundle native debug symbols when available from native dependencies.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
             // assembleRelease keeps working; such a build cannot be uploaded to Google Play.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
