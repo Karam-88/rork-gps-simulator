@@ -199,12 +199,23 @@ fun GpsReadinessChecklist(
             status.batteryExempt,
             localized("إعدادات البطارية", "Akku-Einstellungen", "Battery settings"),
         ) {
+            // Samsung/One UI often omits the app from the generic optimization list.
+            // Open this app's own settings first so the user can select Battery > Unrestricted.
             openSetting(
                 context,
-                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                Intent(Settings.ACTION_SETTINGS),
             )
         }
+        Text(
+            localized(
+                "على Samsung: التطبيقات ← GPS Simulator ← البطارية ← غير مقيّد. قد لا تتطابق علامة الفحص مع إعدادات Samsung؛ هذا الخيار اختياري.",
+                "Auf Samsung: Apps → GPS Simulator → Akku → Uneingeschränkt. Der Haken erkennt nicht alle Samsung-Akkueinstellungen; dieser Schritt ist optional.",
+                "On Samsung: Apps → GPS Simulator → Battery → Unrestricted. The check may not reflect every Samsung battery setting; this step is optional.",
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             localized("تشير العلامات إلى جاهزية إعدادات Android، لكنها لا تضمن قبول الموقع لدى جميع التطبيقات. اختبر استقرار الموقع أثناء تشغيل المحاكاة.", "Die Häkchen bestätigen die Android-Einstellungen, nicht die Übernahme des Standorts durch jede App. Prüfe die Stabilität während einer Simulation.", "Checks indicate Android setup readiness, not acceptance by every app. Test stability with an active session."),
             style = MaterialTheme.typography.bodySmall,
