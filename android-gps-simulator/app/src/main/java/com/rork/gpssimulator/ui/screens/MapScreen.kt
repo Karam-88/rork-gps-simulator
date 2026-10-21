@@ -429,7 +429,7 @@ fun MapScreen(
                     Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Set Location",
+                        text = strings[K.set_mock_location],
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
