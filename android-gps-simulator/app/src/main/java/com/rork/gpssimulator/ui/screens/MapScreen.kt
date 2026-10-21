@@ -322,6 +322,30 @@ fun MapScreen(
                 showMenuPanel = false
                 showLayerSheet = true
             }
+            if (!isMockActive) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(72.dp)
+                        .shadow(12.dp, CircleShape)
+                        .clickable(role = Role.Button) {
+                            showMenuPanel = false
+                            viewModel.selectPoint(camera.center)
+                            viewModel.startMock()
+                        },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = strings[K.set_mock_location],
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+                }
+            }
         }
 
         if (showMenuPanel) {
@@ -469,24 +493,6 @@ fun MapScreen(
                         }
                     },
                 )
-            } else {
-                Button(
-                    onClick = {
-                        viewModel.selectPoint(camera.center)
-                        viewModel.startMock()
-                    },
-                    modifier = Modifier.width(190.dp).height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = strings[K.set_mock_location],
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
             }
         }
     }
