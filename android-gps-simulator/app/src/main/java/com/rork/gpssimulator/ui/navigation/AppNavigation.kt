@@ -110,7 +110,6 @@ fun AppNavigation() {
                 )
             } else if (!setupSeen) {
                 GpsReadinessChecklist(
-                    isArabic = isArabic,
                     onFinished = {
                         onboardingPrefs.edit().putBoolean("gps_setup_seen_v1", true).apply()
                         setupSeen = true
@@ -250,7 +249,6 @@ private fun AppScaffold(
             }
             composable(Routes.MOCK_SETUP) {
                 GpsReadinessChecklist(
-                    isArabic = viewModel.settings.collectAsState().value.language == AppLanguage.ARABIC,
                     onFinished = { navController.popBackStack() },
                 )
             }
