@@ -12,6 +12,9 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -81,11 +84,17 @@ private fun openSetting(context: Context, intent: Intent, fallback: Intent = Int
 
 @Composable
 fun GpsReadinessChecklist(
-    isArabic: Boolean,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val deviceLanguage = context.resources.configuration.locales[0].language
+    val isArabic = deviceLanguage == "ar"
+    fun localized(ar: String, de: String, en: String) = when (deviceLanguage) {
+        "ar" -> ar
+        "de" -> de
+        else -> en
+    }
     var status by remember { mutableStateOf(readSetup(context)) }
     val refresh = { status = readSetup(context) }
     val locationLauncher = rememberLauncherForActivityResult(
@@ -96,11 +105,12 @@ fun GpsReadinessChecklist(
 
     val completed = listOf(status.developer, status.mockSelected, status.locationGranted, status.locationEnabled).count { it }
     val allRequiredReady = completed == 4
-    val title = if (isArabic) "إعداد GPS Simulator" else "Set up GPS Simulator"
-    val subtitle = if (isArabic) "تتحقق العلامات تلقائيًا عند العودة من الإعدادات" else "Checks update automatically when you return from Settings"
+    val title = localized("إعداد GPS Simulator", "GPS Simulator einrichten", "Set up GPS Simulator")
+    val subtitle = localized("تُحدَّث علامات التحقق تلقائيًا عند العودة من الإعدادات", "Die Prüfungen aktualisieren sich automatisch nach der Rückkehr aus den Einstellungen", "Checks update automatically when you return from Settings")
 
+    CompositionLocalProvider(LocalLayoutDirection provides if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        modifier = modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Spacer(Modifier.height(20.dp))
@@ -110,26 +120,26 @@ fun GpsReadinessChecklist(
             progress = { completed / 4f },
             modifier = Modifier.fillMaxWidth(),
         )
-        Text(if (isArabic) "$completed من 4 متطلبات" else "$completed of 4 requirements")
+        Text(localized("$completed من 4 متطلبات", "$completed von 4 Voraussetzungen", "$completed of 4 requirements"))
 
         ChecklistRow(
-            if (isArabic) "خيارات المطوّر" else "Developer options",
+            localized("خيارات المطوّر", "Entwickleroptionen", "Developer options"),
             status.developer,
-            if (isArabic) "فتح الإعدادات" else "Open settings",
+            localized("فتح الإعدادات", "Einstellungen", "Open settings"),
         ) {
             openSetting(context, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
         }
         ChecklistRow(
-            if (isArabic) "اختيار GPS Simulator كتطبيق الموقع الوهمي" else "Select GPS Simulator as mock location app",
+            localized("اختيار GPS Simulator كتطبيق الموقع الوهمي", "GPS Simulator als App für simulierte Standorte auswählen", "Select GPS Simulator as mock location app"),
             status.mockSelected,
-            if (isArabic) "اختيار التطبيق" else "Select app",
+            localized("اختيار التطبيق", "App auswählen", "Select app"),
         ) {
             openSetting(context, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
         }
         ChecklistRow(
-            if (isArabic) "السماح بالموقع الدقيق" else "Allow precise location",
+            localized("السماح بالموقع الدقيق", "Genauen Standort erlauben", "Allow precise location"),
             status.locationGranted,
-            if (isArabic) "طلب الإذن" else "Grant access",
+            localized("طلب الإذن", "Erlauben", "Grant access"),
         ) {
             locationLauncher.launch(arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -137,22 +147,22 @@ fun GpsReadinessChecklist(
             ))
         }
         ChecklistRow(
-            if (isArabic) "تشغيل خدمات الموقع" else "Location services enabled",
+            localized("تشغيل خدمات الموقع", "Standortdienste aktiviert", "Location services enabled"),
             status.locationEnabled,
-            if (isArabic) "إعدادات الموقع" else "Location settings",
+            localized("إعدادات الموقع", "Standorteinstellungen", "Location settings"),
         ) {
             openSetting(context, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
         }
 
         HorizontalDivider()
         Text(
-            if (isArabic) "موصى به لاستقرار التشغيل في الخلفية" else "Recommended for background reliability",
+            localized("موصى به لاستقرار التشغيل في الخلفية", "Empfohlen für zuverlässigen Hintergrundbetrieb", "Recommended for background reliability"),
             style = MaterialTheme.typography.titleSmall,
         )
         ChecklistRow(
-            if (isArabic) "استثناء التطبيق من تحسين البطارية (اختياري)" else "Battery optimization exemption (optional)",
+            localized("استثناء التطبيق من تحسين البطارية (اختياري)", "Akkuoptimierung für die App deaktivieren (optional)", "Battery optimization exemption (optional)"),
             status.batteryExempt,
-            if (isArabic) "إعدادات البطارية" else "Battery settings",
+            localized("إعدادات البطارية", "Akku-Einstellungen", "Battery settings"),
         ) {
             openSetting(
                 context,
@@ -161,8 +171,7 @@ fun GpsReadinessChecklist(
             )
         }
         Text(
-            if (isArabic) "العلامات تعني أن إعدادات Android متاحة، ولا تضمن قبول الموقع لدى كل تطبيق. تحقّق من الاستقرار بعد تشغيل جلسة تجريبية." else
-                "Checks indicate Android setup readiness, not acceptance by every app. Test stability with an active session.",
+            localized("تشير العلامات إلى جاهزية إعدادات Android، لكنها لا تضمن قبول الموقع لدى جميع التطبيقات. اختبر استقرار الموقع أثناء تشغيل المحاكاة.", "Die Häkchen bestätigen die Android-Einstellungen, nicht die Übernahme des Standorts durch jede App. Prüfe die Stabilität während einer Simulation.", "Checks indicate Android setup readiness, not acceptance by every app. Test stability with an active session."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -171,14 +180,15 @@ fun GpsReadinessChecklist(
             enabled = allRequiredReady,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (isArabic) "الدخول إلى الخريطة" else "Continue to map")
+            Text(localized("الدخول إلى الخريطة", "Weiter zur Karte", "Continue to map"))
         }
         OutlinedButton(onClick = refresh, modifier = Modifier.fillMaxWidth()) {
-            Text(if (isArabic) "إعادة الفحص" else "Check again")
+            Text(localized("إعادة الفحص", "Erneut prüfen", "Check again"))
         }
         TextButton(onClick = onFinished, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (isArabic) "لاحقًا (قد لا تعمل المحاكاة)" else "Later (mocking may not work)")
+            Text(localized("لاحقًا (قد لا تعمل المحاكاة)", "Später (Simulation funktioniert möglicherweise nicht)", "Later (mocking may not work)"))
         }
+    }
     }
 }
 
