@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.res.Resources
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -88,7 +90,10 @@ fun GpsReadinessChecklist(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val deviceLanguage = context.resources.configuration.locales[0].language
+    // Read Android's system language, independent of the language saved by the app.
+    val systemLanguage = Resources.getSystem().configuration.locales[0].language
+    var languageOverride by remember { mutableStateOf<String?>(null) }
+    val deviceLanguage = languageOverride ?: systemLanguage
     val isArabic = deviceLanguage == "ar"
     fun localized(ar: String, de: String, en: String) = when (deviceLanguage) {
         "ar" -> ar
@@ -110,10 +115,40 @@ fun GpsReadinessChecklist(
 
     CompositionLocalProvider(LocalLayoutDirection provides if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
     Column(
-        modifier = modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
+        modifier = modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            localized("لغة التعليمات", "Sprache der Anleitung", "Instructions language"),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listOf(
+                null to localized("تلقائي", "Automatisch", "Auto"),
+                "ar" to "العربية",
+                "de" to "Deutsch",
+                "en" to "English",
+            ).forEach { (choice, label) ->
+                val selected = choice == languageOverride
+                if (selected) {
+                    Button(
+                        onClick = { languageOverride = choice },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp),
+                    ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelSmall) }
+                } else {
+                    OutlinedButton(
+                        onClick = { languageOverride = choice },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp),
+                    ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+        }
         Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium)
         LinearProgressIndicator(
@@ -188,6 +223,12 @@ fun GpsReadinessChecklist(
         TextButton(onClick = onFinished, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(localized("لاحقًا (قد لا تعمل المحاكاة)", "Später (Simulation funktioniert möglicherweise nicht)", "Later (mocking may not work)"))
         }
+        Text(
+            localized("إعدادات الإصدار التجريبي 2", "Test-Einrichtung 2", "Test setup 2"),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
     }
     }
 }
