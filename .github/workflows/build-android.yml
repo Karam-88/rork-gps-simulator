@@ -51,6 +51,13 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
+      # Exercise the actual R8 + resource-shrinking release variant on pull requests.
+      # This artifact uses the debug key unless release signing secrets are supplied;
+      # it is ONLY a test build and must never be uploaded to Google Play.
+      - name: Verify optimized Release build (PR only)
+        if: github.event_name == 'pull_request'
+        run: ./gradlew assembleRelease
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
