@@ -41,8 +41,8 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -118,6 +118,7 @@ fun MapScreen(
 ) {
     val strings = LocalStrings.current
     val appColors = LocalAppColors.current
+
     val context = LocalContext.current
     val ratingPrefs = remember(context) { context.getSharedPreferences("gps_simulator_rating", android.content.Context.MODE_PRIVATE) }
     var userConfirmedRating by remember { mutableStateOf(ratingPrefs.getBoolean("confirmed_rating", false)) }
@@ -303,7 +304,7 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 14.dp),
+                .padding(end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MapControlButton(Icons.Default.Menu, "Menu") {
@@ -320,6 +321,34 @@ fun MapScreen(
             MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
                 showMenuPanel = false
                 showLayerSheet = true
+            }
+        }
+
+        // Independent from the right-side toolbar, so its width cannot shift the black buttons.
+        if (!isMockActive) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 28.dp)
+                    .size(72.dp)
+                    .shadow(12.dp, CircleShape)
+                    .clickable(role = Role.Button) {
+                        showMenuPanel = false
+                        viewModel.selectPoint(camera.center)
+                        viewModel.startMock()
+                    },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = strings[K.set_mock_location],
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
             }
         }
 
@@ -411,7 +440,7 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 34.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (settings.joystickEnabled && isMockActive) {
@@ -468,24 +497,6 @@ fun MapScreen(
                         }
                     },
                 )
-            } else {
-                Button(
-                    onClick = {
-                        viewModel.selectPoint(camera.center)
-                        viewModel.startMock()
-                    },
-                    modifier = Modifier.width(190.dp).height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Set Location",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
             }
         }
     }
