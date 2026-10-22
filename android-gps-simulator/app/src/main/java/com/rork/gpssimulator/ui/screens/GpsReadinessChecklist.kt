@@ -91,6 +91,18 @@ private fun openSetting(context: Context, intent: Intent, fallback: Intent = Int
     }
 }
 
+/**
+ * Android does not expose a public intent for the mock-location app chooser.
+ * Open Developer options, requesting highlight of its mock-location row on
+ * Settings builds that support this optional fragment argument.
+ */
+private fun openMockLocationPickerSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+        putExtra(":settings:fragment_args_key", "mock_location_app")
+    }
+    openSetting(context, intent, Intent(Settings.ACTION_SETTINGS))
+}
+
 @Composable
 fun GpsReadinessChecklist(
     onFinished: () -> Unit,
@@ -214,8 +226,20 @@ fun GpsReadinessChecklist(
                             actionLabel = t("اختيار", "Wählen", "Select"),
                             checked = status.mockSelected,
                             background = cardColor,
-                            onClick = { openSetting(context, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)) },
+                            onClick = { openMockLocationPickerSettings(context) },
                         )
+                        if (!status.mockSelected) {
+                            Text(
+                                t(
+                                    "داخل خيارات المطوّر: انتقل إلى «الموقع» ← «اختيار تطبيق الموقع الجغرافي الوهمي» ثم اختر GPS Simulator.",
+                                    "In Entwickleroptionen: Standort → App für simulierte Standorte auswählen → GPS Simulator.",
+                                    "In Developer options: Location → Select mock location app → GPS Simulator.",
+                                ),
+                                color = muted,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                            )
+                        }
                         GpsSetupStep(
                             title = t("السماح بالموقع الدقيق", "Genauen Standort erlauben", "Allow precise location"),
                             actionLabel = t("السماح", "Erlauben", "Allow"),
