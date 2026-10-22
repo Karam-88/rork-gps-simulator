@@ -45,8 +45,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.1.15"
+        versionCode = 18
+        versionName = "1.1.16"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
@@ -64,6 +64,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             // Bundle native debug symbols when available from native dependencies.
             ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
