@@ -79,7 +79,7 @@ fun AppNavigation() {
     var onboardingComplete by remember {
         mutableStateOf(onboardingPrefs.getBoolean("completed", false))
     }
-    var setupSeen by remember { mutableStateOf(onboardingPrefs.getBoolean("gps_setup_seen_v1", false)) }
+    var setupSeen by remember { mutableStateOf(onboardingPrefs.getBoolean("gps_setup_modal_v2_completed", false)) }
     var shouldCenterOnFirstRealFix by remember {
         mutableStateOf(!onboardingPrefs.getBoolean("initial_map_centered", false))
     }
@@ -111,7 +111,7 @@ fun AppNavigation() {
             } else if (!setupSeen) {
                 GpsReadinessChecklist(
                     onFinished = {
-                        onboardingPrefs.edit().putBoolean("gps_setup_seen_v1", true).apply()
+                        onboardingPrefs.edit().putBoolean("gps_setup_modal_v2_completed", true).apply()
                         setupSeen = true
                     },
                 )
