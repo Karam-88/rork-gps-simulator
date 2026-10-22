@@ -41,6 +41,7 @@ import com.rork.gpssimulator.ui.screens.AboutScreen
 import com.rork.gpssimulator.ui.screens.CoordinateToolsScreen
 import com.rork.gpssimulator.ui.screens.DiagnosticsScreen
 import com.rork.gpssimulator.ui.screens.FirstRunOnboardingScreen
+import com.rork.gpssimulator.ui.screens.GpsReadinessChecklist
 import com.rork.gpssimulator.ui.screens.GeofenceScreen
 import com.rork.gpssimulator.ui.screens.HistoryScreen
 import com.rork.gpssimulator.ui.screens.LicensesScreen
@@ -78,6 +79,7 @@ fun AppNavigation() {
     var onboardingComplete by remember {
         mutableStateOf(onboardingPrefs.getBoolean("completed", false))
     }
+    var setupSeen by remember { mutableStateOf(onboardingPrefs.getBoolean("gps_setup_modal_v2_completed", false)) }
     var shouldCenterOnFirstRealFix by remember {
         mutableStateOf(!onboardingPrefs.getBoolean("initial_map_centered", false))
     }
@@ -104,6 +106,13 @@ fun AppNavigation() {
                     onFinished = {
                         onboardingPrefs.edit().putBoolean("completed", true).apply()
                         onboardingComplete = true
+                    },
+                )
+            } else if (!setupSeen) {
+                GpsReadinessChecklist(
+                    onFinished = {
+                        onboardingPrefs.edit().putBoolean("gps_setup_modal_v2_completed", true).apply()
+                        setupSeen = true
                     },
                 )
             } else {
@@ -239,7 +248,9 @@ private fun AppScaffold(
                 )
             }
             composable(Routes.MOCK_SETUP) {
-                MockSetupScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                GpsReadinessChecklist(
+                    onFinished = { navController.popBackStack() },
+                )
             }
             composable(Routes.ABOUT) {
                 AboutScreen(
