@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - test/combined-dex-share-rating-1-1-15
+      - release/1.1.16-rc
   pull_request:
     branches:
       - main
