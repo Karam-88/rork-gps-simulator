@@ -304,7 +304,7 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 14.dp),
+                .padding(end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MapControlButton(Icons.Default.Menu, "Menu") {
@@ -322,28 +322,32 @@ fun MapScreen(
                 showMenuPanel = false
                 showLayerSheet = true
             }
-            if (!isMockActive) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(72.dp)
-                        .shadow(12.dp, CircleShape)
-                        .clickable(role = Role.Button) {
-                            showMenuPanel = false
-                            viewModel.selectPoint(camera.center)
-                            viewModel.startMock()
-                        },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = strings[K.set_mock_location],
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(36.dp),
-                        )
-                    }
+        }
+
+        // Independent from the right-side toolbar, so its width cannot shift the black buttons.
+        if (!isMockActive) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 28.dp)
+                    .size(72.dp)
+                    .shadow(12.dp, CircleShape)
+                    .clickable(role = Role.Button) {
+                        showMenuPanel = false
+                        viewModel.selectPoint(camera.center)
+                        viewModel.startMock()
+                    },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = strings[K.set_mock_location],
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(36.dp),
+                    )
                 }
             }
         }
