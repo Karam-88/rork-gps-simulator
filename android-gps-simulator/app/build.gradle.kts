@@ -33,6 +33,19 @@ val googleMapsApiKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
     .orElse("")
     .get()
 
+// The Meta Client Token is configured in Meta for Developers -> Settings -> Advanced.
+// Inject with META_FACEBOOK_CLIENT_TOKEN (CI secret/environment or local Gradle property).
+// When missing, Meta SDK's automatic initialization and app-event tracking are disabled.
+val metaFacebookClientToken = providers.environmentVariable("META_FACEBOOK_CLIENT_TOKEN")
+    .orElse(providers.gradleProperty("META_FACEBOOK_CLIENT_TOKEN"))
+    .orElse("")
+    .get()
+val metaAppEventsEnabled = metaFacebookClientToken.isNotBlank()
+
+if (!metaAppEventsEnabled) {
+    logger.warn("Meta Client Token not configured; Facebook app-event logging is disabled.")
+}
+
 if (googleMapsApiKey.isBlank()) {
     logger.warn("WARNING: GOOGLE_MAPS_API_KEY is not configured; Google Maps will not render.")
 }
@@ -48,6 +61,9 @@ android {
         versionCode = 16
         versionName = "1.1.14"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        manifestPlaceholders["META_APP_EVENTS_ENABLED"] = metaAppEventsEnabled
+        // A missing Client Token must not crash production builds.
+        resValue("string", "facebook_client_token", if (metaAppEventsEnabled) metaFacebookClientToken else "UNCONFIGURED")
     }
 
     signingConfigs {
@@ -116,6 +132,9 @@ dependencies {
     // Google is used only as the map renderer. Search/geocoding/routes continue to use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
+
+    // Meta Android SDK for app install / app activation events.
+    implementation("com.facebook.android:facebook-android-sdk:16.3.0")
 
     debugImplementation(libs.androidx.ui.tooling)
 }
