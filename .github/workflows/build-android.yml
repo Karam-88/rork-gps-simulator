@@ -7,9 +7,11 @@ on:
       - main
       - test/combined-dex-share-rating-1-1-15
       - release/1.1.16-rc
+      - feature/meta-sdk-on-1.1.16-stable
   pull_request:
     branches:
       - main
+      - release/1.1.16-rc
 
 jobs:
   build:
@@ -17,6 +19,7 @@ jobs:
 
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      META_FACEBOOK_CLIENT_TOKEN: ${{ secrets.META_FACEBOOK_CLIENT_TOKEN }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -47,6 +50,14 @@ jobs:
         run: |
           if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
             echo "GOOGLE_MAPS_API_KEY repository secret is missing."
+            exit 1
+          fi
+
+      - name: Verify Meta Client Token for test release
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "$META_FACEBOOK_CLIENT_TOKEN" ]; then
+            echo "::error::META_FACEBOOK_CLIENT_TOKEN is missing; refusing to build the Meta-enabled test release."
             exit 1
           fi
 
