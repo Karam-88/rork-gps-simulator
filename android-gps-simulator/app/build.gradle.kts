@@ -55,8 +55,8 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.1.17-rc"
+        versionCode = 21
+        versionName = "1.1.17"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
         manifestPlaceholders["META_APP_EVENTS_ENABLED"] = metaAppEventsEnabled
         resValue("string", "facebook_client_token", if (metaAppEventsEnabled) metaFacebookClientToken else "UNCONFIGURED")
