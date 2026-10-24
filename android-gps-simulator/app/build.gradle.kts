@@ -33,6 +33,16 @@ val googleMapsApiKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
     .orElse("")
     .get()
 
+// Meta App Events token supplied through CI secret or Gradle property; never committed.
+val metaFacebookClientToken = providers.environmentVariable("META_FACEBOOK_CLIENT_TOKEN")
+    .orElse(providers.gradleProperty("META_FACEBOOK_CLIENT_TOKEN"))
+    .orElse("")
+    .get()
+val metaAppEventsEnabled = metaFacebookClientToken.isNotBlank()
+if (!metaAppEventsEnabled) {
+    logger.warn("Meta Client Token not configured; Facebook app-event logging is disabled.")
+}
+
 if (googleMapsApiKey.isBlank()) {
     logger.warn("WARNING: GOOGLE_MAPS_API_KEY is not configured; Google Maps will not render.")
 }
@@ -45,9 +55,11 @@ android {
         applicationId = "com.rork.gpssimulator"
         minSdk = 24
         targetSdk = 36
-        versionCode = 16
-        versionName = "1.1.14"
+        versionCode = 21
+        versionName = "1.1.17"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        manifestPlaceholders["META_APP_EVENTS_ENABLED"] = metaAppEventsEnabled
+        resValue("string", "facebook_client_token", if (metaAppEventsEnabled) metaFacebookClientToken else "UNCONFIGURED")
     }
 
     signingConfigs {
@@ -63,7 +75,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // Bundle native debug symbols when available from native dependencies.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             // Without key.properties (CI, fresh clones) fall back to the debug key so that
             // assembleRelease keeps working; such a build cannot be uploaded to Google Play.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
@@ -116,6 +131,9 @@ dependencies {
     // Google is used only as the map renderer. Search/geocoding/routes continue to use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
+
+    // Meta SDK for app activation/install attribution, retaining stable GPS features.
+    implementation("com.facebook.android:facebook-android-sdk:16.3.0")
 
     debugImplementation(libs.androidx.ui.tooling)
 }

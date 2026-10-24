@@ -5,9 +5,13 @@ on:
   push:
     branches:
       - main
+      - test/combined-dex-share-rating-1-1-15
+      - release/1.1.16-rc
+      - feature/meta-sdk-on-1.1.16-stable
   pull_request:
     branches:
       - main
+      - release/1.1.16-rc
 
 jobs:
   build:
@@ -15,6 +19,7 @@ jobs:
 
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      META_FACEBOOK_CLIENT_TOKEN: ${{ secrets.META_FACEBOOK_CLIENT_TOKEN }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -48,8 +53,36 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Meta Client Token for test release
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "$META_FACEBOOK_CLIENT_TOKEN" ]; then
+            echo "::error::META_FACEBOOK_CLIENT_TOKEN is missing; refusing to build the Meta-enabled test release."
+            exit 1
+          fi
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug
+
+      - name: Verify R8 Release build (PR only)
+        if: github.event_name == 'pull_request'
+        run: ./gradlew assembleRelease bundleRelease
+
+      - name: Upload R8 test AAB (not signed for Play)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-r8-test-aab-not-for-play
+          path: android-gps-simulator/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload R8 mapping for review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-r8-mapping-test
+          path: android-gps-simulator/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -99,6 +132,15 @@ jobs:
         with:
           name: gps-simulator-release-apk
           path: android-gps-simulator/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload release R8 mapping for Play Console
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-release-mapping
+          path: android-gps-simulator/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: error
           retention-days: 30
 
