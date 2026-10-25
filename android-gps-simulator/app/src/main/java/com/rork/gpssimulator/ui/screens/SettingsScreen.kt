@@ -323,11 +323,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Language,
                             title = strings[K.language],
-                            value = if (settings.language == AppLanguage.ARABIC) {
-                                strings[K.lang_arabic]
-                            } else {
-                                strings[K.lang_english]
-                            },
+                            value = settings.language.nativeName,
                             onClick = { openSheet = OpenSheet.LANGUAGE },
                             enabled = !settings.followSystemLanguage,
                             showChevron = true,
@@ -981,10 +977,9 @@ fun SettingsScreen(
         )
         OpenSheet.LANGUAGE -> SelectionSheet(
             title = strings[K.language],
-            options = listOf(
-                SelectionOption(AppLanguage.ENGLISH, strings[K.lang_english]),
-                SelectionOption(AppLanguage.ARABIC, strings[K.lang_arabic]),
-            ),
+            options = AppLanguage.entries.map { language ->
+                SelectionOption(language, language.nativeName)
+            },
             selected = settings.language,
             onSelect = { value -> viewModel.updateSettings { it.copy(language = value, followSystemLanguage = false) } },
             onDismiss = { openSheet = OpenSheet.NONE },
