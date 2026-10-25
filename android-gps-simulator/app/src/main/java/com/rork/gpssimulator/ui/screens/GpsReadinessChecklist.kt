@@ -486,8 +486,10 @@ fun GpsReadinessChecklist(
                             completeLabel = t("مكتمل", "Erledigt", "Complete"),
                             requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = {
+                                // Open Android battery optimization settings; OEM fallback is app details.
                                 openSetting(
                                     context,
+                                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
                                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
                                 )
                             },
