@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.rork.gpssimulator.i18n.AppLanguage
 
 /**
  * Checks actual Android state, never stores a manually checked checkbox.
@@ -106,12 +107,17 @@ private fun openMockLocationPickerSettings(context: Context) {
 @Composable
 fun GpsReadinessChecklist(
     onFinished: () -> Unit,
+    selectedLanguage: AppLanguage,
+    followSystemLanguage: Boolean,
+    onLanguageSelected: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val systemLanguage = Resources.getSystem().configuration.locales[0].language
-    var languageOverride by remember { mutableStateOf<String?>(null) }
-    val language = languageOverride ?: systemLanguage
+    // Match the app-wide automatic/manual setting, not a separate onboarding-only default.
+    var localPreviewLanguage by remember { mutableStateOf<String?>(null) }
+    val appLanguage = if (selectedLanguage == AppLanguage.ARABIC) "ar" else "en"
+    val language = localPreviewLanguage ?: if (followSystemLanguage) systemLanguage else appLanguage
     fun t(ar: String, de: String, en: String) = when (language) {
         "ar" -> ar
         "de" -> de
@@ -183,9 +189,24 @@ fun GpsReadinessChecklist(
                             "de" to "Deutsch",
                             "en" to "English",
                         ).forEach { (choice, name) ->
-                            val selected = choice == languageOverride
+                            val selected = if (choice == null) {
+                                followSystemLanguage && localPreviewLanguage == null
+                            } else if (choice == "de") {
+                                localPreviewLanguage == "de"
+                            } else {
+                                !followSystemLanguage && localPreviewLanguage == null && appLanguage == choice
+                            }
                             OutlinedButton(
-                                onClick = { languageOverride = choice },
+                                onClick = {
+                                    if (choice == "de") {
+                                        // German is available for this setup screen. App-wide
+                                        // manual selection waits for full German localization.
+                                        localPreviewLanguage = "de"
+                                    } else {
+                                        localPreviewLanguage = null
+                                        onLanguageSelected(choice)
+                                    }
+                                },
                                 modifier = Modifier.weight(1f).height(38.dp),
                                 contentPadding = PaddingValues(horizontal = 2.dp),
                                 border = BorderStroke(1.dp, if (selected) blue else Color(0xFF5D697A)),
