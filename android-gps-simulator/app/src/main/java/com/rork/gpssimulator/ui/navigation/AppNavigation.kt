@@ -42,6 +42,7 @@ import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.i18n.Strings
+import com.rork.gpssimulator.i18n.reviewPromptCopy
 import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.screens.AboutScreen
 import com.rork.gpssimulator.ui.screens.CoordinateToolsScreen
@@ -164,15 +165,21 @@ private fun AppScaffold(
     }
     var showRatingPrompt by remember { mutableStateOf(false) }
     var sessionWasActive by remember { mutableStateOf(mockState == MockState.MOCK_ACTIVE) }
-    val isArabicRating = settings.language == AppLanguage.ARABIC
+    var activeSinceMs by remember { mutableStateOf(0L) }
+    val ratingCopy = remember(settings.language) { reviewPromptCopy(settings.language) }
 
     // Count completed successful sessions, not app launches or attempted starts.
     LaunchedEffect(mockState) {
         val active = mockState == MockState.MOCK_ACTIVE
         if (active) {
+            if (!sessionWasActive) activeSinceMs = android.os.SystemClock.elapsedRealtime()
             sessionWasActive = true
         } else if (sessionWasActive) {
             sessionWasActive = false
+            // Ignore accidental starts and immediate stops. Never count a failed start.
+            if (activeSinceMs == 0L ||
+                android.os.SystemClock.elapsedRealtime() - activeSinceMs < 20_000L
+            ) return@LaunchedEffect
             val completed = ratingPrefs.getInt("completed_sessions", 0) + 1
             ratingPrefs.edit().putInt("completed_sessions", completed).apply()
             val neverAsk = ratingPrefs.getBoolean("never_ask", false)
@@ -226,12 +233,10 @@ private fun AppScaffold(
                     .apply()
                 showRatingPrompt = false
             },
-            title = { Text(if (isArabicRating) "هل يعجبك GPS Simulator؟" else "Enjoying GPS Simulator?") },
+            title = { Text(ratingCopy.title) },
             text = {
                 Text(
-                    if (isArabicRating)
-                        "التطبيق مجاني، وتقييمك يساعدنا على تطويره وتحسينه. شكرًا لدعمك!"
-                    else "GPS Simulator is free. Your review helps us improve it. Thank you for your support!",
+                    ratingCopy.body,
                 )
             },
             confirmButton = {
@@ -248,7 +253,7 @@ private fun AppScaffold(
                             )
                         }
                     }
-                }) { Text(if (isArabicRating) "تقييم التطبيق" else "Rate app") }
+                }) { Text(ratingCopy.rate) }
             },
             dismissButton = {
                 androidx.compose.foundation.layout.Row {
@@ -257,7 +262,7 @@ private fun AppScaffold(
                             .putLong("next_eligible_at", System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000)
                             .apply()
                         showRatingPrompt = false
-                    }) { Text(if (isArabicRating) "ربما لاحقًا" else "Maybe later") }
+                    }) { Text(ratingCopy.later) }
                 }
             },
         )
