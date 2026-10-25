@@ -6,11 +6,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -116,169 +118,184 @@ fun RouteEditorSheet(
     )
     val isValid = name.isNotBlank() && points.size >= 2
 
+    val profiles = listOf(
+        Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
+        Triple(SpeedProfile.DRIVING, Icons.Default.DirectionsCar, strings[K.driving]),
+        Triple(SpeedProfile.CYCLING, Icons.Default.DirectionsBike, strings[K.cycling]),
+        Triple(SpeedProfile.RUNNING, Icons.Default.DirectionsRun, "Run"),
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         sheetGesturesEnabled = false,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Column(
+        // Use the actual sheet viewport, not a fixed dp height. The map occupies 75%
+        // and the remaining 25% holds a compact, non-scrolling route editor footer.
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxHeight(0.96f)
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 12.dp),
         ) {
-            Text(
-                text = strings[K.create_route],
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                placeholder = { Text(strings[K.route_name]) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .clip(RoundedCornerShape(22.dp)),
-            ) {
-                MapView(
-                    camera = camera,
-                    mapType = settings.mapType,
-                    markers = buildList {
-                        // Show the active simulated location (or real fix if stopped)
-                        // distinctly from the route's start, waypoints and destination.
-                        currentLocation?.let { point ->
-                            add(
-                                MapMarker(
-                                    point = point,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    radiusMeters = if (activePoint == null) (realSample?.accuracy?.toDouble() ?: settings.accuracyM.toDouble()) else settings.accuracyM.toDouble(),
-                                    style = MarkerStyle.REAL,
-                                ),
-                            )
-                        }
-                        points.forEachIndexed { index, point ->
-                            add(
-                                MapMarker(
-                                    point = point,
-                                    color = when (index) {
-                                        0 -> appColors.success
-                                        points.lastIndex -> appColors.danger
-                                        else -> MaterialTheme.colorScheme.primary
-                                    },
-                                ),
-                            )
-                        }
-                    },
-                    polylines = if (points.size >= 2) {
-                        listOf(MapPolyline(points.toList(), MaterialTheme.colorScheme.primary))
-                    } else emptyList(),
-                    onMapTap = { tapped -> points.add(tapped) },
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
-                )
-
-                Row(
+            val mapHeight = maxHeight * 0.75f
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .fillMaxWidth()
+                        .height(mapHeight)
+                        .clip(RoundedCornerShape(20.dp)),
                 ) {
-                    SmallMapAction(Icons.Default.Add, strings[K.add_waypoint]) {
-                        points.add(camera.center)
-                    }
-                    SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
-                        (activePoint ?: realSample?.point)?.let { camera.snapTo(it) }
-                    }
-                    if (points.isNotEmpty()) {
-                        SmallMapAction(Icons.Default.Close, strings[K.delete]) {
-                            points.removeAt(points.lastIndex)
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                RoutePointsPanel(
-                    pointsCount = points.size,
-                    onAdd = { points.add(camera.center) },
-                )
-
-                Spacer(Modifier.height(14.dp))
-
-                MovementProfilePanel(
-                    selected = profile,
-                    onSelected = { profile = it },
-                )
-
-                Spacer(Modifier.height(14.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = strings[K.loop_route],
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (points.size >= 2) {
-                            Spacer(Modifier.height(3.dp))
-                            Text(
-                                text = Format.distance(draft.distanceMeters, settings.units),
-                                style = MonoValueStyle,
-                                color = appColors.muted,
+                    MapView(
+                        camera = camera,
+                        mapType = settings.mapType,
+                        markers = buildList {
+                            currentLocation?.let { point ->
+                                add(
+                                    MapMarker(
+                                        point = point,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        radiusMeters = if (activePoint == null) {
+                                            realSample?.accuracy?.toDouble() ?: settings.accuracyM.toDouble()
+                                        } else settings.accuracyM.toDouble(),
+                                        style = MarkerStyle.REAL,
+                                    ),
+                                )
+                            }
+                            points.forEachIndexed { index, point ->
+                                add(
+                                    MapMarker(
+                                        point = point,
+                                        color = when (index) {
+                                            0 -> appColors.success
+                                            points.lastIndex -> appColors.danger
+                                            else -> MaterialTheme.colorScheme.primary
+                                        },
+                                    ),
+                                )
+                            }
+                        },
+                        polylines = if (points.size >= 2) {
+                            listOf(MapPolyline(points.toList(), MaterialTheme.colorScheme.primary))
+                        } else emptyList(),
+                        onMapTap = { tapped -> points.add(tapped) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    // Point count and route looping overlay the map without shrinking it.
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                RoundedCornerShape(14.dp),
                             )
+                            .padding(horizontal = 10.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "${points.size} ${strings[K.waypoints]}",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                        Text(strings[K.loop_route], style = MaterialTheme.typography.labelSmall)
+                        Switch(checked = loop, onCheckedChange = { loop = it })
+                    }
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SmallMapAction(Icons.Default.Add, strings[K.add_waypoint]) {
+                            points.add(camera.center)
+                        }
+                        SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
+                            currentLocation?.let { camera.snapTo(it) }
+                        }
+                        if (points.isNotEmpty()) {
+                            SmallMapAction(Icons.Default.Close, strings[K.delete]) {
+                                points.removeAt(points.lastIndex)
+                            }
                         }
                     }
-                    Switch(checked = loop, onCheckedChange = { loop = it })
                 }
 
-                Spacer(Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        onSave(
-                            draft.copy(
-                                id = existing?.id ?: UUID.randomUUID().toString(),
-                                createdAt = existing?.createdAt ?: System.currentTimeMillis(),
-                            ),
-                        )
-                    },
-                    enabled = isValid,
-                    modifier = Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                    ),
+                // The route title and name now appear BELOW the larger map.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     Text(
-                        text = strings[K.save],
+                        text = strings[K.create_route],
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        placeholder = { Text(strings[K.route_name]) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        profiles.forEach { (value, icon, label) ->
+                            val selected = profile == value
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    )
+                                    .border(
+                                        width = if (selected) 2.dp else 1.dp,
+                                        color = if (selected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(12.dp),
+                                    )
+                                    .clickable(role = Role.Button) { profile = value },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                onSave(
+                                    draft.copy(
+                                        id = existing?.id ?: UUID.randomUUID().toString(),
+                                        createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                                    ),
+                                )
+                            },
+                            enabled = isValid,
+                            modifier = Modifier.weight(1.5f).height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(strings[K.save], style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
-
-                Spacer(Modifier.height(28.dp))
             }
         }
     }
