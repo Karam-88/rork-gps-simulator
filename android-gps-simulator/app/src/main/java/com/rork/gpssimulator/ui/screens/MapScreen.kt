@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
@@ -46,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -161,6 +163,7 @@ fun MapScreen(
     )
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
+    var showProblemDialog by remember { mutableStateOf(false) }
     var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
@@ -285,43 +288,74 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.Center),
         )
 
-        Column(
+        Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (isMockActive) {
-                MockActiveBanner(
-                    lat = activePoint?.lat ?: 0.0,
-                    lng = activePoint?.lng ?: 0.0,
-                    accuracy = settings.accuracyM,
-                    altitude = settings.altitudeM,
-                    speedKmh = currentSpeed,
-                    elapsedMs = elapsedMs,
-                    isPaused = isPaused,
-                    units = settings.units,
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    StatusPill(
-                        text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
-                        dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
+            Box(modifier = Modifier.weight(1f)) {
+                if (isMockActive) {
+                    MockActiveBanner(
+                        lat = activePoint?.lat ?: 0.0,
+                        lng = activePoint?.lng ?: 0.0,
+                        accuracy = settings.accuracyM,
+                        altitude = settings.altitudeM,
+                        speedKmh = currentSpeed,
+                        elapsedMs = elapsedMs,
+                        isPaused = isPaused,
+                        units = settings.units,
                     )
-                    CoordinatePill(
-                        lat = camera.centerLat,
-                        lng = camera.centerLng,
-                        latLabel = strings[K.lat],
-                        lngLabel = strings[K.lng],
-                        modifier = Modifier.weight(1f, fill = false),
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StatusPill(
+                            text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
+                            dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
+                        )
+                        CoordinatePill(
+                            lat = camera.centerLat,
+                            lng = camera.centerLng,
+                            latLabel = strings[K.lat],
+                            lngLabel = strings[K.lng],
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
+                }
+            }
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                shadowElevation = 4.dp,
+                modifier = Modifier.size(42.dp),
+            ) {
+                IconButton(
+                    onClick = {
+                        showMenuPanel = false
+                        showProblemDialog = true
+                    },
+                    modifier = Modifier.size(42.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HelpOutline,
+                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "الإبلاغ عن مشكلة" else "Report a problem",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(21.dp),
                     )
                 }
             }
+        }
+        if (showProblemDialog) {
+            ReportProblemDialog(
+                language = settings.language,
+                onDismiss = { showProblemDialog = false },
+            )
         }
 
         Column(
