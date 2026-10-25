@@ -9,6 +9,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -77,6 +78,10 @@ class RoadRoutingService {
             // A loop geometry already closes back to the first point; keeping the
             // loop flag preserves repeated playback without a new straight leg.
             route.copy(points = allPoints)
+        }.onFailure { failure ->
+            // Cancellation is not a routing failure: allow the caller to stop
+            // requests when the user leaves the editor or cancels calculation.
+            if (failure is CancellationException) throw failure
         }
     }
 }
