@@ -406,6 +406,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         boundService?.setJoystickVector(x, y)
     }
 
+    /** Centers the map on the effective location without ending a mock session.
+     * Never substitute the physical GPS fix while a mock provider is active.
+     */
+    fun centerOnCurrentLocation() {
+        if (_mockState.value == MockState.MOCK_ACTIVE) {
+            val mockPoint = MockSessionBus.session.value?.point ?: _activePoint.value
+            if (mockPoint != null) {
+                moveCamera(mockPoint, MY_LOCATION_ZOOM)
+                return
+            }
+            postMessage("Mock location is not available yet", isError = true)
+            return
+        }
+        returnToRealLocation()
+    }
+
     fun returnToRealLocation(recenter: Boolean = true) {
         val sample = realLocation.lastKnown(settings.value.usePlayServices) ?: _realSample.value
         if (sample != null) {
