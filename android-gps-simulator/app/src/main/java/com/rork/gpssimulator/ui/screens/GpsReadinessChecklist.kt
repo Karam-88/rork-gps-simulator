@@ -410,7 +410,20 @@ fun GpsReadinessChecklist(
                         trackColor = Color(0xFF424A56),
                     )
                     Text(
-                        t("$completed من 4 متطلبات", "$completed von 4 Voraussetzungen", "$completed of 4 requirements"),
+                        when (language) {
+                            "ar" -> "$completed من 4 متطلبات"
+                            "de" -> "$completed von 4 Voraussetzungen"
+                            "fr" -> "$completed sur 4 conditions remplies"
+                            "es" -> "$completed de 4 requisitos completados"
+                            "tr" -> "4 gereklilikten $completed tamamlandı"
+                            "pt" -> "$completed de 4 requisitos concluídos"
+                            "ru" -> "Выполнено требований: $completed из 4"
+                            "id" -> "$completed dari 4 persyaratan selesai"
+                            "hi" -> "4 में से $completed आवश्यकताएँ पूरी"
+                            "ja" -> "必須項目：4件中$completed件完了"
+                            "zh" -> "已完成 $completed / 4 项要求"
+                            else -> "$completed of 4 requirements"
+                        },
                         color = labelColor,
                         style = MaterialTheme.typography.labelMedium,
                     )
