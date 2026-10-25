@@ -292,13 +292,23 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
 
     when (marker.style) {
         MarkerStyle.ACTIVE -> {
+            // Purely visual hop/landing; the underlying Android mock provider
+            // receives the final destination directly, never interpolated GPS fixes.
+            val scale = marker.visualScale.coerceIn(0.75f, 1.30f)
             paint.style = Paint.Style.FILL
+            if (scale > 1.01f) {
+                paint.color = marker.color.copy(alpha = ((scale - 1f) * 0.65f).coerceIn(0f, 0.25f)).toArgb()
+                canvas.drawCircle(center, center, px * 0.46f, paint)
+            }
+            canvas.save()
+            canvas.scale(scale, scale, center, center)
             paint.color = android.graphics.Color.WHITE
             canvas.drawCircle(center, center, px * 0.40f, paint)
             paint.color = marker.color.toArgb()
             canvas.drawCircle(center, center, px * 0.31f, paint)
             paint.color = android.graphics.Color.WHITE
             canvas.drawCircle(center, center, px * 0.09f, paint)
+            canvas.restore()
         }
         MarkerStyle.CANDIDATE -> {
             paint.style = Paint.Style.STROKE
