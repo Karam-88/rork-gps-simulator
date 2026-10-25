@@ -120,6 +120,8 @@ fun GpsReadinessChecklist(
         "ar" -> ar
         "de" -> de
         "fr" -> when (en) {
+            "Select GPS Simulator as mock app" -> "Sélectionner GPS Simulator comme application de position fictive"
+            "Allow precise location" -> "Autoriser la localisation précise"
             "Set up GPS Simulator" -> "Configurer GPS Simulator"
             "Continue to map" -> "Continuer vers la carte"
             "Developer options" -> "Options pour les développeurs"
@@ -132,6 +134,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "es" -> when (en) {
+            "Select GPS Simulator as mock app" -> "Seleccionar GPS Simulator como aplicación de ubicación simulada"
+            "Allow precise location" -> "Permitir ubicación precisa"
             "Set up GPS Simulator" -> "Configurar GPS Simulator"
             "Continue to map" -> "Continuar al mapa"
             "Developer options" -> "Opciones de desarrollador"
@@ -144,6 +148,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "tr" -> when (en) {
+            "Select GPS Simulator as mock app" -> "GPS Simulator uygulamasını sahte konum uygulaması seç"
+            "Allow precise location" -> "Hassas konuma izin ver"
             "Set up GPS Simulator" -> "GPS Simulator kurulumu"
             "Continue to map" -> "Haritaya devam et"
             "Developer options" -> "Geliştirici seçenekleri"
@@ -156,6 +162,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "pt" -> when (en) {
+            "Select GPS Simulator as mock app" -> "Selecionar GPS Simulator como app de localização simulada"
+            "Allow precise location" -> "Permitir localização precisa"
             "Set up GPS Simulator" -> "Configurar GPS Simulator"
             "Continue to map" -> "Continuar para o mapa"
             "Developer options" -> "Opções do desenvolvedor"
@@ -168,6 +176,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ru" -> when (en) {
+            "Select GPS Simulator as mock app" -> "Выбрать GPS Simulator для фиктивной геолокации"
+            "Allow precise location" -> "Разрешить точное местоположение"
             "Set up GPS Simulator" -> "Настройка GPS Simulator"
             "Continue to map" -> "Перейти к карте"
             "Developer options" -> "Параметры разработчика"
@@ -180,6 +190,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "id" -> when (en) {
+            "Select GPS Simulator as mock app" -> "Pilih GPS Simulator sebagai aplikasi lokasi tiruan"
+            "Allow precise location" -> "Izinkan lokasi akurat"
             "Set up GPS Simulator" -> "Siapkan GPS Simulator"
             "Continue to map" -> "Lanjutkan ke peta"
             "Developer options" -> "Opsi pengembang"
@@ -192,6 +204,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "hi" -> when (en) {
+            "Select GPS Simulator as mock app" -> "GPS Simulator को मॉक लोकेशन ऐप चुनें"
+            "Allow precise location" -> "सटीक स्थान की अनुमति दें"
             "Set up GPS Simulator" -> "GPS Simulator सेटअप करें"
             "Continue to map" -> "मानचित्र पर जाएँ"
             "Developer options" -> "डेवलपर विकल्प"
@@ -204,6 +218,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ja" -> when (en) {
+            "Select GPS Simulator as mock app" -> "GPS Simulator を仮の位置情報アプリに選択"
+            "Allow precise location" -> "正確な位置情報を許可"
             "Set up GPS Simulator" -> "GPS Simulator の設定"
             "Continue to map" -> "地図に進む"
             "Developer options" -> "開発者向けオプション"
@@ -216,6 +232,8 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "zh" -> when (en) {
+            "Select GPS Simulator as mock app" -> "选择 GPS Simulator 作为模拟位置应用"
+            "Allow precise location" -> "允许精确定位"
             "Set up GPS Simulator" -> "设置 GPS Simulator"
             "Continue to map" -> "继续前往地图"
             "Developer options" -> "开发者选项"
