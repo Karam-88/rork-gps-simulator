@@ -60,6 +60,7 @@ import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.map.MapMarker
+import com.rork.gpssimulator.ui.map.MarkerStyle
 import com.rork.gpssimulator.ui.map.MapPolyline
 import com.rork.gpssimulator.ui.map.MapView
 import com.rork.gpssimulator.ui.map.rememberMapCameraState
@@ -158,15 +159,31 @@ fun RouteEditorSheet(
                 MapView(
                     camera = camera,
                     mapType = settings.mapType,
-                    markers = points.mapIndexed { index, point ->
-                        MapMarker(
-                            point = point,
-                            color = when (index) {
-                                0 -> appColors.success
-                                points.lastIndex -> appColors.danger
-                                else -> MaterialTheme.colorScheme.primary
-                            },
-                        )
+                    markers = buildList {
+                        // Show the active simulated location (or real fix if stopped)
+                        // distinctly from the route's start, waypoints and destination.
+                        currentLocation?.let { point ->
+                            add(
+                                MapMarker(
+                                    point = point,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    radiusMeters = if (activePoint == null) realSample?.accuracy?.toDouble() else settings.accuracyM.toDouble(),
+                                    style = MarkerStyle.REAL,
+                                ),
+                            )
+                        }
+                        points.forEachIndexed { index, point ->
+                            add(
+                                MapMarker(
+                                    point = point,
+                                    color = when (index) {
+                                        0 -> appColors.success
+                                        points.lastIndex -> appColors.danger
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
+                                ),
+                            )
+                        }
                     },
                     polylines = if (points.size >= 2) {
                         listOf(MapPolyline(points.toList(), MaterialTheme.colorScheme.primary))
