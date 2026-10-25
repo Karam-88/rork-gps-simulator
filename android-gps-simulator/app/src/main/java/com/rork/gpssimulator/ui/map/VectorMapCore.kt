@@ -94,6 +94,7 @@ data class MapMarker(
     val radiusMeters: Double = 0.0,
     val label: String? = null,
     val style: MarkerStyle = MarkerStyle.REAL,
+    val visualScale: Float = 1f,
 )
 
 data class MapPolyline(
