@@ -258,10 +258,6 @@ private fun AppScaffold(
                             .apply()
                         showRatingPrompt = false
                     }) { Text(if (isArabicRating) "ربما لاحقًا" else "Maybe later") }
-                    TextButton(onClick = {
-                        ratingPrefs.edit().putBoolean("never_ask", true).apply()
-                        showRatingPrompt = false
-                    }) { Text(if (isArabicRating) "لا شكرًا" else "No thanks") }
                 }
             },
         )
