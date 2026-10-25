@@ -71,6 +71,12 @@ class RoadRoutingService {
                 require(segment.first().distanceTo(from) <= 250 && segment.last().distanceTo(to) <= 250) {
                     "Waypoint too far from a supported road or path."
                 }
+                // Bound cumulative geometry before appending each segment, so an
+                // unusually large multi-leg response cannot grow memory unchecked.
+                val appendedCount = segment.size - if (index == 0) 0 else 1
+                require(allPoints.size + appendedCount <= 300_000) {
+                    "Route is too long. Please use fewer waypoints."
+                }
                 allPoints.addAll(if (index == 0) segment else segment.drop(1))
                 if (index < stops.size - 2) delay(1100) // public provider <= 1 request/sec
             }
