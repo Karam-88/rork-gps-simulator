@@ -39,7 +39,7 @@ enum class K {
     section_advanced,
 
     // General settings
-    theme, theme_system, theme_light, theme_dark, language, lang_english, lang_arabic,
+    theme, theme_system, theme_light, theme_dark, language, lang_english, lang_arabic, follow_phone_language,
     map_type, distance_units, units_auto, units_metric, units_imperial, reset_settings,
     reset_settings_desc, reset_settings_confirm, settings_reset,
 
@@ -252,6 +252,7 @@ private val EN: Map<K, String> = mapOf(
     K.theme_light to "Light",
     K.theme_dark to "Dark",
     K.language to "Language",
+    K.follow_phone_language to "Use phone language",
     K.lang_english to "English",
     K.lang_arabic to "العربية",
     K.map_type to "Map Type",
@@ -588,6 +589,7 @@ private val AR: Map<K, String> = mapOf(
     K.theme_light to "فاتح",
     K.theme_dark to "داكن",
     K.language to "اللغة",
+    K.follow_phone_language to "استخدام لغة الهاتف تلقائيًا",
     K.lang_english to "English",
     K.lang_arabic to "العربية",
     K.map_type to "نوع الخريطة",
@@ -785,6 +787,13 @@ class Strings(val language: AppLanguage) {
     operator fun get(key: K): String = table[key] ?: fallback[key] ?: key.name
 }
 
-enum class AppLanguage { ENGLISH, ARABIC }
+enum class AppLanguage { ENGLISH, ARABIC;
+
+    companion object {
+        fun fromDeviceLocale(): AppLanguage =
+            if (java.util.Locale.getDefault().language.equals("ar", ignoreCase = true)) ARABIC
+            else ENGLISH
+    }
+}
 
 val LocalStrings = staticCompositionLocalOf { Strings(AppLanguage.ENGLISH) }
