@@ -120,6 +120,10 @@ fun GpsReadinessChecklist(
         "ar" -> ar
         "de" -> de
         "fr" -> when (en) {
+            "Set up GPS Simulator" -> "Configurer GPS Simulator"
+            "Continue to map" -> "Continuer vers la carte"
+            "Developer options" -> "Options pour les développeurs"
+            "Enable location services" -> "Activer les services de localisation"
             "Complete" -> "Terminé"
             "Required" -> "Obligatoire"
             "Open" -> "Ouvrir"
@@ -128,6 +132,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "es" -> when (en) {
+            "Set up GPS Simulator" -> "Configurar GPS Simulator"
+            "Continue to map" -> "Continuar al mapa"
+            "Developer options" -> "Opciones de desarrollador"
+            "Enable location services" -> "Activar servicios de ubicación"
             "Complete" -> "Completado"
             "Required" -> "Obligatorio"
             "Open" -> "Abrir"
@@ -136,6 +144,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "tr" -> when (en) {
+            "Set up GPS Simulator" -> "GPS Simulator kurulumu"
+            "Continue to map" -> "Haritaya devam et"
+            "Developer options" -> "Geliştirici seçenekleri"
+            "Enable location services" -> "Konum hizmetlerini etkinleştir"
             "Complete" -> "Tamamlandı"
             "Required" -> "Gerekli"
             "Open" -> "Aç"
@@ -144,6 +156,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "pt" -> when (en) {
+            "Set up GPS Simulator" -> "Configurar GPS Simulator"
+            "Continue to map" -> "Continuar para o mapa"
+            "Developer options" -> "Opções do desenvolvedor"
+            "Enable location services" -> "Ativar serviços de localização"
             "Complete" -> "Concluído"
             "Required" -> "Obrigatório"
             "Open" -> "Abrir"
@@ -152,6 +168,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ru" -> when (en) {
+            "Set up GPS Simulator" -> "Настройка GPS Simulator"
+            "Continue to map" -> "Перейти к карте"
+            "Developer options" -> "Параметры разработчика"
+            "Enable location services" -> "Включить службы геолокации"
             "Complete" -> "Выполнено"
             "Required" -> "Обязательно"
             "Open" -> "Открыть"
@@ -160,6 +180,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "id" -> when (en) {
+            "Set up GPS Simulator" -> "Siapkan GPS Simulator"
+            "Continue to map" -> "Lanjutkan ke peta"
+            "Developer options" -> "Opsi pengembang"
+            "Enable location services" -> "Aktifkan layanan lokasi"
             "Complete" -> "Selesai"
             "Required" -> "Wajib"
             "Open" -> "Buka"
@@ -168,6 +192,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "hi" -> when (en) {
+            "Set up GPS Simulator" -> "GPS Simulator सेटअप करें"
+            "Continue to map" -> "मानचित्र पर जाएँ"
+            "Developer options" -> "डेवलपर विकल्प"
+            "Enable location services" -> "स्थान सेवाएँ चालू करें"
             "Complete" -> "पूरा हुआ"
             "Required" -> "आवश्यक"
             "Open" -> "खोलें"
@@ -176,6 +204,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ja" -> when (en) {
+            "Set up GPS Simulator" -> "GPS Simulator の設定"
+            "Continue to map" -> "地図に進む"
+            "Developer options" -> "開発者向けオプション"
+            "Enable location services" -> "位置情報サービスを有効にする"
             "Complete" -> "完了"
             "Required" -> "必須"
             "Open" -> "開く"
@@ -184,6 +216,10 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "zh" -> when (en) {
+            "Set up GPS Simulator" -> "设置 GPS Simulator"
+            "Continue to map" -> "继续前往地图"
+            "Developer options" -> "开发者选项"
+            "Enable location services" -> "启用位置服务"
             "Complete" -> "已完成"
             "Required" -> "必需"
             "Open" -> "打开"
