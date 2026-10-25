@@ -30,6 +30,7 @@ import com.rork.gpssimulator.location.MockLocationService
 import com.rork.gpssimulator.location.MockResult
 import com.rork.gpssimulator.location.MockSessionBus
 import com.rork.gpssimulator.location.PlaceResult
+import com.rork.gpssimulator.location.RoadRoutingService
 import com.rork.gpssimulator.location.RealLocationSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -432,7 +433,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startRoute(route: SimRoute) {
+    private var routePreparationJob: Job? = null
+
+    /**
+     * Never start the mock session before road routing succeeds.
+     * A network/server/profile error leaves any existing GPS session unchanged.
+     */
+    fun startRoute(route: SimRoute, onStarted: () -> Unit = {}) {
         if (route.points.size < 2) {
             postMessage("Add at least two points", isError = true)
             return
@@ -442,18 +449,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _mockReadiness.value = MockReadiness.PERMISSION_REQUIRED
             return
         }
-        val service = requireBoundService() ?: return
-        val start = route.points.first()
-
-        val context = getApplication<Application>()
-        ContextCompat.startForegroundService(context, Intent(context, MockLocationService::class.java))
-        val result = service.startSession(SessionKind.ROUTE, start, route.name, "", route)
-        when (result) {
-            is MockResult.Failure -> postMessage(result.message, isError = true)
-            MockResult.Success -> {
-                _selected.value = null
-                moveCamera(start)
-            }
+        if (routePreparationJob?.isActive == true) {
+            postMessage("A route is already being calculated", isError = true)
+            return
+        }
+        routePreparationJob = viewModelScope.launch {
+            postMessage("Calculating a route on real roads and paths…")
+            val result = RoadRoutingService().resolve(route)
+            result.fold(
+                onSuccess = { roadRoute ->
+                    val service = requireBoundService() ?: return@fold
+                    val start = roadRoute.points.first()
+                    val context = getApplication<Application>()
+                    ContextCompat.startForegroundService(
+                        context,
+                        Intent(context, MockLocationService::class.java),
+                    )
+                    when (val startResult = service.startSession(
+                        SessionKind.ROUTE, start, route.name, "", roadRoute,
+                    )) {
+                        is MockResult.Failure -> postMessage(startResult.message, isError = true)
+                        MockResult.Success -> {
+                            _selected.value = null
+                            moveCamera(start)
+                            onStarted()
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    postMessage(
+                        error.message ?: "Road routing unavailable. No simulation started.",
+                        isError = true,
+                    )
+                },
+            )
         }
     }
 
