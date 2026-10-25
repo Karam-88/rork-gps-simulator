@@ -8,6 +8,7 @@ on:
       - test/combined-dex-share-rating-1-1-15
       - release/1.1.16-rc
       - feature/meta-sdk-on-1.1.16-stable
+      - feature/gps-overhaul-phase1-20261025
   pull_request:
     branches:
       - main
@@ -61,6 +62,11 @@ jobs:
             exit 1
           fi
 
+      # Debug artifacts are not a reliable Maps QA signal: a CI debug keystore
+      # does not necessarily match the SHA-1 authorized for the production Maps key.
+      # On branch pushes the signed release APK is the preferred QA artifact;
+      # a Play-signed internal-track install may still be required if the upload
+      # certificate differs from the Play App Signing certificate.
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
