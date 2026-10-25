@@ -874,8 +874,8 @@ fun SettingsScreen(
                             icon = Icons.Default.StarRate,
                             title = strings[K.rate_app],
                             description = strings[K.rate_app_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { openPlayStoreListing(context) },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -884,8 +884,8 @@ fun SettingsScreen(
                             icon = Icons.Default.Description,
                             title = strings[K.send_feedback],
                             description = strings[K.send_feedback_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { sendFeedback(context) },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -965,11 +965,10 @@ fun SettingsScreen(
             title = strings[K.map_type],
             options = listOf(
                 SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.DETAILED_STREETS, strings[K.detailed_streets]),
                 SelectionOption(MapType.SATELLITE, strings[K.satellite]),
                 SelectionOption(MapType.TERRAIN, strings[K.terrain]),
             ),
-            selected = settings.mapType,
+            selected = if (settings.mapType == MapType.DETAILED_STREETS) MapType.STANDARD else settings.mapType,
             onSelect = { value -> viewModel.updateSettings { it.copy(mapType = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
@@ -1195,5 +1194,30 @@ private fun openPrivacyPolicy(context: android.content.Context) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
     } catch (e: ActivityNotFoundException) {
         // No browser available on this device.
+    }
+}
+
+/** Store and support actions are intentionally independent of map and mock-GPS state. */
+private fun openPlayStoreListing(context: android.content.Context) {
+    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+    try {
+        context.startActivity(market)
+    } catch (_: ActivityNotFoundException) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+        } catch (_: ActivityNotFoundException) {
+            // The device does not have a browser or store activity.
+        }
+    }
+}
+
+private fun sendFeedback(context: android.content.Context) {
+    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gps.simulator.support@gmail.com")).apply {
+        putExtra(Intent.EXTRA_SUBJECT, "GPS Simulator — Feedback")
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, null))
+    } catch (_: ActivityNotFoundException) {
+        // No email application installed.
     }
 }
