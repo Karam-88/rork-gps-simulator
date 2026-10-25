@@ -78,14 +78,14 @@ fun ReportProblemDialog(
         },
         confirmButton = {
             Button(
-                enabled = description.isNotBlank(),
+                enabled = true,
                 onClick = {
                     val version = runCatching {
                         @Suppress("DEPRECATION")
                         context.packageManager.getPackageInfo(context.packageName, 0).versionName
                     }.getOrNull() ?: "unknown"
                     val body = buildString {
-                        append(description.trim())
+                        append(description.trim().ifBlank { "No description provided." })
                         append("\n\n--- Device information (provided with your review) ---\n")
                         append("App version: ").append(version).append('\n')
                         append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
