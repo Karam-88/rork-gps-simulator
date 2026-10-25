@@ -806,8 +806,7 @@ enum class AppLanguage(val nativeName: String, val languageCode: String) {
     CHINESE_SIMPLIFIED("简体中文", "zh");
 
     companion object {
-        fun fromDeviceLocale(): AppLanguage {
-            val locale = java.util.Locale.getDefault()
+        fun fromDeviceLocale(locale: java.util.Locale = java.util.Locale.getDefault()): AppLanguage {
             return when (locale.language.lowercase(java.util.Locale.ROOT)) {
                 "ar" -> ARABIC
                 "de" -> GERMAN
