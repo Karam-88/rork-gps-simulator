@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import android.content.res.Resources
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
@@ -113,12 +112,37 @@ fun GpsReadinessChecklist(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val systemLanguage = Resources.getSystem().configuration.locales[0].language
+    // Read the app's live Android configuration, not the static system Resources singleton.
+    val systemLanguage = context.resources.configuration.locales[0].language
     val language = if (followSystemLanguage) systemLanguage else selectedLanguage.languageCode
     var languageMenuExpanded by remember { mutableStateOf(false) }
     fun t(ar: String, de: String, en: String) = when (language) {
         "ar" -> ar
         "de" -> de
+        "fr" -> when (en) {
+            "Complete" -> "Terminé"
+            "Required" -> "Obligatoire"
+            "Open" -> "Ouvrir"
+            "Select" -> "Sélectionner"
+            "Allow" -> "Autoriser"
+            else -> en
+        }
+        "es" -> when (en) {
+            "Complete" -> "Completado"
+            "Required" -> "Obligatorio"
+            "Open" -> "Abrir"
+            "Select" -> "Seleccionar"
+            "Allow" -> "Permitir"
+            else -> en
+        }
+        "tr" -> when (en) {
+            "Complete" -> "Tamamlandı"
+            "Required" -> "Gerekli"
+            "Open" -> "Aç"
+            "Select" -> "Seç"
+            "Allow" -> "İzin ver"
+            else -> en
+        }
         else -> en
     }
     var status by remember { mutableStateOf(readSetup(context)) }
