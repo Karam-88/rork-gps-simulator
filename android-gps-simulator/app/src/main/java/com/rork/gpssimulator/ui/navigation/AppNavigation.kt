@@ -126,7 +126,7 @@ fun AppNavigation() {
                         viewModel.updateSettings {
                             if (choice == null) it.copy(followSystemLanguage = true)
                             else it.copy(
-                                language = if (choice == "ar") AppLanguage.ARABIC else AppLanguage.ENGLISH,
+                                language = AppLanguage.entries.firstOrNull { it.languageCode == choice } ?: AppLanguage.ENGLISH,
                                 followSystemLanguage = false,
                             )
                         }
@@ -345,7 +345,7 @@ private fun AppScaffold(
                         viewModel.updateSettings {
                             if (choice == null) it.copy(followSystemLanguage = true)
                             else it.copy(
-                                language = if (choice == "ar") AppLanguage.ARABIC else AppLanguage.ENGLISH,
+                                language = AppLanguage.entries.firstOrNull { it.languageCode == choice } ?: AppLanguage.ENGLISH,
                                 followSystemLanguage = false,
                             )
                         }
