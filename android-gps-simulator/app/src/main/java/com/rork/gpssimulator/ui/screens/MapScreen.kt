@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -166,6 +167,27 @@ fun MapScreen(
         sessionKind == SessionKind.JOYSTICK || settings.joystickEnabled
 
     val reducedMotion = rememberReducedMotion()
+    val hopScale = remember { Animatable(1f) }
+    var lastStaticMockPoint by remember { mutableStateOf<LatLng?>(null) }
+
+    LaunchedEffect(activePoint, sessionKind, isMockActive, reducedMotion) {
+        val point = activePoint
+        if (!isMockActive || point == null || isMotionSession) {
+            lastStaticMockPoint = null
+            hopScale.snapTo(1f)
+        } else {
+            val prior = lastStaticMockPoint
+            lastStaticMockPoint = point
+            if (prior != null && prior != point && !reducedMotion) {
+                // Bounce at the new position on screen. Avoid visually simulating
+                // geographic travel, especially across countries or waterways.
+                hopScale.snapTo(0.78f)
+                hopScale.animateTo(1.30f, animationSpec = tween(260))
+                hopScale.animateTo(0.90f, animationSpec = tween(260))
+                hopScale.animateTo(1f, animationSpec = tween(300))
+            } else hopScale.snapTo(1f)
+        }
+    }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
         initialValue = 0f,
@@ -237,6 +259,7 @@ fun MapScreen(
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
+                    visualScale = hopScale.value,
                 ),
             )
         }
