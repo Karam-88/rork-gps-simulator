@@ -76,6 +76,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -226,6 +229,10 @@ fun SettingsScreen(
         }
     }
 
+    // Settings rows follow the selected UI language; keep the map canvas itself LTR.
+    CompositionLocalProvider(
+        LocalLayoutDirection provides if (settings.language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr,
+    ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -745,7 +752,7 @@ fun SettingsScreen(
                             icon = Icons.Default.Upload,
                             title = strings[K.export_locations],
                             description = strings[K.import_export_desc],
-                            enabled = savedLocations.isNotEmpty(),
+                            enabled = true,
                             onClick = {
                                 if (savedLocations.isEmpty()) {
                                     viewModel.postMessage(strings[K.nothing_to_export], isError = true)
@@ -774,7 +781,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.CloudUpload,
                             title = strings[K.export_routes],
-                            enabled = routes.isNotEmpty(),
+                            enabled = true,
                             onClick = {
                                 if (routes.isEmpty()) {
                                     viewModel.postMessage(strings[K.nothing_to_export], isError = true)
@@ -804,8 +811,11 @@ fun SettingsScreen(
                             icon = Icons.Default.DeleteSweep,
                             title = strings[K.clear_history],
                             iconTint = appColors.warning,
-                            enabled = history.isNotEmpty(),
-                            onClick = { confirm = OpenConfirm.CLEAR_HISTORY },
+                            enabled = true,
+                            onClick = {
+                                if (history.isEmpty()) viewModel.postMessage(strings[K.nothing_to_export])
+                                else confirm = OpenConfirm.CLEAR_HISTORY
+                            },
                         )
                         RowDivider()
                     }
@@ -814,8 +824,11 @@ fun SettingsScreen(
                             icon = Icons.Default.Star,
                             title = strings[K.clear_favorites],
                             iconTint = appColors.warning,
-                            enabled = savedLocations.any { it.kind == SavedKind.FAVORITE },
-                            onClick = { confirm = OpenConfirm.CLEAR_FAVORITES },
+                            enabled = true,
+                            onClick = {
+                                if (savedLocations.none { it.kind == SavedKind.FAVORITE }) viewModel.postMessage(strings[K.nothing_to_export])
+                                else confirm = OpenConfirm.CLEAR_FAVORITES
+                            },
                         )
                         RowDivider()
                     }
@@ -824,8 +837,11 @@ fun SettingsScreen(
                             icon = Icons.Default.Science,
                             title = strings[K.clear_presets],
                             iconTint = appColors.warning,
-                            enabled = savedLocations.any { it.kind == SavedKind.PRESET },
-                            onClick = { confirm = OpenConfirm.CLEAR_PRESETS },
+                            enabled = true,
+                            onClick = {
+                                if (savedLocations.none { it.kind == SavedKind.PRESET }) viewModel.postMessage(strings[K.nothing_to_export])
+                                else confirm = OpenConfirm.CLEAR_PRESETS
+                            },
                         )
                         RowDivider()
                     }
@@ -1119,6 +1135,7 @@ fun SettingsScreen(
             onDismiss = { confirm = OpenConfirm.NONE },
         )
         OpenConfirm.NONE -> Unit
+    }
     }
 }
 
