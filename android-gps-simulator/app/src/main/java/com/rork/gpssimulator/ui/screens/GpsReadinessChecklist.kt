@@ -114,10 +114,8 @@ fun GpsReadinessChecklist(
 ) {
     val context = LocalContext.current
     val systemLanguage = Resources.getSystem().configuration.locales[0].language
-    // Match the app-wide automatic/manual setting, not a separate onboarding-only default.
-    var localPreviewLanguage by remember { mutableStateOf<String?>(null) }
-    val appLanguage = if (selectedLanguage == AppLanguage.ARABIC) "ar" else "en"
-    val language = localPreviewLanguage ?: if (followSystemLanguage) systemLanguage else appLanguage
+    val language = if (followSystemLanguage) systemLanguage else selectedLanguage.languageCode
+    var languageMenuExpanded by remember { mutableStateOf(false) }
     fun t(ar: String, de: String, en: String) = when (language) {
         "ar" -> ar
         "de" -> de
@@ -182,40 +180,37 @@ fun GpsReadinessChecklist(
                         color = muted,
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf(
-                            null to t("تلقائي", "Auto", "Auto"),
-                            "ar" to "العربية",
-                            "de" to "Deutsch",
-                            "en" to "English",
-                        ).forEach { (choice, name) ->
-                            val selected = if (choice == null) {
-                                followSystemLanguage && localPreviewLanguage == null
-                            } else if (choice == "de") {
-                                localPreviewLanguage == "de"
-                            } else {
-                                !followSystemLanguage && localPreviewLanguage == null && appLanguage == choice
-                            }
-                            OutlinedButton(
+                    // A dropdown is usable on small phones and supports all language names.
+                    Box {
+                        OutlinedButton(
+                            onClick = { languageMenuExpanded = true },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = labelColor),
+                            border = BorderStroke(1.dp, blue.copy(alpha = 0.6f)),
+                        ) {
+                            Text(
+                                if (followSystemLanguage) t("تلقائي · لغة الجهاز", "Automatisch · Gerätesprache", "Automatic · Phone language")
+                                else selectedLanguage.nativeName,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = languageMenuExpanded,
+                            onDismissRequest = { languageMenuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(t("تلقائي · لغة الجهاز", "Automatisch · Gerätesprache", "Automatic · Phone language")) },
                                 onClick = {
-                                    if (choice == "de") {
-                                        // German is available for this setup screen. App-wide
-                                        // manual selection waits for full German localization.
-                                        localPreviewLanguage = "de"
-                                    } else {
-                                        localPreviewLanguage = null
-                                        onLanguageSelected(choice)
-                                    }
+                                    languageMenuExpanded = false
+                                    onLanguageSelected(null)
                                 },
-                                modifier = Modifier.weight(1f).height(38.dp),
-                                contentPadding = PaddingValues(horizontal = 2.dp),
-                                border = BorderStroke(1.dp, if (selected) blue else Color(0xFF5D697A)),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (selected) blue.copy(alpha = 0.20f) else Color.Transparent,
-                                    contentColor = labelColor,
-                                ),
-                            ) {
-                                Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                            )
+                            AppLanguage.entries.forEach { available ->
+                                DropdownMenuItem(
+                                    text = { Text(available.nativeName) },
+                                    onClick = {
+                                        languageMenuExpanded = false
+                                        onLanguageSelected(available.languageCode)
+                                    },
+                                )
                             }
                         }
                     }
