@@ -813,7 +813,7 @@ fun SettingsScreen(
                             iconTint = appColors.warning,
                             enabled = true,
                             onClick = {
-                                if (history.isEmpty()) viewModel.postMessage(strings[K.nothing_to_export])
+                                if (history.isEmpty()) viewModel.postMessage(strings[K.no_data_to_clear])
                                 else confirm = OpenConfirm.CLEAR_HISTORY
                             },
                         )
@@ -826,7 +826,7 @@ fun SettingsScreen(
                             iconTint = appColors.warning,
                             enabled = true,
                             onClick = {
-                                if (savedLocations.none { it.kind == SavedKind.FAVORITE }) viewModel.postMessage(strings[K.nothing_to_export])
+                                if (savedLocations.none { it.kind == SavedKind.FAVORITE }) viewModel.postMessage(strings[K.no_data_to_clear])
                                 else confirm = OpenConfirm.CLEAR_FAVORITES
                             },
                         )
@@ -839,7 +839,7 @@ fun SettingsScreen(
                             iconTint = appColors.warning,
                             enabled = true,
                             onClick = {
-                                if (savedLocations.none { it.kind == SavedKind.PRESET }) viewModel.postMessage(strings[K.nothing_to_export])
+                                if (savedLocations.none { it.kind == SavedKind.PRESET }) viewModel.postMessage(strings[K.no_data_to_clear])
                                 else confirm = OpenConfirm.CLEAR_PRESETS
                             },
                         )
