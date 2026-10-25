@@ -120,6 +120,13 @@ fun GpsReadinessChecklist(
         "ar" -> ar
         "de" -> de
         "fr" -> when (en) {
+            "Automatic · Phone language" -> "Automatique · Langue du téléphone"
+            "Recommended for stability (optional)" -> "Recommandé pour la stabilité (facultatif)"
+            "Battery: Unrestricted" -> "Batterie : sans restriction"
+            "Complete all four required checks to continue" -> "Effectuez les quatre vérifications requises pour continuer"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Activez ces paramètres pour les positions fictives. Les vérifications se mettent à jour automatiquement."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "Dans les options pour les développeurs : Localisation → Application de position fictive → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "La détection de la batterie peut être imprécise sur certains Samsung. Elle ne bloque pas l'accès."
             "Select GPS Simulator as mock app" -> "Sélectionner GPS Simulator comme application de position fictive"
             "Allow precise location" -> "Autoriser la localisation précise"
             "Set up GPS Simulator" -> "Configurer GPS Simulator"
@@ -134,6 +141,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "es" -> when (en) {
+            "Automatic · Phone language" -> "Automático · Idioma del teléfono"
+            "Recommended for stability (optional)" -> "Recomendado para mayor estabilidad (opcional)"
+            "Battery: Unrestricted" -> "Batería: sin restricciones"
+            "Complete all four required checks to continue" -> "Completa las cuatro comprobaciones para continuar"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Activa estos ajustes para ubicaciones simuladas. Las comprobaciones se actualizan automáticamente."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "En Opciones de desarrollador: Ubicación → Seleccionar aplicación de ubicación simulada → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "La detección de batería puede no reflejar algunos ajustes de Samsung. No impide continuar."
             "Select GPS Simulator as mock app" -> "Seleccionar GPS Simulator como aplicación de ubicación simulada"
             "Allow precise location" -> "Permitir ubicación precisa"
             "Set up GPS Simulator" -> "Configurar GPS Simulator"
@@ -148,6 +162,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "tr" -> when (en) {
+            "Automatic · Phone language" -> "Otomatik · Telefon dili"
+            "Recommended for stability (optional)" -> "Kararlılık için önerilir (isteğe bağlı)"
+            "Battery: Unrestricted" -> "Pil: Kısıtlanmamış"
+            "Complete all four required checks to continue" -> "Devam etmek için dört gerekli kontrolü tamamlayın"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Sahte konum için gerekli ayarları açın. Kontroller otomatik güncellenir."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "Geliştirici seçeneklerinde: Konum → Sahte konum uygulamasını seç → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "Pil denetimi bazı Samsung ayarlarını algılamayabilir. Devam etmeyi engellemez."
             "Select GPS Simulator as mock app" -> "GPS Simulator uygulamasını sahte konum uygulaması seç"
             "Allow precise location" -> "Hassas konuma izin ver"
             "Set up GPS Simulator" -> "GPS Simulator kurulumu"
@@ -162,6 +183,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "pt" -> when (en) {
+            "Automatic · Phone language" -> "Automático · Idioma do telefone"
+            "Recommended for stability (optional)" -> "Recomendado para estabilidade (opcional)"
+            "Battery: Unrestricted" -> "Bateria: sem restrições"
+            "Complete all four required checks to continue" -> "Conclua as quatro verificações para continuar"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Ative estas definições para localizações simuladas. As verificações atualizam automaticamente."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "Nas opções do desenvolvedor: Localização → Selecionar app de localização simulada → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "A deteção da bateria pode não refletir algumas definições Samsung. Não impede a entrada."
             "Select GPS Simulator as mock app" -> "Selecionar GPS Simulator como app de localização simulada"
             "Allow precise location" -> "Permitir localização precisa"
             "Set up GPS Simulator" -> "Configurar GPS Simulator"
@@ -176,6 +204,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ru" -> when (en) {
+            "Automatic · Phone language" -> "Автоматически · Язык телефона"
+            "Recommended for stability (optional)" -> "Рекомендуется для стабильности (необязательно)"
+            "Battery: Unrestricted" -> "Батарея: без ограничений"
+            "Complete all four required checks to continue" -> "Для продолжения выполните четыре обязательные проверки"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Включите настройки для фиктивного местоположения. Проверки обновляются автоматически."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "В параметрах разработчика: Местоположение → Выбрать приложение для фиктивной геолокации → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "Проверка батареи может не учитывать настройки некоторых Samsung. Это не блокирует вход."
             "Select GPS Simulator as mock app" -> "Выбрать GPS Simulator для фиктивной геолокации"
             "Allow precise location" -> "Разрешить точное местоположение"
             "Set up GPS Simulator" -> "Настройка GPS Simulator"
@@ -190,6 +225,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "id" -> when (en) {
+            "Automatic · Phone language" -> "Otomatis · Bahasa ponsel"
+            "Recommended for stability (optional)" -> "Disarankan untuk stabilitas (opsional)"
+            "Battery: Unrestricted" -> "Baterai: Tanpa batasan"
+            "Complete all four required checks to continue" -> "Selesaikan empat pemeriksaan wajib untuk melanjutkan"
+            "Enable these required settings for mock locations. Checks update automatically." -> "Aktifkan pengaturan lokasi tiruan ini. Pemeriksaan diperbarui otomatis."
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "Di opsi pengembang: Lokasi → Pilih aplikasi lokasi tiruan → GPS Simulator."
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "Pemeriksaan baterai mungkin tidak mendeteksi pengaturan Samsung tertentu. Ini tidak menghalangi akses."
             "Select GPS Simulator as mock app" -> "Pilih GPS Simulator sebagai aplikasi lokasi tiruan"
             "Allow precise location" -> "Izinkan lokasi akurat"
             "Set up GPS Simulator" -> "Siapkan GPS Simulator"
@@ -204,6 +246,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "hi" -> when (en) {
+            "Automatic · Phone language" -> "स्वचालित · फ़ोन की भाषा"
+            "Recommended for stability (optional)" -> "स्थिरता के लिए अनुशंसित (वैकल्पिक)"
+            "Battery: Unrestricted" -> "बैटरी: अप्रतिबंधित"
+            "Complete all four required checks to continue" -> "जारी रखने के लिए चारों आवश्यक जाँच पूरी करें"
+            "Enable these required settings for mock locations. Checks update automatically." -> "नकली स्थान के लिए आवश्यक सेटिंग चालू करें। जाँच अपने आप अपडेट होती है।"
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "डेवलपर विकल्पों में: स्थान → मॉक लोकेशन ऐप चुनें → GPS Simulator।"
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "कुछ Samsung सेटिंग बैटरी जाँच में नहीं दिख सकतीं। इससे आगे बढ़ना नहीं रुकेगा।"
             "Select GPS Simulator as mock app" -> "GPS Simulator को मॉक लोकेशन ऐप चुनें"
             "Allow precise location" -> "सटीक स्थान की अनुमति दें"
             "Set up GPS Simulator" -> "GPS Simulator सेटअप करें"
@@ -218,6 +267,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "ja" -> when (en) {
+            "Automatic · Phone language" -> "自動 · 端末の言語"
+            "Recommended for stability (optional)" -> "安定性のため推奨（任意）"
+            "Battery: Unrestricted" -> "バッテリー：制限なし"
+            "Complete all four required checks to continue" -> "続行するには必須の4項目を完了してください"
+            "Enable these required settings for mock locations. Checks update automatically." -> "仮の位置情報に必要な設定を有効にしてください。確認結果は自動更新されます。"
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "開発者向けオプション：位置情報 → 仮の位置情報アプリを選択 → GPS Simulator。"
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "一部のSamsung端末ではバッテリー設定を正しく検出できません。続行は可能です。"
             "Select GPS Simulator as mock app" -> "GPS Simulator を仮の位置情報アプリに選択"
             "Allow precise location" -> "正確な位置情報を許可"
             "Set up GPS Simulator" -> "GPS Simulator の設定"
@@ -232,6 +288,13 @@ fun GpsReadinessChecklist(
             else -> en
         }
         "zh" -> when (en) {
+            "Automatic · Phone language" -> "自动 · 手机语言"
+            "Recommended for stability (optional)" -> "建议开启以提高稳定性（可选）"
+            "Battery: Unrestricted" -> "电池：不受限制"
+            "Complete all four required checks to continue" -> "请完成全部四项必需检查后继续"
+            "Enable these required settings for mock locations. Checks update automatically." -> "请启用模拟位置所需的设置。检查结果会自动更新。"
+            "In Developer options: Location → Select mock location app → GPS Simulator." -> "在开发者选项中：位置信息 → 选择模拟位置应用 → GPS Simulator。"
+            "Battery detection may not reflect some Samsung settings. It does not block entry." -> "部分三星设备的电池设置可能无法被准确检测，但不会阻止继续。"
             "Select GPS Simulator as mock app" -> "选择 GPS Simulator 作为模拟位置应用"
             "Allow precise location" -> "允许精确定位"
             "Set up GPS Simulator" -> "设置 GPS Simulator"
