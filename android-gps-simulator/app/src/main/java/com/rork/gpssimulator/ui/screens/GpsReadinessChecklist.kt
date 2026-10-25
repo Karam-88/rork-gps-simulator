@@ -235,6 +235,8 @@ fun GpsReadinessChecklist(
                             actionLabel = t("فتح", "Öffnen", "Open"),
                             checked = status.developer,
                             background = cardColor,
+                            completeLabel = t("مكتمل", "Erledigt", "Complete"),
+                            requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = { openSetting(context, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)) },
                         )
                         GpsSetupStep(
@@ -242,6 +244,8 @@ fun GpsReadinessChecklist(
                             actionLabel = t("اختيار", "Wählen", "Select"),
                             checked = status.mockSelected,
                             background = cardColor,
+                            completeLabel = t("مكتمل", "Erledigt", "Complete"),
+                            requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = { openMockLocationPickerSettings(context) },
                         )
                         if (!status.mockSelected) {
@@ -261,6 +265,8 @@ fun GpsReadinessChecklist(
                             actionLabel = t("السماح", "Erlauben", "Allow"),
                             checked = status.locationGranted,
                             background = cardColor,
+                            completeLabel = t("مكتمل", "Erledigt", "Complete"),
+                            requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = {
                                 requestLocation.launch(arrayOf(
                                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -273,6 +279,8 @@ fun GpsReadinessChecklist(
                             actionLabel = t("فتح", "Öffnen", "Open"),
                             checked = status.locationEnabled,
                             background = cardColor,
+                            completeLabel = t("مكتمل", "Erledigt", "Complete"),
+                            requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = { openSetting(context, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
                         )
                         HorizontalDivider(color = Color(0xFF3D4552))
@@ -286,6 +294,8 @@ fun GpsReadinessChecklist(
                             actionLabel = t("فتح", "Öffnen", "Open"),
                             checked = status.batteryExempt,
                             background = cardColor,
+                            completeLabel = t("مكتمل", "Erledigt", "Complete"),
+                            requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = {
                                 openSetting(
                                     context,
@@ -342,6 +352,8 @@ private fun GpsSetupStep(
     checked: Boolean,
     background: Color,
     onClick: () -> Unit,
+    completeLabel: String,
+    requiredLabel: String,
 ) {
     Surface(
         shape = RoundedCornerShape(17.dp),
@@ -355,7 +367,7 @@ private fun GpsSetupStep(
         ) {
             Icon(
                 if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = if (checked) "Complete" else "Required",
+                contentDescription = if (checked) completeLabel else requiredLabel,
                 tint = if (checked) Color(0xFF52D69B) else Color(0xFF8996A8),
                 modifier = Modifier.size(23.dp),
             )
