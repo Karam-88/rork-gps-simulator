@@ -781,7 +781,11 @@ private val AR: Map<K, String> = mapOf(
 
 /** Resolved string table for the active language. */
 class Strings(val language: AppLanguage) {
-    private val table: Map<K, String> = if (language == AppLanguage.ARABIC) AR else EN
+    private val table: Map<K, String> = when (language) {
+        AppLanguage.ARABIC -> AR
+        AppLanguage.ENGLISH -> EN
+        else -> primaryLocaleTranslations[language].orEmpty()
+    }
     private val fallback: Map<K, String> = EN
 
     operator fun get(key: K): String = table[key] ?: fallback[key] ?: key.name
