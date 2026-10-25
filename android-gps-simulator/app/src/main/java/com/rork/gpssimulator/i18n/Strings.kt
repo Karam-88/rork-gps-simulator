@@ -72,7 +72,7 @@ enum class K {
     export_locations, export_routes, import_locations, import_gpx, clear_favorites,
     clear_favorites_confirm, clear_presets, clear_presets_confirm, delete_all_data,
     delete_all_data_desc, delete_all_data_confirm, local_data_info, local_data_body,
-    export_success, import_success, import_failed, nothing_to_export,
+    export_success, import_success, import_failed, nothing_to_export, no_data_to_clear,
 
     // App
     share_app, share_app_desc, rate_app, rate_app_desc, send_feedback,
@@ -348,6 +348,7 @@ private val EN: Map<K, String> = mapOf(
     K.import_success to "Import complete",
     K.import_failed to "File could not be read",
     K.nothing_to_export to "Nothing to export",
+    K.no_data_to_clear to "No saved data to clear",
 
     K.share_app to "Share App",
     K.share_app_desc to "Send a link using the Android share sheet",
@@ -683,6 +684,7 @@ private val AR: Map<K, String> = mapOf(
     K.import_success to "اكتمل الاستيراد",
     K.import_failed to "تعذّرت قراءة الملف",
     K.nothing_to_export to "لا يوجد ما يتم تصديره",
+    K.no_data_to_clear to "لا توجد بيانات محفوظة لمسحها",
 
     K.share_app to "مشاركة التطبيق",
     K.share_app_desc to "إرسال رابط عبر قائمة المشاركة",
