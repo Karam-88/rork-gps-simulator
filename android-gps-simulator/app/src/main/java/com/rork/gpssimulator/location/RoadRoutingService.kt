@@ -66,8 +66,9 @@ class RoadRoutingService {
                 if (index < stops.size - 2) delay(1100) // public provider <= 1 request/sec
             }
             require(allPoints.size >= 2) { "Could not calculate a real route." }
-            // The route has already been explicitly closed when loop is enabled.
-            route.copy(points = allPoints, loop = false)
+            // A loop geometry already closes back to the first point; keeping the
+            // loop flag preserves repeated playback without a new straight leg.
+            route.copy(points = allPoints)
         }
     }
 }
