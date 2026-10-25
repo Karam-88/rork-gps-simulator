@@ -120,6 +120,17 @@ fun AppNavigation() {
                         onboardingPrefs.edit().putBoolean("gps_setup_modal_v2_completed", true).apply()
                         setupSeen = true
                     },
+                    selectedLanguage = settings.language,
+                    followSystemLanguage = settings.followSystemLanguage,
+                    onLanguageSelected = { choice ->
+                        viewModel.updateSettings {
+                            if (choice == null) it.copy(followSystemLanguage = true)
+                            else it.copy(
+                                language = if (choice == "ar") AppLanguage.ARABIC else AppLanguage.ENGLISH,
+                                followSystemLanguage = false,
+                            )
+                        }
+                    },
                 )
             } else {
                 AppScaffold(
@@ -332,6 +343,17 @@ private fun AppScaffold(
             composable(Routes.MOCK_SETUP) {
                 GpsReadinessChecklist(
                     onFinished = { navController.popBackStack() },
+                    selectedLanguage = settings.language,
+                    followSystemLanguage = settings.followSystemLanguage,
+                    onLanguageSelected = { choice ->
+                        viewModel.updateSettings {
+                            if (choice == null) it.copy(followSystemLanguage = true)
+                            else it.copy(
+                                language = if (choice == "ar") AppLanguage.ARABIC else AppLanguage.ENGLISH,
+                                followSystemLanguage = false,
+                            )
+                        }
+                    },
                 )
             }
             composable(Routes.ABOUT) {
