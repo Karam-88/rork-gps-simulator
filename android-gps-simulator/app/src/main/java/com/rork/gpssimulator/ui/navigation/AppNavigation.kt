@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -80,6 +81,14 @@ fun AppNavigation() {
     val viewModel: AppViewModel = viewModel()
     val settings by viewModel.settings.collectAsState()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val phoneLocale = configuration.locales[0]
+    val preferredPhoneLanguage = AppLanguage.fromDeviceLocale(phoneLocale)
+    LaunchedEffect(preferredPhoneLanguage, settings.followSystemLanguage) {
+        if (settings.followSystemLanguage && settings.language != preferredPhoneLanguage) {
+            viewModel.updateSettings { it.copy(language = preferredPhoneLanguage) }
+        }
+    }
     val onboardingPrefs = remember {
         context.getSharedPreferences("gps_simulator_onboarding", Context.MODE_PRIVATE)
     }
