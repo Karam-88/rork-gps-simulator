@@ -2,10 +2,15 @@ package com.rork.gpssimulator.ui.navigation
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -33,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rork.gpssimulator.data.model.ThemeMode
+import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.i18n.Strings
@@ -139,6 +145,33 @@ private fun AppScaffold(
     val snackbarHostState = remember { SnackbarHostState() }
     val message by viewModel.message.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    val mockState by viewModel.mockState.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    val context = LocalContext.current
+    val ratingPrefs = remember(context) {
+        context.getSharedPreferences("gps_simulator_rating_prompt", Context.MODE_PRIVATE)
+    }
+    var showRatingPrompt by remember { mutableStateOf(false) }
+    var sessionWasActive by remember { mutableStateOf(mockState == MockState.MOCK_ACTIVE) }
+    val isArabicRating = settings.language == AppLanguage.ARABIC
+
+    // Count completed successful sessions, not app launches or attempted starts.
+    LaunchedEffect(mockState) {
+        val active = mockState == MockState.MOCK_ACTIVE
+        if (active) {
+            sessionWasActive = true
+        } else if (sessionWasActive) {
+            sessionWasActive = false
+            val completed = ratingPrefs.getInt("completed_sessions", 0) + 1
+            ratingPrefs.edit().putInt("completed_sessions", completed).apply()
+            val neverAsk = ratingPrefs.getBoolean("never_ask", false)
+            val nextEligible = ratingPrefs.getLong("next_eligible_at", 0L)
+            if (!neverAsk && completed >= 3 && System.currentTimeMillis() >= nextEligible) {
+                showRatingPrompt = true
+            }
+        }
+    }
+
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -172,6 +205,55 @@ private fun AppScaffold(
         val current = message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(current.text, duration = SnackbarDuration.Short)
         viewModel.consumeMessage()
+    }
+
+    if (showRatingPrompt && mockState != MockState.MOCK_ACTIVE) {
+        AlertDialog(
+            onDismissRequest = {
+                ratingPrefs.edit()
+                    .putLong("next_eligible_at", System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000)
+                    .apply()
+                showRatingPrompt = false
+            },
+            title = { Text(if (isArabicRating) "هل يعجبك GPS Simulator؟" else "Enjoying GPS Simulator?") },
+            text = {
+                Text(
+                    if (isArabicRating)
+                        "التطبيق مجاني، وتقييمك يساعدنا على تطويره وتحسينه. شكرًا لدعمك!"
+                    else "GPS Simulator is free. Your review helps us improve it. Thank you for your support!",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    ratingPrefs.edit().putBoolean("never_ask", true).apply()
+                    showRatingPrompt = false
+                    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+                    try {
+                        context.startActivity(market)
+                    } catch (_: Exception) {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")),
+                            )
+                        }
+                    }
+                }) { Text(if (isArabicRating) "تقييم التطبيق" else "Rate app") }
+            },
+            dismissButton = {
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = {
+                        ratingPrefs.edit()
+                            .putLong("next_eligible_at", System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000)
+                            .apply()
+                        showRatingPrompt = false
+                    }) { Text(if (isArabicRating) "ربما لاحقًا" else "Maybe later") }
+                    TextButton(onClick = {
+                        ratingPrefs.edit().putBoolean("never_ask", true).apply()
+                        showRatingPrompt = false
+                    }) { Text(if (isArabicRating) "لا شكرًا" else "No thanks") }
+                }
+            },
+        )
     }
 
     Scaffold(
