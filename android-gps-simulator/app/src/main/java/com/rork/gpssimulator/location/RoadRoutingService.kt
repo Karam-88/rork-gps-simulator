@@ -5,6 +5,7 @@ import com.rork.gpssimulator.data.model.SimRoute
 import com.rork.gpssimulator.data.model.SpeedProfile
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -23,7 +24,14 @@ import kotlinx.serialization.json.jsonPrimitive
  * Fail closed: a failed route never becomes a fabricated straight-line session.
  */
 class RoadRoutingService {
-    private val client = HttpClient(Android) { expectSuccess = false }
+    private val client = HttpClient(Android) {
+        expectSuccess = false
+        install(HttpTimeout) {
+            requestTimeoutMillis = 20_000
+            connectTimeoutMillis = 10_000
+            socketTimeoutMillis = 15_000
+        }
+    }
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun resolve(route: SimRoute): Result<SimRoute> = withContext(Dispatchers.IO) {
@@ -65,7 +73,7 @@ class RoadRoutingService {
                 allPoints.addAll(if (index == 0) segment else segment.drop(1))
                 if (index < stops.size - 2) delay(1100) // public provider <= 1 request/sec
             }
-            require(allPoints.size >= 2) { "Could not calculate a real route." }
+            require(allPoints.size >= 2 && allPoints.size <= 300_000) { "Could not calculate a real route." }
             // A loop geometry already closes back to the first point; keeping the
             // loop flag preserves repeated playback without a new straight leg.
             route.copy(points = allPoints)
