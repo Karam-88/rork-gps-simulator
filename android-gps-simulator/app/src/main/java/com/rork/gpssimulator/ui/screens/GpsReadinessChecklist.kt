@@ -143,6 +143,54 @@ fun GpsReadinessChecklist(
             "Allow" -> "İzin ver"
             else -> en
         }
+        "pt" -> when (en) {
+            "Complete" -> "Concluído"
+            "Required" -> "Obrigatório"
+            "Open" -> "Abrir"
+            "Select" -> "Selecionar"
+            "Allow" -> "Permitir"
+            else -> en
+        }
+        "ru" -> when (en) {
+            "Complete" -> "Выполнено"
+            "Required" -> "Обязательно"
+            "Open" -> "Открыть"
+            "Select" -> "Выбрать"
+            "Allow" -> "Разрешить"
+            else -> en
+        }
+        "id" -> when (en) {
+            "Complete" -> "Selesai"
+            "Required" -> "Wajib"
+            "Open" -> "Buka"
+            "Select" -> "Pilih"
+            "Allow" -> "Izinkan"
+            else -> en
+        }
+        "hi" -> when (en) {
+            "Complete" -> "पूरा हुआ"
+            "Required" -> "आवश्यक"
+            "Open" -> "खोलें"
+            "Select" -> "चुनें"
+            "Allow" -> "अनुमति दें"
+            else -> en
+        }
+        "ja" -> when (en) {
+            "Complete" -> "完了"
+            "Required" -> "必須"
+            "Open" -> "開く"
+            "Select" -> "選択"
+            "Allow" -> "許可"
+            else -> en
+        }
+        "zh" -> when (en) {
+            "Complete" -> "已完成"
+            "Required" -> "必需"
+            "Open" -> "打开"
+            "Select" -> "选择"
+            "Allow" -> "允许"
+            else -> en
+        }
         else -> en
     }
     var status by remember { mutableStateOf(readSetup(context)) }
