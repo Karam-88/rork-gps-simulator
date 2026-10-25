@@ -308,7 +308,18 @@ fun SettingsScreen(
                         )
                         RowDivider()
                     }
-                    if (filter.matches(strings[K.language], "language", "arabic", "english")) {
+                    if (filter.matches(strings[K.language], "language", "arabic", "english", "automatic")) {
+                        SwitchRow(
+                            icon = Icons.Default.Language,
+                            title = strings[K.follow_phone_language],
+                            checked = settings.followSystemLanguage,
+                            onCheckedChange = { enabled ->
+                                viewModel.updateSettings {
+                                    it.copy(followSystemLanguage = enabled)
+                                }
+                            },
+                        )
+                        RowDivider()
                         SettingRow(
                             icon = Icons.Default.Language,
                             title = strings[K.language],
@@ -318,6 +329,7 @@ fun SettingsScreen(
                                 strings[K.lang_english]
                             },
                             onClick = { openSheet = OpenSheet.LANGUAGE },
+                            enabled = !settings.followSystemLanguage,
                             showChevron = true,
                         )
                         RowDivider()
@@ -974,7 +986,7 @@ fun SettingsScreen(
                 SelectionOption(AppLanguage.ARABIC, strings[K.lang_arabic]),
             ),
             selected = settings.language,
-            onSelect = { value -> viewModel.updateSettings { it.copy(language = value) } },
+            onSelect = { value -> viewModel.updateSettings { it.copy(language = value, followSystemLanguage = false) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.MAP_TYPE -> SelectionSheet(
