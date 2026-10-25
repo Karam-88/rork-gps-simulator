@@ -603,46 +603,74 @@ private fun ActiveMockActionBar(
     onFavorite: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(78.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().height(72.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BottomActionButton(Icons.Default.Close, stopLabel, dangerColor, Color.White, onStop, Modifier.weight(1f))
-        BottomActionButton(Icons.Default.MyLocation, selectLabel, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, onSelect, Modifier.weight(1f))
-        BottomActionButton(Icons.Default.Star, favoriteLabel, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, onFavorite, Modifier.weight(1f))
+        GlassActionButton(
+            icon = Icons.Default.Close,
+            label = stopLabel,
+            accent = dangerColor,
+            isStop = true,
+            onClick = onStop,
+        )
+        GlassActionButton(
+            icon = Icons.Default.MyLocation,
+            label = selectLabel,
+            accent = MaterialTheme.colorScheme.primary,
+            onClick = onSelect,
+        )
+        GlassActionButton(
+            icon = Icons.Default.Star,
+            label = favoriteLabel,
+            accent = MaterialTheme.colorScheme.onSurface,
+            onClick = onFavorite,
+        )
     }
 }
 
 @Composable
-private fun BottomActionButton(
+private fun GlassActionButton(
     icon: ImageVector,
     label: String,
-    containerColor: Color,
-    contentColor: Color,
+    accent: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    isStop: Boolean = false,
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxHeight()
-            .shadow(6.dp, RoundedCornerShape(18.dp))
-            .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor,
+    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f)
+    Box(
+        modifier = Modifier.size(68.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        // Soft red ambient glow only for the stop action; no distracting animation.
+        if (isStop) {
+            Surface(
+                modifier = Modifier.size(66.dp),
+                shape = CircleShape,
+                color = accent.copy(alpha = 0.20f),
+                shadowElevation = 12.dp,
+            ) {}
+        }
+        Surface(
+            modifier = Modifier
+                .size(56.dp)
+                .clickable(role = Role.Button, onClick = onClick),
+            shape = CircleShape,
+            color = if (isStop) accent.copy(alpha = 0.80f) else container,
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.23f),
+            ),
+            shadowElevation = 5.dp,
         ) {
-            Icon(icon, contentDescription = label, tint = contentColor, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = label,
-                color = contentColor,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = if (isStop) Color.White else accent,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
         }
     }
 }
