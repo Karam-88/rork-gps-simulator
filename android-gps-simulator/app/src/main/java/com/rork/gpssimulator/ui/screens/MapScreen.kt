@@ -316,7 +316,7 @@ fun MapScreen(
             }
             MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
                 showMenuPanel = false
-                viewModel.returnToRealLocation()
+                viewModel.centerOnCurrentLocation()
             }
             MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
                 showMenuPanel = false
@@ -506,7 +506,6 @@ fun MapScreen(
             title = strings[K.map_type],
             options = listOf(
                 SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.DETAILED_STREETS, strings[K.detailed_streets]),
                 SelectionOption(MapType.SATELLITE, strings[K.satellite]),
                 SelectionOption(MapType.TERRAIN, strings[K.terrain]),
             ),
