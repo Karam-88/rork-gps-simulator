@@ -787,12 +787,38 @@ class Strings(val language: AppLanguage) {
     operator fun get(key: K): String = table[key] ?: fallback[key] ?: key.name
 }
 
-enum class AppLanguage { ENGLISH, ARABIC;
+enum class AppLanguage(val nativeName: String, val languageCode: String) {
+    ENGLISH("English", "en"),
+    ARABIC("العربية", "ar"),
+    GERMAN("Deutsch", "de"),
+    FRENCH("Français", "fr"),
+    SPANISH("Español", "es"),
+    PORTUGUESE_BRAZIL("Português (Brasil)", "pt"),
+    TURKISH("Türkçe", "tr"),
+    RUSSIAN("Русский", "ru"),
+    HINDI("हिन्दी", "hi"),
+    INDONESIAN("Bahasa Indonesia", "id"),
+    JAPANESE("日本語", "ja"),
+    CHINESE_SIMPLIFIED("简体中文", "zh");
 
     companion object {
-        fun fromDeviceLocale(): AppLanguage =
-            if (java.util.Locale.getDefault().language.equals("ar", ignoreCase = true)) ARABIC
-            else ENGLISH
+        fun fromDeviceLocale(): AppLanguage {
+            val locale = java.util.Locale.getDefault()
+            return when (locale.language.lowercase(java.util.Locale.ROOT)) {
+                "ar" -> ARABIC
+                "de" -> GERMAN
+                "fr" -> FRENCH
+                "es" -> SPANISH
+                "pt" -> PORTUGUESE_BRAZIL
+                "tr" -> TURKISH
+                "ru" -> RUSSIAN
+                "hi" -> HINDI
+                "id", "in" -> INDONESIAN
+                "ja" -> JAPANESE
+                "zh" -> CHINESE_SIMPLIFIED
+                else -> ENGLISH
+            }
+        }
     }
 }
 
