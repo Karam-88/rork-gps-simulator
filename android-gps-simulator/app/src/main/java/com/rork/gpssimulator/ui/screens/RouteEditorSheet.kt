@@ -167,7 +167,7 @@ fun RouteEditorSheet(
                                 MapMarker(
                                     point = point,
                                     color = MaterialTheme.colorScheme.primary,
-                                    radiusMeters = if (activePoint == null) realSample?.accuracy?.toDouble() else settings.accuracyM.toDouble(),
+                                    radiusMeters = if (activePoint == null) (realSample?.accuracy?.toDouble() ?: settings.accuracyM.toDouble()) else settings.accuracyM.toDouble(),
                                     style = MarkerStyle.REAL,
                                 ),
                             )
