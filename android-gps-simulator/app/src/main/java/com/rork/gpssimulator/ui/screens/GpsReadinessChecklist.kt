@@ -420,7 +420,7 @@ fun GpsReadinessChecklist(
                             "ru" -> "Выполнено требований: $completed из 4"
                             "id" -> "$completed dari 4 persyaratan selesai"
                             "hi" -> "4 में से $completed आवश्यकताएँ पूरी"
-                            "ja" -> "必須項目：4件中$completed件完了"
+                            "ja" -> "必須項目：4件中${completed}件完了"
                             "zh" -> "已完成 $completed / 4 项要求"
                             else -> "$completed of 4 requirements"
                         },
