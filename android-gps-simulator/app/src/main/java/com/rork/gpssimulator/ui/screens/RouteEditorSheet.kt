@@ -339,7 +339,7 @@ fun RouteEditorSheet(
                             modifier = Modifier.weight(1.5f).height(44.dp),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text(strings[K.start], style = MaterialTheme.typography.labelMedium)
+                            Text(strings[K.start_route], style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
