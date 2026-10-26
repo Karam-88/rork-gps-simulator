@@ -3,6 +3,9 @@ package com.rork.gpssimulator.ui.screens
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -65,6 +68,9 @@ fun ReportProblemDialog(
     val copy = remember(language) { textFor(language) }
     var description by remember { mutableStateOf("") }
     var mailError by remember { mutableStateOf(false) }
+    var sending by remember { mutableStateOf(false) }
+    var sent by remember { mutableStateOf(false) }
+    var sendError by remember { mutableStateOf(false) }
     var selectedIssue by remember { mutableStateOf(0) }
     val arabic = language == AppLanguage.ARABIC
     val issueLabels = if (arabic) listOf(
@@ -119,11 +125,14 @@ fun ReportProblemDialog(
                 )
                 Text(copy.description)
                 if (mailError) Text(copy.missingEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                if (sending) Text(if (arabic) "جارٍ إرسال البلاغ..." else "Sending report...")
+                if (sent) Text(if (arabic) "تم إرسال بلاغك بنجاح" else "Report sent successfully")
+                if (sendError) Text(if (arabic) "تعذر الإرسال. تحقق من الإنترنت وحاول مجددًا." else "Could not send. Check your connection and retry.", color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
             Button(
-                enabled = description.isNotBlank(),
+                enabled = description.isNotBlank() && !sending && !sent,
                 onClick = {
                     val version = runCatching {
                         @Suppress("DEPRECATION")
@@ -137,23 +146,35 @@ fun ReportProblemDialog(
                         append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
                         append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
                     }
-                    // ACTION_SEND with MIME type preserves the body in Gmail.
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "message/rfc822"
-                        putExtra(Intent.EXTRA_EMAIL, arrayOf("gps.simulator.support@gmail.com"))
-                        putExtra(Intent.EXTRA_SUBJECT, copy.subject)
-                        putExtra(Intent.EXTRA_TEXT, body)
+                    sending = true
+                    sendError = false
+                    val auth = FirebaseAuth.getInstance()
+                    fun submit(uid: String) {
+                        val report = hashMapOf<String, Any>(
+                            "userId" to uid,
+                            "issueType" to selectedIssue,
+                            "description" to description.trim(),
+                            "appVersion" to version,
+                            "androidVersion" to Build.VERSION.RELEASE,
+                            "deviceModel" to (Build.MANUFACTURER + " " + Build.MODEL),
+                            "createdAt" to FieldValue.serverTimestamp(),
+                        )
+                        FirebaseFirestore.getInstance().collection("problem_reports")
+                            .add(report)
+                            .addOnSuccessListener { sending = false; sent = true }
+                            .addOnFailureListener { sending = false; sendError = true }
                     }
-                    try {
-                        context.startActivity(intent)
-                        onDismiss()
-                    } catch (_: ActivityNotFoundException) {
-                        mailError = true
-                    } catch (_: SecurityException) {
-                        mailError = true
-                    }
+                    val current = auth.currentUser
+                    if (current != null) submit(current.uid)
+                    else auth.signInAnonymously()
+                        .addOnSuccessListener { result ->
+                            val uid = result.user?.uid
+                            if (uid != null) submit(uid)
+                            else { sending = false; sendError = true }
+                        }
+                        .addOnFailureListener { sending = false; sendError = true }
                 },
-            ) { Text(copy.send) }
+            ) { Text(if (arabic) "إرسال البلاغ" else "Send report") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(copy.cancel) } },
     )
