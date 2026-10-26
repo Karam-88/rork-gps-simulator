@@ -84,6 +84,7 @@ fun RouteEditorSheet(
     existing: SimRoute?,
     viewModel: AppViewModel,
     onSave: (SimRoute) -> Unit,
+    onStart: (SimRoute) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val strings = LocalStrings.current
@@ -115,15 +116,16 @@ fun RouteEditorSheet(
         initialZoom = 14f,
     )
 
+    val routeName = name.trim().ifBlank { "${strings[K.create_route]} ${System.currentTimeMillis() / 1000}" }
     val draft = SimRoute(
         id = existing?.id ?: "",
-        name = name,
+        name = routeName,
         points = points.toList(),
         profile = profile,
         customSpeedKmh = existing?.customSpeedKmh ?: settings.customSpeedKmh.toDouble(),
         loop = loop,
     )
-    val isValid = name.isNotBlank() && points.size >= 2
+    val isValid = points.size >= 2
 
     val profiles = listOf(
         Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
@@ -237,12 +239,33 @@ fun RouteEditorSheet(
                         .weight(1f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    Text(
-                        text = strings[K.create_route],
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = strings[K.create_route],
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Button(
+                            onClick = {
+                                onSave(
+                                    draft.copy(
+                                        id = existing?.id ?: UUID.randomUUID().toString(),
+                                        createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                                    ),
+                                )
+                            },
+                            enabled = isValid,
+                            modifier = Modifier.height(40.dp),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(strings[K.save], style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                     val isArabic = settings.language == AppLanguage.ARABIC
                     CompositionLocalProvider(
                         LocalLayoutDirection provides if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr,
@@ -305,7 +328,7 @@ fun RouteEditorSheet(
                         }
                         Button(
                             onClick = {
-                                onSave(
+                                onStart(
                                     draft.copy(
                                         id = existing?.id ?: UUID.randomUUID().toString(),
                                         createdAt = existing?.createdAt ?: System.currentTimeMillis(),
@@ -316,7 +339,7 @@ fun RouteEditorSheet(
                             modifier = Modifier.weight(1.5f).height(44.dp),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text(strings[K.save], style = MaterialTheme.typography.labelMedium)
+                            Text(strings[K.start], style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
