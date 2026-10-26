@@ -5,10 +5,12 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -695,10 +699,35 @@ private fun GlassActionButton(
     isStop: Boolean = false,
 ) {
     val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
+    val reducedMotion = rememberReducedMotion()
+    val glowTransition = rememberInfiniteTransition(label = "stopButtonGlow")
+    val glowPulse by glowTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "stopGlowPulse",
+    )
+    val pulse = if (reducedMotion) 0.45f else glowPulse
     Box(
         modifier = Modifier.size(88.dp),
         contentAlignment = Alignment.Center,
     ) {
+        if (isStop) {
+            // Soft animated ambient light behind the button, never a hard outer ring.
+            Box(
+                modifier = Modifier
+                    .size(66.dp)
+                    .scale(1.06f + pulse * 0.23f)
+                    .blur(13.dp)
+                    .background(
+                        accent.copy(alpha = 0.44f + pulse * 0.36f),
+                        CircleShape,
+                    ),
+            )
+        }
         Surface(
             modifier = Modifier
                 .size(72.dp)
