@@ -416,27 +416,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startRoute(route: SimRoute) {
+    fun startRoute(route: SimRoute): Boolean {
         if (route.points.size < 2) {
             postMessage("Add at least two points", isError = true)
-            return
+            return false
         }
         if (!_permissionGranted.value) {
             postMessage("Location permission is required", isError = true)
             _mockReadiness.value = MockReadiness.PERMISSION_REQUIRED
-            return
+            return false
         }
-        val service = requireBoundService() ?: return
+        val service = requireBoundService() ?: return false
         val start = route.points.first()
 
         val context = getApplication<Application>()
         ContextCompat.startForegroundService(context, Intent(context, MockLocationService::class.java))
         val result = service.startSession(SessionKind.ROUTE, start, route.name, "", route)
-        when (result) {
-            is MockResult.Failure -> postMessage(result.message, isError = true)
+        return when (result) {
+            is MockResult.Failure -> {
+                postMessage(result.message, isError = true)
+                false
+            }
             MockResult.Success -> {
                 _selected.value = null
                 moveCamera(start)
+                true
             }
         }
     }
