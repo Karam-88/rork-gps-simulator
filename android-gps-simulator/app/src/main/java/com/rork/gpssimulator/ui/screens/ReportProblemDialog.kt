@@ -1,12 +1,13 @@
 package com.rork.gpssimulator.ui.screens
 
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
@@ -59,6 +60,7 @@ fun ReportProblemDialog(
     val copy = remember(language) { textFor(language) }
     var description by remember { mutableStateOf("") }
     var mailError by remember { mutableStateOf(false) }
+    CompositionLocalProvider(LocalLayoutDirection provides if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(copy.title) },
@@ -91,8 +93,10 @@ fun ReportProblemDialog(
                         append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
                         append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
                     }
-                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:gps.simulator.support@gmail.com")
+                    // ACTION_SEND with MIME type preserves the body in Gmail.
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "message/rfc822"
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf("gps.simulator.support@gmail.com"))
                         putExtra(Intent.EXTRA_SUBJECT, copy.subject)
                         putExtra(Intent.EXTRA_TEXT, body)
                     }
@@ -109,4 +113,5 @@ fun ReportProblemDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(copy.cancel) } },
     )
+    }
 }
