@@ -205,8 +205,9 @@ fun RoutesScreen(
                             route = route,
                             units = settings.units,
                             onStart = {
-                                viewModel.startRoute(route)
-                                onRouteStarted()
+                                if (viewModel.startRoute(route)) {
+                                    onRouteStarted()
+                                }
                             },
                             onEdit = {
                                 editing = route
