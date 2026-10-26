@@ -660,7 +660,7 @@ private fun ActiveMockActionBar(
     onFavorite: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(72.dp),
+        modifier = Modifier.fillMaxWidth().height(88.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -696,12 +696,12 @@ private fun GlassActionButton(
 ) {
     val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
     Box(
-        modifier = Modifier.size(68.dp),
+        modifier = Modifier.size(88.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier
-                .size(56.dp)
+                .size(72.dp)
                 .clickable(role = Role.Button, onClick = onClick),
             shape = CircleShape,
             color = if (isStop) accent.copy(alpha = 0.92f) else container,
@@ -716,7 +716,7 @@ private fun GlassActionButton(
                     icon,
                     contentDescription = label,
                     tint = if (isStop) Color.White else accent,
-                    modifier = Modifier.size(26.dp),
+                    modifier = Modifier.size(34.dp),
                 )
             }
         }
