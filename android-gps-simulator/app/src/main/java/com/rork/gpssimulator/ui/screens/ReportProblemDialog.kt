@@ -5,6 +5,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -60,12 +65,50 @@ fun ReportProblemDialog(
     val copy = remember(language) { textFor(language) }
     var description by remember { mutableStateOf("") }
     var mailError by remember { mutableStateOf(false) }
+    var selectedIssue by remember { mutableStateOf(0) }
+    val arabic = language == AppLanguage.ARABIC
+    val issueLabels = if (arabic) listOf(
+        "الموقع لا يتحرك", "الموقع يعود إلى الحقيقي", "مشكلة في المسار",
+        "الخريطة لا تظهر", "التطبيق يتوقف", "مشكلة أخرى"
+    ) else listOf(
+        "Location won't move", "Location resets", "Route problem",
+        "Map not loading", "App crashes", "Other issue"
+    )
+    val tips = if (arabic) listOf(
+        "اختر GPS Simulator كتطبيق الموقع الوهمي من خيارات المطوّر. اسمح باستخدام البطارية دون تقييد، ثم شغّل المحاكاة.",
+        "تأكد من اختيار GPS Simulator كتطبيق الموقع الوهمي ومن ضبط البطارية على غير مقيّد.",
+        "تحقق من الإنترنت وحدد نقاطًا على طرق متاحة. عدّل أي نقطة غير مدعومة ثم أعد المحاولة.",
+        "تحقق من الاتصال بالإنترنت وأعد فتح الخريطة.",
+        "أعد تشغيل التطبيق وتحقق من وجود تحديث جديد.",
+        "صف المشكلة لفريق الدعم في الحقل أدناه."
+    ) else listOf(
+        "Select GPS Simulator as the mock location app in Developer options. Allow unrestricted battery use, then start simulation.",
+        "Select GPS Simulator as the mock location app and set battery usage to Unrestricted.",
+        "Check your internet connection and choose supported road points. Adjust unsupported waypoints.",
+        "Check your internet connection and reopen the map.",
+        "Restart the app and check for updates.",
+        "Describe the issue for the support team below."
+    )
     CompositionLocalProvider(LocalLayoutDirection provides if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(copy.title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(if (arabic) "اختر نوع المشكلة" else "Choose the issue", fontWeight = FontWeight.SemiBold)
+                issueLabels.forEachIndexed { index, label ->
+                    FilterChip(
+                        selected = selectedIssue == index,
+                        onClick = { selectedIssue = index },
+                        label = { Text(label) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Text(tips[selectedIssue], color = MaterialTheme.colorScheme.primary)
+                Text(if (arabic) "إذا استمرت المشكلة، أرسل تقريرًا لفريق دعم GPS Simulator." else "If the issue persists, send a report to GPS Simulator support.")
                 OutlinedTextField(
                     value = description,
                     onValueChange = { if (it.length <= 2000) description = it },
@@ -80,14 +123,15 @@ fun ReportProblemDialog(
         },
         confirmButton = {
             Button(
-                enabled = true,
+                enabled = description.isNotBlank(),
                 onClick = {
                     val version = runCatching {
                         @Suppress("DEPRECATION")
                         context.packageManager.getPackageInfo(context.packageName, 0).versionName
                     }.getOrNull() ?: "unknown"
                     val body = buildString {
-                        append(description.trim().ifBlank { "No description provided." })
+                        append("Issue: ").append(issueLabels[selectedIssue]).append("\n")
+                        append(description.trim())
                         append("\n\n--- Device information (provided with your review) ---\n")
                         append("App version: ").append(version).append('\n')
                         append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
