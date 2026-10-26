@@ -439,22 +439,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Never start the mock session before road routing succeeds.
      * A network/server/profile error leaves any existing GPS session unchanged.
      */
+    private fun routeMessage(message: String): String {
+        if (settings.value.language != com.rork.gpssimulator.i18n.AppLanguage.ARABIC) return message
+        return when {
+            message.contains("at least two", true) || message.contains("2–12", true) -> "أضف نقطتين على الأقل للمسار (الحد الأقصى 12 نقطة)."
+            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
+            message.contains("already being calculated", true) -> "جارٍ حساب المسار بالفعل، يرجى الانتظار."
+            message.contains("Calculating a route", true) -> "جارٍ حساب المسار على الطرق الفعلية…"
+            message.contains("server", true) || message.contains("unavailable", true) -> "تعذر الاتصال بخادم حساب الطرق. تحقق من الإنترنت وحاول مجددًا."
+            message.contains("waypoint", true) || message.contains("road or path", true) -> "إحدى نقاط المسار غير مدعومة على الطرق. عدّل موقع النقطة وحاول مجددًا."
+            message.contains("geometry", true) -> "تعذر قراءة الطريق المحسوب. عدّل نقاط المسار وحاول مجددًا."
+            message.contains("too long", true) -> "المسار طويل جدًا. قلل عدد نقاطه."
+            else -> message
+        }
+    }
+
     fun startRoute(route: SimRoute, onStarted: () -> Unit = {}) {
         if (route.points.size < 2) {
-            postMessage("Add at least two points", isError = true)
+            postMessage(routeMessage("Add at least two points"), isError = true)
             return
         }
         if (!_permissionGranted.value) {
-            postMessage("Location permission is required", isError = true)
+            postMessage(routeMessage("Location permission is required"), isError = true)
             _mockReadiness.value = MockReadiness.PERMISSION_REQUIRED
             return
         }
         if (routePreparationJob?.isActive == true) {
-            postMessage("A route is already being calculated", isError = true)
+            postMessage(routeMessage("A route is already being calculated"), isError = true)
             return
         }
         routePreparationJob = viewModelScope.launch {
-            postMessage("Calculating a route on real roads and paths…")
+            postMessage(routeMessage("Calculating a route on real roads and paths…"))
             val result = RoadRoutingService().resolve(route)
             result.fold(
                 onSuccess = { roadRoute ->
@@ -468,7 +483,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     when (val startResult = service.startSession(
                         SessionKind.ROUTE, start, route.name, "", roadRoute,
                     )) {
-                        is MockResult.Failure -> postMessage(startResult.message, isError = true)
+                        is MockResult.Failure -> postMessage(routeMessage(startResult.message), isError = true)
                         MockResult.Success -> {
                             _selected.value = null
                             moveCamera(start)
@@ -478,7 +493,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 },
                 onFailure = { error ->
                     postMessage(
-                        error.message ?: "Road routing unavailable. No simulation started.",
+                        routeMessage(error.message ?: "Road routing unavailable. No simulation started."),
                         isError = true,
                     )
                 },
