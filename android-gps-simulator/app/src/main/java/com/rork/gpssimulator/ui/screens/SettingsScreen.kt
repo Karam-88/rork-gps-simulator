@@ -325,7 +325,9 @@ fun SettingsScreen(
                             title = strings[K.language],
                             value = settings.language.nativeName,
                             onClick = { openSheet = OpenSheet.LANGUAGE },
-                            enabled = !settings.followSystemLanguage,
+                            // Manual language selection stays accessible even when
+                            // following the phone language. Selection disables auto mode.
+                            enabled = true,
                             showChevron = true,
                         )
                         RowDivider()
