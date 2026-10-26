@@ -145,6 +145,26 @@ jobs:
             exit 1
           fi
 
+      - name: Verify AD_ID permission in signed release AAB
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          set -euo pipefail
+          AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$AAB"
+          python3 - "$AAB" <<'PY'
+          import sys, zipfile
+          path = sys.argv[1]
+          with zipfile.ZipFile(path) as archive:
+              names = archive.namelist()
+              assert 'base/manifest/AndroidManifest.xml' in names, 'Missing base manifest in AAB'
+              manifest = archive.read('base/manifest/AndroidManifest.xml')
+              # Android App Bundles encode the manifest as protobuf, not plain XML.
+              # The permission string must occur in the base module's string table.
+              if b'com.google.android.gms.permission.AD_ID' not in manifest:
+                  raise SystemExit('AD_ID is missing from base AAB manifest: refusing Play upload')
+              print('AD_ID permission string found in base AAB manifest')
+          PY
+
       - name: Upload signed Release APK
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
