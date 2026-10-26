@@ -20,7 +20,6 @@ jobs:
 
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-      META_FACEBOOK_CLIENT_TOKEN: ${{ secrets.META_FACEBOOK_CLIENT_TOKEN }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -51,14 +50,6 @@ jobs:
         run: |
           if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
             echo "GOOGLE_MAPS_API_KEY repository secret is missing."
-            exit 1
-          fi
-
-      - name: Verify Meta Client Token for test release
-        if: github.event_name != 'pull_request'
-        run: |
-          if [ -z "$META_FACEBOOK_CLIENT_TOKEN" ]; then
-            echo "::error::META_FACEBOOK_CLIENT_TOKEN is missing; refusing to build the Meta-enabled test release."
             exit 1
           fi
 
@@ -132,7 +123,7 @@ jobs:
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         run: ./gradlew clean assembleRelease bundleRelease
 
-      - name: Verify AD_ID permission in signed release APK
+      - name: Verify no advertising ID permission in signed release APK
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
@@ -140,12 +131,12 @@ jobs:
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)
           test -x "$AAPT"
           "$AAPT" dump permissions "$APK" | tee /tmp/release-permissions.txt
-          if ! grep -Fq 'com.google.android.gms.permission.AD_ID' /tmp/release-permissions.txt; then
-            echo "::error::AD_ID permission missing from signed release APK; stop Play upload."
+          if grep -Fq 'com.google.android.gms.permission.AD_ID' /tmp/release-permissions.txt; then
+            echo "::error::AD_ID permission unexpectedly present in release APK; check remaining SDKs."
             exit 1
           fi
 
-      - name: Verify AD_ID permission in signed release AAB
+      - name: Verify no advertising ID permission in signed release AAB
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           set -euo pipefail
@@ -160,9 +151,9 @@ jobs:
               manifest = archive.read('base/manifest/AndroidManifest.xml')
               # Android App Bundles encode the manifest as protobuf, not plain XML.
               # The permission string must occur in the base module's string table.
-              if b'com.google.android.gms.permission.AD_ID' not in manifest:
-                  raise SystemExit('AD_ID is missing from base AAB manifest: refusing Play upload')
-              print('AD_ID permission string found in base AAB manifest')
+              if b'com.google.android.gms.permission.AD_ID' in manifest:
+                  raise SystemExit('AD_ID is unexpectedly present in base AAB manifest: check remaining SDKs')
+              print('AD_ID permission string absent from base AAB manifest')
           PY
 
       - name: Upload signed Release APK
