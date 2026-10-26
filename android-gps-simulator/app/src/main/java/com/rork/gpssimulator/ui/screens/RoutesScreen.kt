@@ -236,6 +236,12 @@ fun RoutesScreen(
                 showEditor = false
                 editing = null
             },
+            onStart = { route ->
+                viewModel.saveRoute(route)
+                showEditor = false
+                editing = null
+                viewModel.startRoute(route, onStarted = onRouteStarted)
+            },
             onDismiss = {
                 showEditor = false
                 editing = null
