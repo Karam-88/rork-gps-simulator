@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -173,6 +174,7 @@ fun SettingsScreen(
     var numberDialog by remember { mutableStateOf(OpenNumberDialog.NONE) }
     var confirm by remember { mutableStateOf(OpenConfirm.NONE) }
     var advancedExpanded by remember { mutableStateOf(false) }
+    var showTerms by remember { mutableStateOf(false) }
 
     val filter = SettingsFilter(query)
     val playServicesAvailable = remember { viewModel.isPlayServicesAvailable() }
@@ -928,8 +930,8 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Gavel,
                             title = strings[K.terms_of_service],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { showTerms = true },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -961,6 +963,83 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+
+    if (showTerms) {
+        val arabic = settings.language == AppLanguage.ARABIC
+        val termsBody = if (arabic) """
+            شروط استخدام GPS Simulator
+            آخر تحديث: 26 أكتوبر 2026
+
+            1. الغرض من التطبيق
+            يتيح GPS Simulator محاكاة الموقع على أجهزة Android لأغراض الاختبار والتطوير والاستخدامات المشروعة.
+
+            2. مسؤولية المستخدم
+            أنت مسؤول عن استخدام التطبيق بما يتوافق مع القوانين المحلية وشروط الخدمات الأخرى. لا تستخدم الموقع الوهمي للاحتيال أو انتحال الموقع أو تجاوز قيود الخدمات أو الإضرار بالآخرين.
+
+            3. متطلبات الجهاز
+            قد يتطلب التطبيق تفعيل خيارات المطوّر واختياره كتطبيق للموقع الوهمي ومنح أذونات الموقع. تختلف النتائج حسب الجهاز وإصدار Android والتطبيقات الأخرى.
+
+            4. دقة الخدمة وتوافرها
+            لا نضمن استمرار المحاكاة دون انقطاع أو توافقها مع جميع التطبيقات والأجهزة. قد تعتمد الخرائط والمسارات على خدمات خارجية واتصال بالإنترنت.
+
+            5. السلامة
+            لا تعتمد على الموقع المحاكى للملاحة الفعلية أو الطوارئ أو أي نشاط يتطلب تحديد موقع حقيقي ودقيق.
+
+            6. الخصوصية
+            راجع سياسة الخصوصية المتاحة من صفحة الإعدادات لمعرفة المعلومات المتعلقة بالبيانات والأذونات.
+
+            7. التحديثات
+            قد تتغير الميزات وهذه الشروط في الإصدارات المستقبلية. يُرجى مراجعة النسخة المعروضة داخل التطبيق.
+
+            8. التواصل
+            للاستفسارات: gps.simulator.support@gmail.com
+        """.trimIndent() else """
+            GPS Simulator — Terms of Use
+            Last updated: 26 October 2026
+
+            1. Purpose
+            GPS Simulator provides simulated Android device locations for testing, development, and other lawful uses.
+
+            2. Your responsibility
+            You are responsible for complying with applicable laws and third-party service rules. Do not use simulated locations to deceive, commit fraud, evade service restrictions, or harm others.
+
+            3. Device requirements
+            Mock-location developer settings and location permissions may be required. Behavior varies across devices, Android versions, and other apps.
+
+            4. Availability and accuracy
+            Continuous operation and compatibility with every device or app are not guaranteed. Maps and routes may depend on third-party services and internet access.
+
+            5. Safety
+            Do not rely on simulated location for real-world navigation, emergencies, or safety-critical tasks.
+
+            6. Privacy
+            Please review the Privacy Policy accessible in Settings for information about data and permissions.
+
+            7. Changes
+            Features and these terms may change in future releases. Review the current in-app version.
+
+            8. Contact
+            gps.simulator.support@gmail.com
+        """.trimIndent()
+        CompositionLocalProvider(
+            LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr,
+        ) {
+            AlertDialog(
+                onDismissRequest = { showTerms = false },
+                title = { Text(strings[K.terms_of_service]) },
+                text = {
+                    Column(Modifier.height(420.dp).verticalScroll(rememberScrollState())) {
+                        Text(termsBody, style = MaterialTheme.typography.bodyMedium)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showTerms = false }) {
+                        Text(if (arabic) "إغلاق" else "Close")
+                    }
+                },
+            )
         }
     }
 
