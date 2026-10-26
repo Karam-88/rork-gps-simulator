@@ -900,7 +900,10 @@ fun SettingsScreen(
                             icon = Icons.Default.StarRate,
                             title = strings[K.rate_app],
                             description = strings[K.rate_app_desc],
-                            onClick = { openPlayStoreListing(context) },
+                            onClick = {
+                                viewModel.ratingPrompt.choseToRate()
+                                openPlayStoreListing(context)
+                            },
                             showChevron = true,
                         )
                         RowDivider()
