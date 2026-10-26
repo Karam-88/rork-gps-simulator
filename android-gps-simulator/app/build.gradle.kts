@@ -43,6 +43,7 @@ android {
 
     defaultConfig {
         applicationId = "com.rork.gpssimulator"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
         versionCode = 26
@@ -120,5 +121,10 @@ dependencies {
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
 
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.androidx.ui.tooling)
 }

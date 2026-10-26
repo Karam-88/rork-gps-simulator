@@ -120,6 +120,7 @@ fun MapScreen(
     onOpenSearch: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenRoutes: () -> Unit,
+    onRatingPromptSafeChanged: (Boolean) -> Unit = {},
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,6 +170,12 @@ fun MapScreen(
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
+    val ratingSafe = !showLayerSheet && !showMenuPanel && !showProblemDialog &&
+        !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
+    androidx.compose.runtime.DisposableEffect(ratingSafe) {
+        onRatingPromptSafeChanged(ratingSafe)
+        onDispose { onRatingPromptSafeChanged(false) }
+    }
     var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
@@ -454,6 +461,7 @@ fun MapScreen(
                     },
                     onRate = {
                         showMenuPanel = false
+                        viewModel.ratingPrompt.choseToRate()
                         showRatingConfirmation = true
                         val browserUrl = Uri.parse("https://play.google.com/store/apps/details?id=com.rork.gpssimulator")
                         try {

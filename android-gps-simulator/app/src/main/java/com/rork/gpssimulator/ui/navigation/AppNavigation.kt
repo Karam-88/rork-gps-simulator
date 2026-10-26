@@ -2,15 +2,10 @@ package com.rork.gpssimulator.ui.navigation
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -35,6 +30,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -43,7 +40,6 @@ import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.i18n.Strings
-import com.rork.gpssimulator.i18n.reviewPromptCopy
 import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.screens.AboutScreen
 import com.rork.gpssimulator.ui.screens.CoordinateToolsScreen
@@ -105,7 +101,8 @@ fun AppNavigation() {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val strings = remember(settings.language) { Strings(settings.language) }
+    val effectiveLanguage = AppLanguage.effective(settings.language, settings.followSystemLanguage, phoneLocale)
+    val strings = remember(effectiveLanguage) { Strings(effectiveLanguage) }
     val isArabic = settings.language == AppLanguage.ARABIC
     // Keep the complete application UI physically left-to-right even when
     // Android itself is using an RTL system language.
@@ -169,36 +166,27 @@ private fun AppScaffold(
     val mockState by viewModel.mockState.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val context = LocalContext.current
-    val ratingPrefs = remember(context) {
-        context.getSharedPreferences("gps_simulator_rating_prompt", Context.MODE_PRIVATE)
-    }
-    var showRatingPrompt by remember { mutableStateOf(false) }
-    var sessionWasActive by remember { mutableStateOf(mockState == MockState.MOCK_ACTIVE) }
-    var activeSinceMs by remember { mutableStateOf(0L) }
-    val ratingCopy = remember(settings.language) { reviewPromptCopy(settings.language) }
-
-    // Count completed successful sessions, not app launches or attempted starts.
-    LaunchedEffect(mockState) {
-        val active = mockState == MockState.MOCK_ACTIVE
-        if (active) {
-            if (!sessionWasActive) activeSinceMs = android.os.SystemClock.elapsedRealtime()
-            sessionWasActive = true
-        } else if (sessionWasActive) {
-            sessionWasActive = false
-            // Ignore accidental starts and immediate stops. Never count a failed start.
-            if (activeSinceMs == 0L ||
-                android.os.SystemClock.elapsedRealtime() - activeSinceMs < 20_000L
-            ) return@LaunchedEffect
-            val completed = ratingPrefs.getInt("completed_sessions", 0) + 1
-            ratingPrefs.edit().putInt("completed_sessions", completed).apply()
-            val neverAsk = ratingPrefs.getBoolean("never_ask", false)
-            val nextEligible = ratingPrefs.getLong("next_eligible_at", 0L)
-            if (!neverAsk && completed >= 3 && System.currentTimeMillis() >= nextEligible) {
-                showRatingPrompt = true
-            }
+    val pendingRating by viewModel.ratingPrompt.pending.collectAsState()
+    var showRatingPrompt by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var mapIdle by remember { mutableStateOf(false) }
+    val entry by navController.currentBackStackEntryAsState()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val safeForRating = com.rork.gpssimulator.ui.rating.RatingPromptPolicy.safeToShow(
+        entry?.destination?.route == Routes.MAP, mapIdle,
+        mockState == MockState.MOCK_ACTIVE, lifecycleState == Lifecycle.State.RESUMED,
+    )
+    LaunchedEffect(pendingRating, safeForRating) {
+        if (pendingRating && safeForRating) {
+            kotlinx.coroutines.delay(1500)
+            viewModel.ratingPrompt.shown()
+            showRatingPrompt = true
+        }
+        if (!safeForRating && showRatingPrompt) {
+            showRatingPrompt = false
+            viewModel.ratingPrompt.postpone()
         }
     }
-
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -234,45 +222,24 @@ private fun AppScaffold(
         viewModel.consumeMessage()
     }
 
-    if (showRatingPrompt && mockState != MockState.MOCK_ACTIVE) {
-        AlertDialog(
-            onDismissRequest = {
-                ratingPrefs.edit()
-                    .putLong("next_eligible_at", System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000)
-                    .apply()
+    if (showRatingPrompt && safeForRating) {
+        val language = LocalStrings.current.language
+        val dark = when (settings.theme) {
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+        }
+        com.rork.gpssimulator.ui.rating.PremiumRatingDialog(
+            language = language,
+            darkTheme = dark,
+            onLater = {
+                viewModel.ratingPrompt.postpone()
                 showRatingPrompt = false
             },
-            title = { Text(ratingCopy.title) },
-            text = {
-                Text(
-                    ratingCopy.body,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    ratingPrefs.edit().putBoolean("never_ask", true).apply()
-                    showRatingPrompt = false
-                    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
-                    try {
-                        context.startActivity(market)
-                    } catch (_: Exception) {
-                        runCatching {
-                            context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")),
-                            )
-                        }
-                    }
-                }) { Text(ratingCopy.rate) }
-            },
-            dismissButton = {
-                androidx.compose.foundation.layout.Row {
-                    TextButton(onClick = {
-                        ratingPrefs.edit()
-                            .putLong("next_eligible_at", System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000)
-                            .apply()
-                        showRatingPrompt = false
-                    }) { Text(ratingCopy.later) }
-                }
+            onRate = {
+                viewModel.ratingPrompt.choseToRate()
+                showRatingPrompt = false
+                com.rork.gpssimulator.ui.rating.openPlayRating(context)
             },
         )
     }
@@ -292,6 +259,7 @@ private fun AppScaffold(
                 MapScreen(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
+                    onRatingPromptSafeChanged = { mapIdle = it },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
                     onOpenFavorites = { navController.navigateToTopLevel(Routes.PRESETS) },
                     onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
