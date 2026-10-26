@@ -443,7 +443,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (settings.value.language != com.rork.gpssimulator.i18n.AppLanguage.ARABIC) return message
         return when {
             message.contains("at least two", true) || message.contains("2–12", true) -> "أضف نقطتين على الأقل للمسار (الحد الأقصى 12 نقطة)."
-            message.contains("Current location unavailable", true) -> "الموقع الحالي غير متاح. انتظر حتى يتم تحديد موقع GPS وحاول مجددًا."\n            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
+            message.contains("Current location unavailable", true) -> "الموقع الحالي غير متاح. انتظر حتى يتم تحديد موقع GPS وحاول مجددًا."
+            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
             message.contains("already being calculated", true) -> "جارٍ حساب المسار بالفعل، يرجى الانتظار."
             message.contains("Calculating a route", true) -> "جارٍ حساب المسار على الطرق الفعلية…"
             message.contains("server", true) || message.contains("unavailable", true) -> "تعذر الاتصال بخادم حساب الطرق. تحقق من الإنترنت وحاول مجددًا."
