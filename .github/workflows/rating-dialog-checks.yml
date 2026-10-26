@@ -17,6 +17,9 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Unit tests and debug builds
         working-directory: android-gps-simulator
         run: ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
