@@ -239,9 +239,16 @@ fun RouteEditorSheet(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        placeholder = { Text(strings[K.route_name]) },
+                        placeholder = {
+                            Text(
+                                strings[K.route_name],
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                     )
