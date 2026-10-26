@@ -331,7 +331,7 @@ fun MapScreen(
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                shadowElevation = 4.dp,
+                shadowElevation = 0.dp,
                 modifier = Modifier.size(42.dp),
             ) {
                 IconButton(
@@ -709,7 +709,7 @@ private fun GlassActionButton(
                 1.dp,
                 if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.42f),
             ),
-            shadowElevation = 5.dp,
+            shadowElevation = 0.dp,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
