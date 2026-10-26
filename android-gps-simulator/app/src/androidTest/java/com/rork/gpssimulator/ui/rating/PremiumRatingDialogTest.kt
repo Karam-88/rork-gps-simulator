@@ -94,6 +94,14 @@ class PremiumRatingDialogTest {
         instrumentation.uiAutomation.takeScreenshot().useBitmap { bitmap ->
             File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
+        // UTP uninstalls the app after the run. Preserve evidence outside its data directory.
+        val source = File(dir, "$name.png").absolutePath
+        val command = "mkdir -p /data/local/tmp/rating-screenshots && " +
+            "cp '$source' '/data/local/tmp/rating-screenshots/$name.png' && echo saved"
+        val result = instrumentation.uiAutomation.executeShellCommand(command).use { descriptor ->
+            java.io.FileInputStream(descriptor.fileDescriptor).bufferedReader().readText()
+        }
+        check(result.trim() == "saved") { "Could not preserve screenshot: $result" }
     }
     private fun Bitmap.useBitmap(block: (Bitmap) -> Unit) { try { block(this) } finally { recycle() } }
 }
