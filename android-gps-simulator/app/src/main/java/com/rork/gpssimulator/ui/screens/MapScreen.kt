@@ -233,7 +233,14 @@ fun MapScreen(
     LaunchedEffect(activePoint, sessionKind) {
         val point = activePoint ?: return@LaunchedEffect
         if (sessionKind == SessionKind.ROUTE || sessionKind == SessionKind.JOYSTICK) {
-            camera.snapTo(point)
+            // Follow the current mock coordinate throughout the journey.
+            // The initial session position is reached immediately; later
+            // updates use the configured map animation for a smooth follow.
+            camera.animateTo(
+                point = point,
+                newZoom = camera.zoom,
+                animate = settings.animateMap,
+            )
         }
     }
 
