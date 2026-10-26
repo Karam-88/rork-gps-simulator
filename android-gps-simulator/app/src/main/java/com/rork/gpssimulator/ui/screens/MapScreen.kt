@@ -694,29 +694,20 @@ private fun GlassActionButton(
     onClick: () -> Unit,
     isStop: Boolean = false,
 ) {
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f)
+    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
     Box(
         modifier = Modifier.size(68.dp),
         contentAlignment = Alignment.Center,
     ) {
-        // Soft red ambient glow only for the stop action; no distracting animation.
-        if (isStop) {
-            Surface(
-                modifier = Modifier.size(66.dp),
-                shape = CircleShape,
-                color = accent.copy(alpha = 0.20f),
-                shadowElevation = 12.dp,
-            ) {}
-        }
         Surface(
             modifier = Modifier
                 .size(56.dp)
                 .clickable(role = Role.Button, onClick = onClick),
             shape = CircleShape,
-            color = if (isStop) accent.copy(alpha = 0.80f) else container,
+            color = if (isStop) accent.copy(alpha = 0.92f) else container,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.23f),
+                if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.42f),
             ),
             shadowElevation = 5.dp,
         ) {
