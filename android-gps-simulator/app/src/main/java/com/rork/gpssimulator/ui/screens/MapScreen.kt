@@ -332,27 +332,24 @@ fun MapScreen(
                     }
                 }
             }
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                shadowElevation = 0.dp,
-                modifier = Modifier.size(42.dp),
-            ) {
-                IconButton(
-                    onClick = {
+            // Single circular touch target: no nested Surface, shadow or second ring.
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                    .clickable(role = Role.Button) {
                         showMenuPanel = false
                         showProblemDialog = true
                     },
-                    modifier = Modifier.size(42.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.HelpOutline,
-                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
-                            "الإبلاغ عن مشكلة" else "Report a problem",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.HelpOutline,
+                    contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                        "الإبلاغ عن مشكلة" else "Report a problem",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(21.dp),
+                )
             }
         }
         if (showProblemDialog) {
