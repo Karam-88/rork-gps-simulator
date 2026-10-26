@@ -119,6 +119,7 @@ dependencies {
     // Google is used only as the map renderer. Search/geocoding/routes continue to use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     debugImplementation(libs.androidx.ui.tooling)
 }
