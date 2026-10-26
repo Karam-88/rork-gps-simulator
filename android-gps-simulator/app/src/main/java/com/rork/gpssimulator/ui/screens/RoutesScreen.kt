@@ -237,10 +237,14 @@ fun RoutesScreen(
                 editing = null
             },
             onStart = { route ->
-                viewModel.saveRoute(route)
-                showEditor = false
-                editing = null
-                viewModel.startRoute(route, onStarted = onRouteStarted)
+                // Keep the editor visible while road routing is validated.
+                // Only dismiss after the mock-location service confirms success.
+                viewModel.startRoute(route, onStarted = {
+                    viewModel.saveRoute(route)
+                    showEditor = false
+                    editing = null
+                    onRouteStarted()
+                })
             },
             onDismiss = {
                 showEditor = false
