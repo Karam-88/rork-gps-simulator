@@ -84,6 +84,9 @@ import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
+import com.rork.gpssimulator.ui.components.AppUpdateNoticeDialog
+import com.rork.gpssimulator.ui.components.UpdateNotificationDot
+import com.rork.gpssimulator.ui.components.rememberPlayUpdateAvailable
 import com.rork.gpssimulator.ui.components.Crosshair
 import com.rork.gpssimulator.ui.components.JoystickControl
 import com.rork.gpssimulator.ui.components.SelectionOption
@@ -169,6 +172,8 @@ fun MapScreen(
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val updateAvailable = rememberPlayUpdateAvailable()
     var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
@@ -347,7 +352,7 @@ fun MapScreen(
                     .background(MaterialTheme.colorScheme.surface, CircleShape)
                     .clickable(role = Role.Button) {
                         showMenuPanel = false
-                        showProblemDialog = true
+                        if (updateAvailable) showUpdateDialog = true else showProblemDialog = true
                     },
                 contentAlignment = Alignment.Center,
             ) {
@@ -358,7 +363,14 @@ fun MapScreen(
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(21.dp),
                 )
+                if (updateAvailable) UpdateNotificationDot(modifier = Modifier.align(Alignment.TopEnd))
             }
+        }
+        if (showUpdateDialog) {
+            AppUpdateNoticeDialog(
+                arabic = settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC,
+                onDismiss = { showUpdateDialog = false },
+            )
         }
         if (showProblemDialog) {
             ReportProblemDialog(
