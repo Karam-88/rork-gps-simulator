@@ -9,6 +9,7 @@ on:
       - release/1.1.16-rc
       - feature/meta-sdk-on-1.1.16-stable
       - feature/gps-overhaul-phase1-20261025
+      - fix/post-v26-controls-20261026
   pull_request:
     branches:
       - main

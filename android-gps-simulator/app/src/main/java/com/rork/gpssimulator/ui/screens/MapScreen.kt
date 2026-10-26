@@ -84,6 +84,9 @@ import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
+import com.rork.gpssimulator.ui.components.AppUpdateNoticeDialog
+import com.rork.gpssimulator.ui.components.UpdateNotificationDot
+import com.rork.gpssimulator.ui.components.rememberPlayUpdateAvailable
 import com.rork.gpssimulator.ui.components.Crosshair
 import com.rork.gpssimulator.ui.components.JoystickControl
 import com.rork.gpssimulator.ui.components.SelectionOption
@@ -169,6 +172,8 @@ fun MapScreen(
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val updateAvailable = rememberPlayUpdateAvailable()
     var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
@@ -190,9 +195,9 @@ fun MapScreen(
                 // Bounce at the new position on screen. Avoid visually simulating
                 // geographic travel, especially across countries or waterways.
                 hopScale.snapTo(0.78f)
-                hopScale.animateTo(1.30f, animationSpec = tween(260))
-                hopScale.animateTo(0.90f, animationSpec = tween(260))
-                hopScale.animateTo(1f, animationSpec = tween(300))
+                hopScale.animateTo(1.30f, animationSpec = tween(600))
+                hopScale.animateTo(0.90f, animationSpec = tween(600))
+                hopScale.animateTo(1f, animationSpec = tween(800))
             } else hopScale.snapTo(1f)
         }
     }
@@ -233,7 +238,14 @@ fun MapScreen(
     LaunchedEffect(activePoint, sessionKind) {
         val point = activePoint ?: return@LaunchedEffect
         if (sessionKind == SessionKind.ROUTE || sessionKind == SessionKind.JOYSTICK) {
-            camera.snapTo(point)
+            // Follow the current mock coordinate throughout the journey.
+            // The initial session position is reached immediately; later
+            // updates use the configured map animation for a smooth follow.
+            camera.animateTo(
+                point = point,
+                newZoom = camera.zoom,
+                animate = settings.animateMap,
+            )
         }
     }
 
@@ -340,7 +352,7 @@ fun MapScreen(
                     .background(MaterialTheme.colorScheme.surface, CircleShape)
                     .clickable(role = Role.Button) {
                         showMenuPanel = false
-                        showProblemDialog = true
+                        if (updateAvailable) showUpdateDialog = true else showProblemDialog = true
                     },
                 contentAlignment = Alignment.Center,
             ) {
@@ -351,7 +363,14 @@ fun MapScreen(
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(21.dp),
                 )
+                if (updateAvailable) UpdateNotificationDot(modifier = Modifier.align(Alignment.TopEnd))
             }
+        }
+        if (showUpdateDialog) {
+            AppUpdateNoticeDialog(
+                arabic = settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC,
+                onDismiss = { showUpdateDialog = false },
+            )
         }
         if (showProblemDialog) {
             ReportProblemDialog(
@@ -669,7 +688,7 @@ private fun ActiveMockActionBar(
         GlassActionButton(
             icon = Icons.Default.Star,
             label = favoriteLabel,
-            accent = MaterialTheme.colorScheme.onSurface,
+            accent = Color(0xFFD5A329),
             onClick = onFavorite,
         )
         GlassActionButton(
@@ -682,7 +701,7 @@ private fun ActiveMockActionBar(
         GlassActionButton(
             icon = Icons.Default.MyLocation,
             label = selectLabel,
-            accent = MaterialTheme.colorScheme.primary,
+            accent = Color(0xFF3985DD),
             onClick = onSelect,
         )
     }
@@ -696,7 +715,7 @@ private fun GlassActionButton(
     onClick: () -> Unit,
     isStop: Boolean = false,
 ) {
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
+    val container = accent.copy(alpha = if (isStop) 0.92f else 0.18f)
     val reducedMotion = rememberReducedMotion()
     val glowTransition = rememberInfiniteTransition(label = "stopButtonGlow")
     val glowPulse by glowTransition.animateFloat(
@@ -740,10 +759,10 @@ private fun GlassActionButton(
                 .size(72.dp)
                 .clickable(role = Role.Button, onClick = onClick),
             shape = CircleShape,
-            color = if (isStop) accent.copy(alpha = 0.92f) else container,
+            color = container,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.42f),
+                accent.copy(alpha = if (isStop) 0.98f else 0.92f),
             ),
             shadowElevation = 0.dp,
         ) {

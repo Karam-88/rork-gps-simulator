@@ -125,7 +125,7 @@ fun RouteEditorSheet(
         customSpeedKmh = existing?.customSpeedKmh ?: settings.customSpeedKmh.toDouble(),
         loop = loop,
     )
-    val isValid = points.size >= 2
+    val isValid = points.size >= 2 || (points.size == 1 && realSample?.point != null)
 
     val profiles = listOf(
         Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),

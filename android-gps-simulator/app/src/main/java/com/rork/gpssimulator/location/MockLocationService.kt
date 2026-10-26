@@ -394,6 +394,8 @@ class MockLocationService : Service() {
             var traveled = 0.0
             while (true) {
                 val config = repository.settings.value
+                // The initial mock position is set once when the route starts.
+                // Subsequent updates follow the resolved road geometry smoothly.
                 val stepMs = config.updateIntervalMs.toLong().coerceIn(200L, 5_000L)
                 delay(stepMs)
                 val session = MockSessionBus.session.value ?: break
