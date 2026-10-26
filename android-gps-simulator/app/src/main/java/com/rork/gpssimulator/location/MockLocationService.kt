@@ -394,7 +394,10 @@ class MockLocationService : Service() {
             var traveled = 0.0
             while (true) {
                 val config = repository.settings.value
-                val stepMs = config.updateIntervalMs.toLong().coerceIn(200L, 5_000L)
+                // Rabbit-hop route mode: update the actual Android mock coordinate in
+                // discrete road-following steps, not merely animate the map marker.
+                // The step distance still scales with the selected movement speed.
+                val stepMs = config.updateIntervalMs.toLong().coerceIn(1_200L, 2_400L)
                 delay(stepMs)
                 val session = MockSessionBus.session.value ?: break
 
