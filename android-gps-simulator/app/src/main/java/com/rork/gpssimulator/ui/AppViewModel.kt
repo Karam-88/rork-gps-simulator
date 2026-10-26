@@ -443,7 +443,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (settings.value.language != com.rork.gpssimulator.i18n.AppLanguage.ARABIC) return message
         return when {
             message.contains("at least two", true) || message.contains("2–12", true) -> "أضف نقطتين على الأقل للمسار (الحد الأقصى 12 نقطة)."
-            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
+            message.contains("Current location unavailable", true) -> "الموقع الحالي غير متاح. انتظر حتى يتم تحديد موقع GPS وحاول مجددًا."\n            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
             message.contains("already being calculated", true) -> "جارٍ حساب المسار بالفعل، يرجى الانتظار."
             message.contains("Calculating a route", true) -> "جارٍ حساب المسار على الطرق الفعلية…"
             message.contains("server", true) || message.contains("unavailable", true) -> "تعذر الاتصال بخادم حساب الطرق. تحقق من الإنترنت وحاول مجددًا."
@@ -455,7 +455,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startRoute(route: SimRoute, onStarted: () -> Unit = {}) {
-        if (route.points.size < 2) {
+        // A single chosen destination starts at the latest available physical GPS fix.
+        // Never silently use a mock position as the origin of a new route.
+        val routeToResolve = if (route.points.size == 1) {
+            val origin = _realSample.value?.point
+                ?: realLocation.lastKnown(settings.value.usePlayServices)?.point
+            if (origin == null) {
+                postMessage(routeMessage("Current location unavailable. Wait for a GPS fix."), isError = true)
+                return
+            }
+            route.copy(points = listOf(origin, route.points.first()))
+        } else route
+        if (routeToResolve.points.size < 2) {
             postMessage(routeMessage("Add at least two points"), isError = true)
             return
         }
@@ -470,7 +481,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         routePreparationJob = viewModelScope.launch {
             postMessage(routeMessage("Calculating a route on real roads and paths…"))
-            val result = RoadRoutingService().resolve(route)
+            val result = RoadRoutingService().resolve(routeToResolve)
             result.fold(
                 onSuccess = { roadRoute ->
                     val service = requireBoundService() ?: return@fold
