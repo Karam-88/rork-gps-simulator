@@ -96,12 +96,15 @@ class PremiumRatingDialogTest {
         }
         // UTP uninstalls the app after the run. Preserve evidence outside its data directory.
         val source = File(dir, "$name.png").absolutePath
-        val command = "mkdir -p /data/local/tmp/rating-screenshots && " +
-            "cp '$source' '/data/local/tmp/rating-screenshots/$name.png' && echo saved"
-        val result = instrumentation.uiAutomation.executeShellCommand(command).use { descriptor ->
-            java.io.FileInputStream(descriptor.fileDescriptor).bufferedReader().readText()
-        }
-        check(result.trim() == "saved") { "Could not preserve screenshot: $result" }
+        fun shell(command: String): String =
+            instrumentation.uiAutomation.executeShellCommand(command).use { descriptor ->
+                java.io.FileInputStream(descriptor.fileDescriptor).bufferedReader().readText().trim()
+            }
+        // executeShellCommand executes argv directly; shell operators such as && are not parsed.
+        val destination = "/data/local/tmp/rating-screenshots/$name.png"
+        shell("mkdir -p /data/local/tmp/rating-screenshots")
+        shell("cp $source $destination")
+        check(shell("ls $destination") == destination) { "Could not preserve screenshot $name" }
     }
     private fun Bitmap.useBitmap(block: (Bitmap) -> Unit) { try { block(this) } finally { recycle() } }
 }
