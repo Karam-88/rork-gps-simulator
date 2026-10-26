@@ -63,9 +63,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -490,7 +491,7 @@ fun MapScreen(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
-                .padding(start = 8.dp, bottom = 100.dp + bottomInset),
+                .padding(start = 8.dp, bottom = (if (isMockActive) 148.dp else 100.dp) + bottomInset),
         )
 
         Column(
@@ -498,7 +499,7 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 34.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (settings.joystickEnabled && isMockActive) {
@@ -661,16 +662,15 @@ private fun ActiveMockActionBar(
     onFavorite: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(88.dp),
+        modifier = Modifier.fillMaxWidth().height(72.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         GlassActionButton(
-            icon = Icons.Default.Close,
-            label = stopLabel,
-            accent = dangerColor,
-            isStop = true,
-            onClick = onStop,
+            icon = Icons.Default.Star,
+            label = favoriteLabel,
+            accent = MaterialTheme.colorScheme.onSurface,
+            onClick = onFavorite,
         )
         GlassActionButton(
             icon = Icons.Default.MyLocation,
@@ -679,10 +679,11 @@ private fun ActiveMockActionBar(
             onClick = onSelect,
         )
         GlassActionButton(
-            icon = Icons.Default.Star,
-            label = favoriteLabel,
-            accent = MaterialTheme.colorScheme.onSurface,
-            onClick = onFavorite,
+            icon = Icons.Default.Close,
+            label = stopLabel,
+            accent = dangerColor,
+            isStop = true,
+            onClick = onStop,
         )
     }
 }
@@ -713,16 +714,25 @@ private fun GlassActionButton(
         contentAlignment = Alignment.Center,
     ) {
         if (isStop) {
-            // Soft animated ambient light behind the button, never a hard outer ring.
+            // Radial-gradient circle is drawn directly, avoiding rectangular blur artifacts.
             Box(
                 modifier = Modifier
-                    .size(66.dp)
-                    .scale(1.06f + pulse * 0.23f)
-                    .blur(13.dp)
-                    .background(
-                        accent.copy(alpha = 0.44f + pulse * 0.36f),
-                        CircleShape,
-                    ),
+                    .size(88.dp)
+                    .drawBehind {
+                        val glowRadius = size.minDimension * (0.43f + pulse * 0.07f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    accent.copy(alpha = 0.62f + pulse * 0.24f),
+                                    accent.copy(alpha = 0.26f + pulse * 0.19f),
+                                    Color.Transparent,
+                                ),
+                                center = Offset(size.width / 2f, size.height / 2f),
+                                radius = glowRadius,
+                            ),
+                            radius = glowRadius,
+                        )
+                    },
             )
         }
         Surface(
