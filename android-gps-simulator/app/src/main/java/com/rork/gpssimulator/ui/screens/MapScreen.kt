@@ -190,9 +190,9 @@ fun MapScreen(
                 // Bounce at the new position on screen. Avoid visually simulating
                 // geographic travel, especially across countries or waterways.
                 hopScale.snapTo(0.78f)
-                hopScale.animateTo(1.30f, animationSpec = tween(260))
-                hopScale.animateTo(0.90f, animationSpec = tween(260))
-                hopScale.animateTo(1f, animationSpec = tween(300))
+                hopScale.animateTo(1.30f, animationSpec = tween(600))
+                hopScale.animateTo(0.90f, animationSpec = tween(600))
+                hopScale.animateTo(1f, animationSpec = tween(800))
             } else hopScale.snapTo(1f)
         }
     }
