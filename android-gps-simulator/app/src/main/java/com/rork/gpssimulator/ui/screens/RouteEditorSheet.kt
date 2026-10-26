@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -263,7 +264,9 @@ fun RouteEditorSheet(
                                 textDirection = if (isArabic) TextDirection.ContentOrRtl else TextDirection.ContentOrLtr,
                             ),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            // Material text fields have a 56dp minimum height. A forced
+                            // 48dp height clips the Arabic baseline and pushes text down.
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         )
                     }
                     Row(
