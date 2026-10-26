@@ -669,7 +669,7 @@ private fun ActiveMockActionBar(
         GlassActionButton(
             icon = Icons.Default.Star,
             label = favoriteLabel,
-            accent = MaterialTheme.colorScheme.onSurface,
+            accent = Color(0xFFD5A329),
             onClick = onFavorite,
         )
         GlassActionButton(
@@ -682,7 +682,7 @@ private fun ActiveMockActionBar(
         GlassActionButton(
             icon = Icons.Default.MyLocation,
             label = selectLabel,
-            accent = MaterialTheme.colorScheme.primary,
+            accent = Color(0xFF3985DD),
             onClick = onSelect,
         )
     }
@@ -696,7 +696,7 @@ private fun GlassActionButton(
     onClick: () -> Unit,
     isStop: Boolean = false,
 ) {
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
+    val container = accent.copy(alpha = if (isStop) 0.92f else 0.18f)
     val reducedMotion = rememberReducedMotion()
     val glowTransition = rememberInfiniteTransition(label = "stopButtonGlow")
     val glowPulse by glowTransition.animateFloat(
@@ -740,10 +740,10 @@ private fun GlassActionButton(
                 .size(72.dp)
                 .clickable(role = Role.Button, onClick = onClick),
             shape = CircleShape,
-            color = if (isStop) accent.copy(alpha = 0.92f) else container,
+            color = container,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (isStop) accent.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.42f),
+                accent.copy(alpha = if (isStop) 0.98f else 0.92f),
             ),
             shadowElevation = 0.dp,
         ) {
