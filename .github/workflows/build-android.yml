@@ -132,6 +132,19 @@ jobs:
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         run: ./gradlew clean assembleRelease bundleRelease
 
+      - name: Verify AD_ID permission in signed release APK
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          test -n "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)
+          test -x "$AAPT"
+          "$AAPT" dump permissions "$APK" | tee /tmp/release-permissions.txt
+          if ! grep -Fq 'com.google.android.gms.permission.AD_ID' /tmp/release-permissions.txt; then
+            echo "::error::AD_ID permission missing from signed release APK; stop Play upload."
+            exit 1
+          fi
+
       - name: Upload signed Release APK
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
