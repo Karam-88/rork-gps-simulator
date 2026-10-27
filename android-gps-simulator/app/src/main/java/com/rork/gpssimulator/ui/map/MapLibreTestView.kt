@@ -17,7 +17,6 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
-import org.maplibre.android.annotations.CircleOptions
 import kotlin.math.abs
 
 /**
@@ -179,13 +178,6 @@ private class LibreHolder(
         val m = map ?: return
         if (m.style == null) return
         m.clear()
-        circles.forEach { c ->
-            m.addCircle(CircleOptions()
-                .center(NativeLatLng(c.center.lat, c.center.lng))
-                .radius(c.radiusMeters)
-                .strokeColor(c.strokeColor.toArgb())
-                .fillColor(c.fillColor.toArgb()))
-        }
         lines.forEach { line ->
             if (line.points.size > 1) {
                 m.addPolyline(PolylineOptions()
