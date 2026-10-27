@@ -173,6 +173,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val _realRecoveryStatus = MutableStateFlow<RealRecoveryStatus?>(null)
+    internal val realRecoveryStatus = _realRecoveryStatus.asStateFlow()
+    private var recoveryDismissJob: Job? = null
+
     init {
         app.bindService(Intent(app, MockLocationService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
 
@@ -205,6 +209,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applySession(session: MockSessionBus.Session?) {
         if (session != null) {
+            dismissRealRecovery()
             realRecoveryJob?.cancel()
             recoveringRealLocation = false
             recoveryNeedsRestart = false
@@ -251,7 +256,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun dismissRealRecovery() {
+        recoveryDismissJob?.cancel()
+        _realRecoveryStatus.value = null
+    }
+
+    fun retryRealRecovery() {
+        if (MockSessionBus.session.value != null) return
+        recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+    }
+
     private fun recoveryMessage(status: RealRecoveryStatus) {
+        if (recoveringRealLocation || status == RealRecoveryStatus.RESTORED) {
+            if (MockSessionBus.session.value != null) return
+            recoveryDismissJob?.cancel()
+            _realRecoveryStatus.value = status
+            if (status == RealRecoveryStatus.RESTORED) {
+                recoveryDismissJob = viewModelScope.launch {
+                    delay(3_000L)
+                    _realRecoveryStatus.value = null
+                }
+            }
+            Log.i(TAG, "REAL_RECOVERY status=$status")
+            return
+        }
         val config = settings.value
         val locales = getApplication<Application>().resources.configuration.locales
         val language = AppLanguage.effective(config.language, config.followSystemLanguage, locales[0])
@@ -274,7 +302,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             recoveryMessage(RealRecoveryStatus.CLEANUP_ERROR)
             return
         }
-        val afterNanos = boundary?.elapsedNanos ?: SystemClock.elapsedRealtimeNanos()
+        val afterNanos = maxOf(boundary?.elapsedNanos ?: 0L, SystemClock.elapsedRealtimeNanos())
         _permissionGranted.value = realLocation.hasPermission()
         recoveryMessage(RealRecoveryStatus.ACQUIRING)
         realLocation.startUpdates(settings.value.usePlayServices, 1_000L,
@@ -301,7 +329,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         realRecoveryJob = viewModelScope.launch {
-            delay(12_000L)
+            delay(10_000L)
             if (recoveringRealLocation && MockSessionBus.session.value == null && !recoveryNeedsRestart) {
                 recoveryMessage(if (realLocation.isLocationEnabled()) RealRecoveryStatus.TIMEOUT else RealRecoveryStatus.DISABLED)
                 // Timeout is a status, not listener teardown. A later genuine fix still

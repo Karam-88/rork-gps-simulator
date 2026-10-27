@@ -143,6 +143,7 @@ fun MapScreen(
     val activePoint by viewModel.activePoint.collectAsState()
     val activePlace by viewModel.activePlace.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    val recoveryStatus by viewModel.realRecoveryStatus.collectAsState()
     val elapsedMs by viewModel.elapsedMs.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val sessionKind by viewModel.sessionKind.collectAsState()
@@ -513,6 +514,14 @@ fun MapScreen(
                 },
             )
         }
+
+        com.rork.gpssimulator.ui.components.RealRecoveryNotice(
+            status = if (isMockActive) null else recoveryStatus,
+            onRetry = viewModel::retryRealRecovery,
+            onDismiss = viewModel::dismissRealRecovery,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
+        )
 
         AttributionChip(
             text = TileSource.of(settings.mapType).attribution,

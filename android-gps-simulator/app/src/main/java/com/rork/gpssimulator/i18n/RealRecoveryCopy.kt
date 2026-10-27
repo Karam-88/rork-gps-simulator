@@ -115,3 +115,20 @@ internal fun realRecoveryMessage(language: AppLanguage, status: RealRecoveryStat
     }
     return messages[status.ordinal]
 }
+
+internal data class RealRecoveryLabels(val waiting: String, val restored: String, val retry: String)
+
+internal fun realRecoveryLabels(language: AppLanguage): RealRecoveryLabels = when (language) {
+    AppLanguage.ENGLISH -> RealRecoveryLabels("Please wait a moment…", "GPS is now working normally.", "Retry")
+    AppLanguage.ARABIC -> RealRecoveryLabels("يرجى الانتظار لحظات…", "أصبحت خدمة GPS تعمل بصورة طبيعية.", "إعادة المحاولة")
+    AppLanguage.GERMAN -> RealRecoveryLabels("Bitte warte einen Moment…", "GPS funktioniert wieder normal.", "Erneut versuchen")
+    AppLanguage.FRENCH -> RealRecoveryLabels("Veuillez patienter un instant…", "Le GPS fonctionne à nouveau normalement.", "Réessayer")
+    AppLanguage.SPANISH -> RealRecoveryLabels("Espera un momento…", "El GPS vuelve a funcionar con normalidad.", "Reintentar")
+    AppLanguage.PORTUGUESE_BRAZIL -> RealRecoveryLabels("Aguarde um momento…", "O GPS voltou a funcionar normalmente.", "Tentar novamente")
+    AppLanguage.TURKISH -> RealRecoveryLabels("Lütfen biraz bekleyin…", "GPS artık normal çalışıyor.", "Tekrar dene")
+    AppLanguage.RUSSIAN -> RealRecoveryLabels("Подождите немного…", "GPS снова работает нормально.", "Повторить")
+    AppLanguage.HINDI -> RealRecoveryLabels("कृपया कुछ क्षण प्रतीक्षा करें…", "GPS अब सामान्य रूप से काम कर रहा है।", "फिर कोशिश करें")
+    AppLanguage.INDONESIAN -> RealRecoveryLabels("Mohon tunggu sebentar…", "GPS kembali berfungsi normal.", "Coba lagi")
+    AppLanguage.JAPANESE -> RealRecoveryLabels("しばらくお待ちください…", "GPSは正常に動作しています。", "再試行")
+    AppLanguage.CHINESE_SIMPLIFIED -> RealRecoveryLabels("请稍候…", "GPS 已恢复正常工作。", "重试")
+}
