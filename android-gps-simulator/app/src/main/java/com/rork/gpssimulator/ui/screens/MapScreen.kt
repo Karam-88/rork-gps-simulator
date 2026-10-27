@@ -515,14 +515,6 @@ fun MapScreen(
             )
         }
 
-        com.rork.gpssimulator.ui.components.RealRecoveryNotice(
-            status = if (isMockActive) null else recoveryStatus,
-            onRetry = viewModel::retryRealRecovery,
-            onDismiss = viewModel::dismissRealRecovery,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
-        )
-
         AttributionChip(
             text = TileSource.of(settings.mapType).attribution,
             modifier = Modifier
@@ -596,6 +588,16 @@ fun MapScreen(
                 )
             }
         }
+
+        // Draw last inside the map Box so controls and attribution cannot cover
+        // the recovery notification after STOP. No full-screen input scrim.
+        com.rork.gpssimulator.ui.components.RealRecoveryNotice(
+            status = if (isMockActive) null else recoveryStatus,
+            onRetry = viewModel::retryRealRecovery,
+            onDismiss = viewModel::dismissRealRecovery,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
+        )
     }
 
     if (showLayerSheet) {
