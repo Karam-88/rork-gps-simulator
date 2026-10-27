@@ -201,10 +201,10 @@ fun MapScreen(
             if (prior != null && prior != point && !reducedMotion) {
                 // Bounce at the new position on screen. Avoid visually simulating
                 // geographic travel, especially across countries or waterways.
-                hopScale.snapTo(0.78f)
-                hopScale.animateTo(1.30f, animationSpec = tween(600))
-                hopScale.animateTo(0.90f, animationSpec = tween(600))
-                hopScale.animateTo(1f, animationSpec = tween(800))
+                // One rabbit hop only: rise once, land once, then remain still.
+                hopScale.snapTo(1f)
+                hopScale.animateTo(1.28f, animationSpec = tween(230))
+                hopScale.animateTo(1f, animationSpec = tween(320))
             } else hopScale.snapTo(1f)
         }
     }
