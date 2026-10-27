@@ -173,6 +173,7 @@ private class LibreHolder(
             ))
         } finally {
             programmaticMove = false
+            camera.projectionRevision++
         }
     }
     fun draw(
