@@ -195,8 +195,10 @@ fun MapScreen(
             hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
     }
-    LaunchedEffect(isMockActive, isMotionSession) {
-        if (!isMockActive || isMotionSession) hopRequest = null
+    LaunchedEffect(isMotionSession) {
+        // Keep a manual hop visible when choosing a location before starting mock GPS.
+        // Only route/joystick motion suppresses the decorative single-hop animation.
+        if (isMotionSession) hopRequest = null
     }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
