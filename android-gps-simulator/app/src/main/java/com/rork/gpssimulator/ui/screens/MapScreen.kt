@@ -271,7 +271,9 @@ fun MapScreen(
                 ),
             )
         }
-        activePoint?.let {
+        // The active (blue) marker represents an actual mock session only.
+        // Selecting a point before starting must not render a fake current-location dot.
+        if (isMockActive) activePoint?.let {
             add(
                 MapMarker(
                     point = it,
