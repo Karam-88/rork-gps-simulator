@@ -237,7 +237,7 @@ fun RouteEditorSheet(
                             points.add(camera.center)
                         }
                         SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
-                            currentLocation?.let { camera.snapTo(it) }
+                            currentLocation?.let { camera.snapTo(it, 16f) }
                         }
                         if (points.isNotEmpty()) {
                             SmallMapAction(Icons.Default.Close, strings[K.delete]) {
