@@ -7,11 +7,16 @@ import org.junit.Test
 class RabbitHopTest {
     private val a = LatLng(51.0, 7.0)
     private val b = LatLng(52.0, 8.0)
-    @Test fun liftsBeforeTravelling() {
-        val lift = rabbitHopFrame(a, b, 100f / 700)
-        assertEquals(a, lift.point)
-        assertTrue(lift.liftDp > 10f)
-        assertEquals(36f, rabbitHopFrame(a, b, 200f / 700).liftDp, 0.001f)
+    @Test fun risesAndTravelsTogetherFromFirstFrame() {
+        val early = rabbitHopFrame(a, b, 100f / 700)
+        assertTrue(early.point.lat > a.lat)
+        assertTrue(early.point.lat < b.lat)
+        assertTrue(early.liftDp > 0f)
+        val quarter = rabbitHopFrame(a, b, 0.25f)
+        val middle = rabbitHopFrame(a, b, 0.5f)
+        assertTrue(quarter.point.lat > early.point.lat)
+        assertTrue(quarter.liftDp > early.liftDp)
+        assertEquals(36f, middle.liftDp, 0.001f)
     }
     @Test fun travelsWhileElevatedThenLandsExactly() {
         val middle = rabbitHopFrame(a, b, 350f / 700)
@@ -34,11 +39,17 @@ class RabbitHopTest {
         val middle = rabbitHopFrame(LatLng(0.0, 179.0), LatLng(0.0, -179.0), 0.5f)
         assertTrue(kotlin.math.abs(middle.point.lng) > 179.9)
     }
-    @Test fun landingHasOnlyOneSmallRebound() {
-        val impact = rabbitHopFrame(a, b, 630f / 700)
-        val rebound = rabbitHopFrame(a, b, 665f / 700)
-        assertEquals(b, impact.point)
-        assertTrue(impact.liftDp < 0.01f)
-        assertTrue(rebound.liftDp in 0f..4.01f)
+    @Test fun descendsContinuouslyWithoutVerticalLandingOrRebound() {
+        val halfway = rabbitHopFrame(a, b, 0.5f)
+        val nearEnd = rabbitHopFrame(a, b, 0.9f)
+        val later = rabbitHopFrame(a, b, 0.95f)
+        val end = rabbitHopFrame(a, b, 1f)
+        assertTrue(halfway.liftDp > nearEnd.liftDp)
+        assertTrue(nearEnd.liftDp > later.liftDp)
+        assertTrue(later.liftDp > end.liftDp)
+        assertTrue(nearEnd.point.lat < later.point.lat)
+        assertTrue(later.point.lat < end.point.lat)
+        assertEquals(b, end.point)
+        assertEquals(0f, end.liftDp, 0f)
     }
 }
