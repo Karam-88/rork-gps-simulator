@@ -476,15 +476,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun stopMock() {
         val service = boundService ?: return
         val session = MockSessionBus.session.value
-        service.stopSession()
-        // Show the real-location recovery notification on the STOP action itself,
-        // instead of relying on a later StateFlow collection/update.
-        if (session != null && MockSessionBus.session.value == null) {
-            recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
-        }
-        // Only an explicit successful stop qualifies; provider failures and failed starts do not.
-        if (session != null && MockSessionBus.session.value == null) {
-            ratingPrompt.completedSuccessfully(System.currentTimeMillis() - session.sessionStartedAt)
+        service.stopSession {
+            // Recovery starts only after both platform and fused cleanup complete.
+            if (session != null && MockSessionBus.session.value == null) {
+                recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+            }
+            // Only an explicit successful stop qualifies; provider failures and failed starts do not.
+            if (session != null && MockSessionBus.session.value == null) {
+                ratingPrompt.completedSuccessfully(System.currentTimeMillis() - session.sessionStartedAt)
+            }
         }
     }
 
@@ -784,3 +784,4 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private const val MY_LOCATION_ZOOM = 16f
     }
 }
+

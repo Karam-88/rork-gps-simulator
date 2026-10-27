@@ -11,6 +11,7 @@ on:
       - feature/gps-overhaul-phase1-20261025
       - fix/post-v26-controls-20261026
       - integration/gps-rating-internal-v28
+      - fix/mock-gps-provider-consistency
   pull_request:
     branches:
       - main
@@ -62,6 +63,17 @@ jobs:
       # certificate differs from the Play App Signing certificate.
       - name: Build Debug APK
         run: ./gradlew assembleDebug
+
+      - name: Run JVM regression tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Upload JVM regression results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-unit-test-results
+          path: android-gps-simulator/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: error
 
       - name: Verify R8 Release build (PR only)
         if: github.event_name == 'pull_request'
@@ -188,3 +200,4 @@ jobs:
       - name: Clean signing files
         if: always() && github.event_name != 'pull_request'
         run: rm -f release-keystore.jks key.properties
+

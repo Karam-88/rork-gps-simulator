@@ -47,8 +47,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 31
-        versionName = "1.1.26-internal-test"
+        versionCode = 32
+        versionName = "1.1.27-internal-test"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
@@ -135,3 +135,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.androidx.ui.tooling)
 }
+
