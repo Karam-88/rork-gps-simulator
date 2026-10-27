@@ -83,6 +83,8 @@ import com.rork.gpssimulator.data.model.MapType
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.data.model.SavedKind
 import com.rork.gpssimulator.data.model.SessionKind
+import com.rork.gpssimulator.data.model.ThemeMode
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
@@ -251,6 +253,15 @@ fun MapScreen(
         }
     }
 
+    val darkMap = when (settings.mapTheme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> when (settings.theme) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
+    }
     val markers = buildList {
         if (!isMockActive) {
             realSample?.let {
@@ -289,6 +300,10 @@ fun MapScreen(
             )
         }
     }
+    val mapMarkers = markers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+        listOf(MapMarker(point = destination, color = Color(0xFFE53935),
+            style = MarkerStyle.DESTINATION))
+    } ?: emptyList())
     val polylines = routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
@@ -297,7 +312,8 @@ fun MapScreen(
         MapView(
             camera = camera,
             mapType = settings.mapType,
-            markers = markers,
+            darkMap = darkMap,
+            markers = mapMarkers,
             polylines = polylines,
             pulseFraction = { pulse.value },
             hopRequest = hopRequest,
