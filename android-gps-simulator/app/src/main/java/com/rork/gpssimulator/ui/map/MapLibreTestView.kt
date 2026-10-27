@@ -122,7 +122,9 @@ private class LibreHolder(
             }
             ready.addOnCameraMoveListener {
                 camera.projectionRevision++
-                if (styleReady && !programmaticMove) {
+                // Only gestures may write the Compose camera. Style loading and
+                // programmatic camera callbacks must not reset a requested GPS zoom.
+                if (styleReady && !programmaticMove && camera.isUserInteracting) {
                     val pos = ready.cameraPosition
                     pos.target?.let {
                         camera.snapTo(LatLng(it.latitude, it.longitude), pos.zoom.toFloat())
@@ -131,7 +133,9 @@ private class LibreHolder(
             }
             ready.addOnCameraIdleListener {
                 if (!styleReady || programmaticMove) return@addOnCameraIdleListener
+                val wasGesture = camera.isUserInteracting
                 camera.isUserInteracting = false
+                if (!wasGesture) return@addOnCameraIdleListener
                 val pos = ready.cameraPosition
                 pos.target?.let {
                     camera.snapTo(LatLng(it.latitude, it.longitude), pos.zoom.toFloat())
