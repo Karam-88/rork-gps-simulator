@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.rork.gpssimulator.BuildConfig
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
 import com.rork.gpssimulator.data.model.LatLng
@@ -132,7 +133,15 @@ fun MapView(
     pulseFraction
 
     Box(modifier = modifier) {
-        VectorMapView(
+        val renderer: @Composable (Modifier) -> Unit = { mapModifier ->
+            if (BuildConfig.DEBUG) {
+                MapLibreTestView(camera, mapType, mapModifier, markers, polylines, circles, onMapTap, onCameraIdle)
+            } else {
+                VectorMapView(camera, mapType, mapModifier, markers, polylines, circles, onMapTap, onCameraIdle)
+            }
+        }
+        renderer(Modifier.fillMaxSize())
+        /*VectorMapView(
             camera = camera,
             mapType = mapType,
             markers = markers,
@@ -141,7 +150,7 @@ fun MapView(
             onMapTap = onMapTap,
             onCameraIdle = onCameraIdle,
             modifier = Modifier.fillMaxSize(),
-        )
+        )*/
         content()
     }
 }
