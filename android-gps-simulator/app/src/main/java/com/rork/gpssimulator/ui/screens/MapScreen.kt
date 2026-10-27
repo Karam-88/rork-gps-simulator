@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
@@ -252,7 +253,7 @@ fun MapScreen(
                 add(
                     MapMarker(
                         point = it.point,
-                        color = appColors.success,
+                        color = Color(0xFF2583FA),
                         radiusMeters = it.accuracy.toDouble(),
                         style = MarkerStyle.REAL,
                     ),
@@ -269,11 +270,11 @@ fun MapScreen(
                 ),
             )
         }
-        activePoint?.let {
+        if (isMockActive) activePoint?.let {
             add(
                 MapMarker(
                     point = it,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFFF04444),
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
@@ -304,13 +305,7 @@ fun MapScreen(
             polylines = polylines,
             pulseFraction = { pulse.value },
             hopRequest = hopRequest,
-            onMapTap = { point ->
-                if (!isMotionSession) {
-                    requestManualHop(point)
-                    viewModel.selectPoint(point)
-                    if (isMockActive) viewModel.moveMockTo(point)
-                }
-            },
+            onMapTap = { _ -> },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
@@ -711,7 +706,7 @@ private fun ActiveMockActionBar(
             onClick = onFavorite,
         )
         GlassActionButton(
-            icon = Icons.Default.MyLocation,
+            icon = Icons.Default.LocationOn,
             label = selectLabel,
             accent = Color(0xFF3985DD),
             onClick = onSelect,
