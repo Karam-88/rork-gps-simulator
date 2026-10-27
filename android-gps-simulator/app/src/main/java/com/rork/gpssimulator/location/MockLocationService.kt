@@ -417,9 +417,19 @@ class MockLocationService : Service() {
                         routeTraveled = total
                         publishSession(end, 0.0, session.bearing, routeTraveledMeters = total)
                         persist(end, config, force = true)
-                        push(end, 0.0, config)
+                        if (!push(end, 0.0, config)) break
                         evaluateGeofences(end)
                         MockSessionBus.emit(MockSessionBus.Event.RouteFinished)
+                        // A completed route is still an active mock session. Keep
+                        // refreshing the destination until the user explicitly stops.
+                        // Otherwise the final fix becomes stale and Maps may fall back
+                        // to a real location even though the foreground service remains.
+                        while (MockSessionBus.session.value != null) {
+                            val holdConfig = repository.settings.value
+                            delay(holdConfig.updateIntervalMs.toLong().coerceIn(200L, 5_000L))
+                            if (MockSessionBus.session.value == null) break
+                            if (!push(end, 0.0, holdConfig, session.bearing)) break
+                        }
                         break
                     }
                 }
