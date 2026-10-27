@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: error
 
       - name: Check Play signing secrets
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027'
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ] || \
              [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
@@ -113,7 +113,7 @@ jobs:
           test -s release-keystore.jks
 
       - name: Create signing configuration
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           cat > key.properties <<EOF
           storeFile=../release-keystore.jks
@@ -124,11 +124,11 @@ jobs:
           chmod 600 key.properties
 
       - name: Build signed Release APK and AAB
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         run: ./gradlew clean assembleRelease bundleRelease
 
       - name: Verify no advertising ID permission in signed release APK
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
           test -n "$APK"
@@ -141,7 +141,7 @@ jobs:
           fi
 
       - name: Verify no advertising ID permission in signed release AAB
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           set -euo pipefail
           AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
@@ -161,7 +161,7 @@ jobs:
           PY
 
       - name: Upload signed Release APK
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gps-simulator-release-apk
@@ -170,7 +170,7 @@ jobs:
           retention-days: 30
 
       - name: Upload release R8 mapping for Play Console
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gps-simulator-release-mapping
@@ -179,7 +179,7 @@ jobs:
           retention-days: 30
 
       - name: Upload signed Release AAB
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gps-simulator-release-aab
