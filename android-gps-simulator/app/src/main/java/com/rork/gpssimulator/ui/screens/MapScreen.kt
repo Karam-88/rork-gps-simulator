@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
@@ -189,25 +188,15 @@ fun MapScreen(
 
     val reducedMotion = rememberReducedMotion()
     var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
-    val mapLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(viewModel, mapLifecycle) {
-        mapLifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
-            try {
-                viewModel.relocationAnimations.pending.collect { pending ->
-                    pending?.let {
-                        viewModel.relocationAnimations.take(it.request.id)?.let { request -> hopRequest = request }
-                    }
-                }
-            } finally {
-                // Do not resume a partly played hop after backgrounding or changing screens.
-                hopRequest = null
-            }
+    var hopSequence by remember { mutableStateOf(0L) }
+    fun requestManualHop(point: LatLng) {
+        val prior = selected?.point ?: activePoint ?: realSample?.point ?: point
+        if (prior != point && !isMotionSession) {
+            hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
     }
-    LaunchedEffect(isMockActive) {
-        if (!isMockActive && selected == null) {
-            hopRequest = null
-        }
+    LaunchedEffect(isMockActive, isMotionSession) {
+        if (!isMockActive || isMotionSession) hopRequest = null
     }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
@@ -306,7 +295,11 @@ fun MapScreen(
             pulseFraction = { pulse.value },
             hopRequest = hopRequest,
             onMapTap = { point ->
-                viewModel.selectPoint(point)
+                if (!isMotionSession) {
+                    requestManualHop(point)
+                    viewModel.selectPoint(point)
+                    if (isMockActive) viewModel.moveMockTo(point)
+                }
             },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
@@ -426,6 +419,7 @@ fun MapScreen(
                     .shadow(12.dp, CircleShape)
                     .clickable(role = Role.Button) {
                         showMenuPanel = false
+                        requestManualHop(camera.center)
                         viewModel.selectPoint(camera.center)
                         viewModel.startMock()
                     },
@@ -574,7 +568,9 @@ fun MapScreen(
                     onStop = { viewModel.stopMock() },
                     onSelect = {
                         val point = camera.center
+                        requestManualHop(point)
                         viewModel.selectPoint(point)
+                        viewModel.moveMockTo(point)
                     },
                     onFavorite = {
                         activePoint?.let { point ->
@@ -705,17 +701,17 @@ private fun ActiveMockActionBar(
             onClick = onFavorite,
         )
         GlassActionButton(
+            icon = Icons.Default.MyLocation,
+            label = selectLabel,
+            accent = Color(0xFF3985DD),
+            onClick = onSelect,
+        )
+        GlassActionButton(
             icon = Icons.Default.Close,
             label = stopLabel,
             accent = dangerColor,
             isStop = true,
             onClick = onStop,
-        )
-        GlassActionButton(
-            icon = Icons.Default.MyLocation,
-            label = selectLabel,
-            accent = Color(0xFF3985DD),
-            onClick = onSelect,
         )
     }
 }
