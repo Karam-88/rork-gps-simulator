@@ -243,39 +243,60 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun recoverRealLocationAfterMockStop(recenter: Boolean) {
+        realRecoveryJob?.cancel()
         if (!_permissionGranted.value) {
             refreshPermissionState()
             return
         }
 
-        realRecoveryJob?.cancel()
+        // Android may need time to reacquire a non-mock fix after test providers
+        // are removed. Do not treat a cached pre-simulation fix as a fresh one.
+        val stopTimeMs = System.currentTimeMillis()
+        var freshFixReceived = false
+        val preferPlayServices = settings.value.usePlayServices
 
-        // Keep the last known genuine position visible instead of clearing it while
-        // Android reacquires a fresh fix after the mock provider is removed.
-        val cachedReal = _realSample.value
-        if (recenter && cachedReal != null) {
-            moveCamera(cachedReal.point, MY_LOCATION_ZOOM)
-        }
-
-        var acceptedFreshFix = false
-        realLocation.startUpdates(settings.value.usePlayServices, 250L) { sample ->
-            if (MockSessionBus.session.value != null || acceptedFreshFix) return@startUpdates
-            acceptedFreshFix = true
+        // Keep a genuinely real cached fix visible while waiting, if available.
+        realLocation.lastKnown(preferPlayServices)?.let { sample ->
             _realSample.value = sample
             if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
-            startRealUpdates()
+        }
+
+        realLocation.startUpdates(preferPlayServices, 500L) { sample ->
+            if (MockSessionBus.session.value != null) return@startUpdates
+            _realSample.value = sample
+            // Only a fix generated after the mock session ended completes recovery.
+            if (sample.timestamp >= stopTimeMs - 500L) {
+                freshFixReceived = true
+                if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+            }
         }
 
         realRecoveryJob = viewModelScope.launch {
-            delay(1500L)
-            if (!acceptedFreshFix && MockSessionBus.session.value == null) {
-                realLocation.lastKnown(settings.value.usePlayServices)?.let { sample ->
-                    _realSample.value = sample
-                    if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+            // Keep the real provider listener active rather than replacing it
+            // after 1.5 seconds, which could discard the first new GPS fix.
+            repeat(12) {
+                if (MockSessionBus.session.value != null) return@launch
+                if (freshFixReceived) return@repeat
+                delay(1_000L)
+                if (!freshFixReceived && MockSessionBus.session.value == null && it % 3 == 2) {
+                    // Some devices only resume reporting after re-registering.
+                    realLocation.startUpdates(preferPlayServices, 500L) { sample ->
+                        if (MockSessionBus.session.value != null) return@startUpdates
+                        _realSample.value = sample
+                        if (sample.timestamp >= stopTimeMs - 500L) {
+                            freshFixReceived = true
+                            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+                        }
+                    }
                 }
-                startRealUpdates()
             }
-            _mockReadiness.value = readinessProbe.checkReadiness(_permissionGranted.value)
+            if (MockSessionBus.session.value == null) {
+                startRealUpdates()
+                if (!freshFixReceived) {
+                    postMessage("Waiting for a fresh GPS fix. Check that device location is enabled.", isError = true)
+                }
+                _mockReadiness.value = readinessProbe.checkReadiness(_permissionGranted.value)
+            }
         }
     }
 
