@@ -69,7 +69,6 @@ class MockLocationService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var pushJob: Job? = null
     private var stopping = false
-    private val stopCallbacks = mutableListOf<() -> Unit>()
 
     private var kind = SessionKind.STATIC
     private var route: SimRoute? = null
@@ -189,12 +188,13 @@ class MockLocationService : Service() {
     override fun onDestroy() {
         pushJob?.cancel()
         serviceScope.cancel()
+        val destroyedSession = MockSessionBus.session.value
         mockController.stop { clean ->
-            if (MockSessionBus.session.value != null) {
-            // An unexpected destruction must not leave the UI believing injection
-            // continues. Keep the persisted record for the existing sticky restart.
-            MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
-            MockSessionBus.publish(null)
+            if (destroyedSession != null && MockSessionBus.session.value === destroyedSession) {
+                // Do not clear a replacement service's newer session from a late callback.
+                // Keep the persisted record for the existing sticky restart.
+                MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
+                MockSessionBus.publish(null)
             }
             diagnostic("service_destroyed cleanup_ok=$clean")
         }
@@ -349,7 +349,8 @@ class MockLocationService : Service() {
     }
 
     fun stopSession(completed: () -> Unit = {}) {
-        stopCallbacks.add(completed)
+        // One completion per stop action/session: repeated taps while fused cleanup
+        // is pending must not duplicate history/recovery/rating qualification.
         if (stopping) return
         stopping = true
         diagnostic("session_stopping")
@@ -371,9 +372,7 @@ class MockLocationService : Service() {
             // and foreground operation have ended after both backends acknowledged cleanup.
             Log.i(TAG, "REAL_RECOVERY foreground_stopped")
             stopping = false
-            val callbacks = stopCallbacks.toList()
-            stopCallbacks.clear()
-            callbacks.forEach { it() }
+            completed()
         }
     }
 

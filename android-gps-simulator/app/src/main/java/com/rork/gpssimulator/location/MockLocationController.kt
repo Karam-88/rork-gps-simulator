@@ -157,6 +157,8 @@ class MockLocationController(
                     manager.setTestProviderEnabled(provider, true)
                 } catch (e: IllegalArgumentException) {
                     // Provider not supported on this device; skip it but keep the others.
+                    installedProviders.remove(provider)
+                    removeTestProviderQuietly(manager, provider)
                     Log.i(TAG, "Provider $provider unavailable for mocking")
                 }
             }
