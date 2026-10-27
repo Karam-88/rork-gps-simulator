@@ -373,7 +373,7 @@ class MockLocationService : Service() {
         pushJob = serviceScope.launch {
             while (true) {
                 val config = repository.settings.value
-                delay(config.updateIntervalMs.toLong().coerceIn(200L, 10_000L))
+                delay(config.updateIntervalMs.toLong().coerceIn(200L, 1_000L))
                 val session = MockSessionBus.session.value ?: break
 
                 if (isPaused) {
@@ -412,7 +412,7 @@ class MockLocationService : Service() {
                 val config = repository.settings.value
                 // The initial mock position is set once when the route starts.
                 // Subsequent updates follow the resolved road geometry smoothly.
-                val stepMs = config.updateIntervalMs.toLong().coerceIn(200L, 5_000L)
+                val stepMs = config.updateIntervalMs.toLong().coerceIn(200L, 1_000L)
                 delay(stepMs)
                 val session = MockSessionBus.session.value ?: break
 
@@ -442,7 +442,7 @@ class MockLocationService : Service() {
                         // to a real location even though the foreground service remains.
                         while (MockSessionBus.session.value != null) {
                             val holdConfig = repository.settings.value
-                            delay(holdConfig.updateIntervalMs.toLong().coerceIn(200L, 5_000L))
+                            delay(holdConfig.updateIntervalMs.toLong().coerceIn(200L, 1_000L))
                             if (MockSessionBus.session.value == null) break
                             if (!push(end, 0.0, holdConfig, session.bearing)) break
                         }
