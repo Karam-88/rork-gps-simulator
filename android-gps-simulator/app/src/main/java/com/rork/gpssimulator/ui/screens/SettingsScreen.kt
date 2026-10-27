@@ -153,6 +153,7 @@ fun SettingsScreen(
     onOpenLicenses: () -> Unit,
     onOpenPresets: () -> Unit,
     onOpenRoutes: () -> Unit,
+    onTestRatingDialog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalStrings.current
@@ -879,7 +880,7 @@ fun SettingsScreen(
             val appTerms = arrayOf(
                 strings[K.share_app], strings[K.rate_app], strings[K.send_feedback],
                 strings[K.privacy_policy],
-                strings[K.open_source_licenses], strings[K.about], "share", "rate", "about",
+                strings[K.open_source_licenses], strings[K.about], "share", "rate", "about", "rating test", "تجربة التقييم",
                 "privacy", "license",
             )
             if (filter.matches(*appTerms)) {
@@ -904,6 +905,25 @@ fun SettingsScreen(
                                 viewModel.ratingPrompt.choseToRate()
                                 openPlayStoreListing(context)
                             },
+                            showChevron = true,
+                        )
+                        RowDivider()
+                    }
+                    if (com.rork.gpssimulator.BuildConfig.VERSION_NAME.contains("internal-test") &&
+                        filter.matches("تجربة نافذة التقييم", "rating test", "bewertung testen")) {
+                        SettingRow(
+                            icon = Icons.Default.StarRate,
+                            title = when (strings.language) {
+                                AppLanguage.ARABIC -> "تجربة نافذة التقييم"
+                                AppLanguage.GERMAN -> "Bewertungsdialog testen"
+                                else -> "Test rating dialog"
+                            },
+                            description = when (strings.language) {
+                                AppLanguage.ARABIC -> "معاينة النافذة دون تغيير سجل تقييمك"
+                                AppLanguage.GERMAN -> "Vorschau ohne Änderung des Bewertungsstatus"
+                                else -> "Preview without changing your rating status"
+                            },
+                            onClick = onTestRatingDialog,
                             showChevron = true,
                         )
                         RowDivider()
