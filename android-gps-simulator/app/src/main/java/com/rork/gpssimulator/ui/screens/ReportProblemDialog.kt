@@ -1,196 +1,267 @@
 package com.rork.gpssimulator.ui.screens
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.os.Build
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FieldValue
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.rork.gpssimulator.i18n.AppLanguage
+import com.rork.gpssimulator.i18n.problemReportCopy
 
-private data class ReportText(
-    val title: String,
-    val hint: String,
-    val description: String,
-    val send: String,
-    val cancel: String,
-    val missingEmail: String,
-    val subject: String,
-)
+/** Keeps an in-flight submission alive across dialog recomposition and activity rotation. */
+internal class ProblemReportViewModel(private val savedState: SavedStateHandle) : ViewModel() {
+    var description by mutableStateOf(savedState.get<String>("description").orEmpty())
+        private set
+    var sending by mutableStateOf(false)
+        private set
+    var sent by mutableStateOf(savedState.get<Boolean>("sent") ?: false)
+        private set
+    var failed by mutableStateOf(false)
+        private set
+    var invalid by mutableStateOf(false)
+        private set
 
-private fun textFor(language: AppLanguage): ReportText = when (language) {
-    AppLanguage.ARABIC -> ReportText("الإبلاغ عن مشكلة", "صف المشكلة التي واجهتك", "لن يتم إرفاق موقعك أو سجل المواقع. يمكنك مراجعة البريد قبل إرساله.", "فتح البريد", "إلغاء", "لم يتم العثور على تطبيق بريد إلكتروني", "تقرير مشكلة في GPS Simulator")
-    AppLanguage.GERMAN -> ReportText("Problem melden", "Beschreibe das Problem", "Standortdaten werden nicht angehängt. Prüfe die E-Mail vor dem Senden.", "E-Mail öffnen", "Abbrechen", "Keine E-Mail-App gefunden", "GPS Simulator: Problembericht")
-    AppLanguage.FRENCH -> ReportText("Signaler un problème", "Décrivez le problème", "Aucune donnée de localisation n’est jointe. Vérifiez l’e-mail avant l’envoi.", "Ouvrir l’e-mail", "Annuler", "Aucune application de messagerie trouvée", "GPS Simulator : signalement")
-    AppLanguage.SPANISH -> ReportText("Informar de un problema", "Describe el problema", "No se adjuntan datos de ubicación. Revisa el correo antes de enviarlo.", "Abrir correo", "Cancelar", "No se encontró una aplicación de correo", "GPS Simulator: informe de problema")
-    AppLanguage.PORTUGUESE_BRAZIL -> ReportText("Relatar um problema", "Descreva o problema", "Nenhum dado de localização será anexado. Revise o e-mail antes de enviar.", "Abrir e-mail", "Cancelar", "Nenhum aplicativo de e-mail encontrado", "GPS Simulator: relato de problema")
-    AppLanguage.TURKISH -> ReportText("Sorun bildir", "Sorunu açıklayın", "Konum verileri eklenmez. Göndermeden önce e-postayı inceleyin.", "E-postayı aç", "İptal", "E-posta uygulaması bulunamadı", "GPS Simulator sorun bildirimi")
-    AppLanguage.RUSSIAN -> ReportText("Сообщить о проблеме", "Опишите проблему", "Данные о местоположении не прикрепляются. Проверьте письмо перед отправкой.", "Открыть почту", "Отмена", "Почтовое приложение не найдено", "GPS Simulator: сообщение о проблеме")
-    AppLanguage.HINDI -> ReportText("समस्या रिपोर्ट करें", "समस्या बताएँ", "लोकेशन डेटा संलग्न नहीं होगा। भेजने से पहले ईमेल जाँचें।", "ईमेल खोलें", "रद्द करें", "ईमेल ऐप नहीं मिला", "GPS Simulator समस्या रिपोर्ट")
-    AppLanguage.INDONESIAN -> ReportText("Laporkan masalah", "Jelaskan masalahnya", "Data lokasi tidak dilampirkan. Tinjau email sebelum mengirim.", "Buka email", "Batal", "Aplikasi email tidak ditemukan", "GPS Simulator: laporan masalah")
-    AppLanguage.JAPANESE -> ReportText("問題を報告", "問題の内容を入力", "位置情報は添付されません。送信前にメールを確認できます。", "メールを開く", "キャンセル", "メールアプリが見つかりません", "GPS Simulator：問題の報告")
-    AppLanguage.CHINESE_SIMPLIFIED -> ReportText("报告问题", "描述您遇到的问题", "不会附加位置数据。您可以在发送前检查邮件。", "打开邮件", "取消", "未找到邮件应用", "GPS Simulator 问题反馈")
-    AppLanguage.ENGLISH -> ReportText("Report a problem", "Describe what went wrong", "No location data is attached. You can review the email before sending.", "Open email", "Cancel", "No email app found", "GPS Simulator problem report")
+    fun edit(value: String) {
+        if (sending || sent) return
+        // Count Unicode code points, so emoji are not cut in half at the limit.
+        description = value.substring(0, value.offsetByCodePoints(0, value.codePointCount(0, value.length).coerceAtMost(500)))
+        savedState["description"] = description
+        invalid = false
+        failed = false
+    }
+
+    fun reset() {
+        if (sending) return
+        sent = false
+        savedState["sent"] = false
+        edit("")
+    }
+
+    fun send(version: String) {
+        if (sending || sent) return
+        val message = description.trim()
+        if (message.isBlank() || message.codePointCount(0, message.length) > 500) {
+            invalid = true
+            return
+        }
+        sending = true
+        failed = false
+        fun fail() { sending = false; failed = true }
+        fun submit(uid: String) {
+            // Preserve the existing collection, anonymous authentication and rules-compatible schema.
+            // The free-form dialog uses the existing "Other issue" category (5).
+            val report = hashMapOf<String, Any>(
+                "userId" to uid,
+                "issueType" to 5,
+                "description" to message,
+                "appVersion" to version,
+                "androidVersion" to Build.VERSION.RELEASE,
+                "deviceModel" to (Build.MANUFACTURER + " " + Build.MODEL),
+                "createdAt" to FieldValue.serverTimestamp(),
+            )
+            FirebaseFirestore.getInstance().collection("problem_reports").add(report)
+                .addOnSuccessListener {
+                    sending = false
+                    sent = true
+                    savedState["sent"] = true
+                }
+                .addOnFailureListener { fail() }
+        }
+        try {
+            val auth = FirebaseAuth.getInstance()
+            val user = auth.currentUser
+            if (user != null) submit(user.uid)
+            else auth.signInAnonymously()
+                .addOnSuccessListener { result ->
+                    val uid = result.user?.uid
+                    if (uid == null) fail() else {
+                        try { submit(uid) } catch (_: Exception) { fail() }
+                    }
+                }
+                .addOnFailureListener { fail() }
+        } catch (_: Exception) { fail() }
+    }
 }
 
-/** Draft-only reporting: never sends anything without user interaction. */
 @Composable
-fun ReportProblemDialog(
-    language: AppLanguage,
-    onDismiss: () -> Unit,
-) {
+fun ReportProblemDialog(language: AppLanguage, onDismiss: () -> Unit) {
+    val state: ProblemReportViewModel = viewModel()
     val context = LocalContext.current
-    val copy = remember(language) { textFor(language) }
-    var description by remember { mutableStateOf("") }
-    var mailError by remember { mutableStateOf(false) }
-    var sending by remember { mutableStateOf(false) }
-    var sent by remember { mutableStateOf(false) }
-    var sendError by remember { mutableStateOf(false) }
-    var selectedIssue by remember { mutableStateOf(0) }
-    val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    val arabic = language == AppLanguage.ARABIC
-    val issueLabels = if (arabic) listOf(
-        "الموقع لا يتحرك", "الموقع يعود إلى الحقيقي", "مشكلة في المسار",
-        "الخريطة لا تظهر", "التطبيق يتوقف", "مشكلة أخرى"
-    ) else listOf(
-        "Location won't move", "Location resets", "Route problem",
-        "Map not loading", "App crashes", "Other issue"
-    )
-    val tips = if (arabic) listOf(
-        "اختر GPS Simulator كتطبيق الموقع الوهمي من خيارات المطوّر. اسمح باستخدام البطارية دون تقييد، ثم شغّل المحاكاة.",
-        "تأكد من اختيار GPS Simulator كتطبيق الموقع الوهمي ومن ضبط البطارية على غير مقيّد.",
-        "تحقق من الإنترنت وحدد نقاطًا على طرق متاحة. عدّل أي نقطة غير مدعومة ثم أعد المحاولة.",
-        "تحقق من الاتصال بالإنترنت وأعد فتح الخريطة.",
-        "أعد تشغيل التطبيق وتحقق من وجود تحديث جديد.",
-        "صف المشكلة لفريق الدعم في الحقل أدناه."
-    ) else listOf(
-        "Select GPS Simulator as the mock location app in Developer options. Allow unrestricted battery use, then start simulation.",
-        "Select GPS Simulator as the mock location app and set battery usage to Unrestricted.",
-        "Check your internet connection and choose supported road points. Adjust unsupported waypoints.",
-        "Check your internet connection and reopen the map.",
-        "Restart the app and check for updates.",
-        "Describe the issue for the support team below."
-    )
-    CompositionLocalProvider(LocalLayoutDirection provides if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(copy.title) },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(if (arabic) "اختر نوع المشكلة" else "Choose the issue", fontWeight = FontWeight.SemiBold)
-                issueLabels.forEachIndexed { index, label ->
-                    FilterChip(
-                        selected = selectedIssue == index,
-                        onClick = {
-                            selectedIssue = index
-                            scope.launch { scrollState.animateScrollTo(scrollState.maxValue) }
-                        },
-                        label = { Text(label) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                Text(
-                    tips[selectedIssue],
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
-                        scope.launch { scrollState.animateScrollTo(scrollState.maxValue) }
-                    },
-                )
-                Text(if (arabic) "اكتب تفاصيل المشكلة في الحقل التالي لتفعيل زر إرسال البلاغ." else "Describe the issue below to enable Send report.")
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { if (it.length <= 2000) description = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp),
-                    placeholder = { Text(copy.hint) },
-                    minLines = 3,
-                    maxLines = 7,
-                )
-                Text(copy.description)
-                if (mailError) Text(copy.missingEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-                if (sending) Text(if (arabic) "جارٍ إرسال البلاغ..." else "Sending report...")
-                if (sent) Text(if (arabic) "تم إرسال بلاغك بنجاح" else "Report sent successfully")
-                if (sendError) Text(if (arabic) "تعذر الإرسال. تحقق من الإنترنت وحاول مجددًا." else "Could not send. Check your connection and retry.", color = MaterialTheme.colorScheme.error)
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = description.isNotBlank() && !sending && !sent,
-                onClick = {
-                    val version = runCatching {
-                        @Suppress("DEPRECATION")
-                        context.packageManager.getPackageInfo(context.packageName, 0).versionName
-                    }.getOrNull() ?: "unknown"
-                    val body = buildString {
-                        append("Issue: ").append(issueLabels[selectedIssue]).append("\n")
-                        append(description.trim())
-                        append("\n\n--- Device information (provided with your review) ---\n")
-                        append("App version: ").append(version).append('\n')
-                        append("Android: ").append(Build.VERSION.RELEASE).append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
-                        append("Device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
-                    }
-                    sending = true
-                    sendError = false
-                    val auth = FirebaseAuth.getInstance()
-                    fun submit(uid: String) {
-                        val report = hashMapOf<String, Any>(
-                            "userId" to uid,
-                            "issueType" to selectedIssue,
-                            "description" to description.trim(),
-                            "appVersion" to version,
-                            "androidVersion" to Build.VERSION.RELEASE,
-                            "deviceModel" to (Build.MANUFACTURER + " " + Build.MODEL),
-                            "createdAt" to FieldValue.serverTimestamp(),
-                        )
-                        FirebaseFirestore.getInstance().collection("problem_reports")
-                            .add(report)
-                            .addOnSuccessListener { sending = false; sent = true }
-                            .addOnFailureListener { sending = false; sendError = true }
-                    }
-                    val current = auth.currentUser
-                    if (current != null) submit(current.uid)
-                    else auth.signInAnonymously()
-                        .addOnSuccessListener { result ->
-                            val uid = result.user?.uid
-                            if (uid != null) submit(uid)
-                            else { sending = false; sendError = true }
+    val copy = remember(language) { problemReportCopy(language) }
+    val dismiss = { if (!state.sending) { state.reset(); onDismiss() } }
+    val secondary = Color(0xFFB7C2D5)
+    CompositionLocalProvider(LocalLayoutDirection provides
+        if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+        Dialog(
+            onDismissRequest = dismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            // Insets bound the scrollable card above the keyboard, including in landscape.
+            Box(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(16.dp),
+                contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(),
+                    shape = RoundedCornerShape(30.dp),
+                    color = Color(0xFF101720),
+                    border = BorderStroke(1.dp, Color(0xFF397FFF)),
+                    shadowElevation = 20.dp,
+                ) {
+                    Column(
+                        Modifier.background(Brush.radialGradient(listOf(Color(0x402F6ACA), Color.Transparent)))
+                            .verticalScroll(rememberScrollState()).padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(Modifier.fillMaxWidth()) {
+                            SupportHeadset(Modifier.align(Alignment.Center).size(112.dp))
+                            OutlinedIconButton(onClick = dismiss, enabled = !state.sending,
+                                modifier = Modifier.align(Alignment.TopEnd).size(48.dp),
+                                border = BorderStroke(1.dp, Color(0xFF677693))) {
+                                Icon(Icons.Default.Close, copy.close, tint = Color.White)
+                            }
                         }
-                        .addOnFailureListener { sending = false; sendError = true }
-                },
-            ) { Text(if (arabic) "إرسال البلاغ" else "Send report") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(copy.cancel) } },
-    )
+                        Text(copy.title, color = Color.White, fontSize = 26.sp, lineHeight = 34.sp,
+                            fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().semantics { heading() })
+                        Text(copy.description, color = secondary, fontSize = 16.sp, lineHeight = 25.sp,
+                            textAlign = TextAlign.Center)
+                        OutlinedTextField(
+                            value = state.description, onValueChange = state::edit,
+                            enabled = !state.sending && !state.sent,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(copy.hint, color = Color(0xFF9DAAC0)) },
+                            minLines = 4, maxLines = 6, shape = RoundedCornerShape(20.dp),
+                            isError = state.invalid,
+                            supportingText = {
+                                Text("${state.description.codePointCount(0, state.description.length)}/500",
+                                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End, color = secondary)
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                                disabledTextColor = secondary,
+                                focusedContainerColor = Color(0xFF202B3A), unfocusedContainerColor = Color(0xFF202B3A),
+                                disabledContainerColor = Color(0xFF202B3A),
+                                focusedBorderColor = Color(0xFF5B9AFF), unfocusedBorderColor = Color(0xFF596B85),
+                                cursorColor = Color(0xFF79B7FF),
+                            ),
+                        )
+                        val status = when {
+                            state.invalid -> copy.validation
+                            state.failed -> copy.failure
+                            state.sent -> copy.success
+                            else -> null
+                        }
+                        status?.let {
+                            Text(it, color = if (state.sent) Color(0xFF83E4B9) else Color(0xFFFFB4AB),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        }
+                        val enabled = !state.sending && !state.sent
+                        Button(
+                            onClick = {
+                                val version = runCatching {
+                                    @Suppress("DEPRECATION")
+                                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                                }.getOrNull() ?: "unknown"
+                                state.send(version)
+                            },
+                            enabled = enabled,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(RoundedCornerShape(28.dp))
+                                .background(Brush.verticalGradient(if (enabled)
+                                    listOf(Color(0xFF379DFF), Color(0xFF315BFF))
+                                    else listOf(Color(0xFF30496C), Color(0xFF263953)))),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent, contentColor = Color.White,
+                                disabledContentColor = secondary),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                        ) {
+                            if (state.sending) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                            else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(if (state.sending) copy.sending else copy.send, fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        }
+                        OutlinedButton(onClick = dismiss, enabled = !state.sending,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            border = BorderStroke(1.dp, Color(0xFF64738C)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = secondary)) {
+                            Text(if (state.sent) copy.close else copy.cancel, fontSize = 17.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Small resolution-independent illustration; gradients give the headset depth without a bitmap. */
+@Composable
+private fun SupportHeadset(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val u = size.minDimension / 120f
+        fun point(x: Float, y: Float) = Offset(x * u, y * u)
+        fun box(x: Float, y: Float, w: Float, h: Float, radius: Float, colors: List<Color>) {
+            drawRoundRect(Brush.linearGradient(colors, point(x, y), point(x + w, y + h)),
+                point(x, y), Size(w * u, h * u), CornerRadius(radius * u))
+        }
+        val blue = listOf(Color(0xFF77D5FF), Color(0xFF367FFF), Color(0xFF1935A1))
+        drawCircle(Brush.radialGradient(listOf(Color(0x553178FF), Color.Transparent)), 60 * u)
+        drawArc(Brush.linearGradient(blue), 180f, 180f, false,
+            point(16f, 12f), Size(88 * u, 96 * u), style = Stroke(7 * u))
+        drawArc(Color(0xFF76B7FF), 200f, 125f, false,
+            point(16f, 10f), Size(88 * u, 96 * u), style = Stroke(1.5f * u))
+        box(31f, 37f, 58f, 47f, 14f, blue)
+        val tail = Path().apply { moveTo(42*u, 78*u); lineTo(42*u, 94*u); lineTo(59*u, 80*u); close() }
+        drawPath(tail, Color(0xFF2F62DB))
+        listOf(46f, 60f, 74f).forEach { x ->
+            drawCircle(Color(0xFF163A9C), 4.8f*u, point(x+1, 62f))
+            drawCircle(Brush.verticalGradient(listOf(Color.White, Color(0xFFAACFFF))), 4.4f*u, point(x, 60f))
+        }
+        box(9f, 50f, 14f, 35f, 7f, blue)
+        box(20f, 47f, 9f, 42f, 4f, blue)
+        box(97f, 50f, 14f, 35f, 7f, blue)
+        box(91f, 47f, 9f, 42f, 4f, blue)
+        drawArc(Color(0xFF4F80ED), 0f, 90f, false,
+            point(20f, 68f), Size(72*u, 39*u), style = Stroke(3*u))
+        box(49f, 101f, 19f, 7f, 3.5f, blue)
     }
 }

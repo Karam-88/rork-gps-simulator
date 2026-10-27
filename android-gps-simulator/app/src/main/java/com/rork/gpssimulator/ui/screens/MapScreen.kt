@@ -381,7 +381,7 @@ fun MapScreen(
         }
         if (showProblemDialog) {
             ReportProblemDialog(
-                language = settings.language,
+                language = com.rork.gpssimulator.i18n.LocalStrings.current.language,
                 onDismiss = { showProblemDialog = false },
             )
         }
