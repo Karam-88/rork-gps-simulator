@@ -11,6 +11,7 @@ on:
       - feature/gps-overhaul-phase1-20261025
       - fix/post-v26-controls-20261026
       - integration/gps-rating-internal-v28
+      - feature/remaining-map-ui-fixes-20261027
   pull_request:
     branches:
       - main
