@@ -192,7 +192,7 @@ fun MapScreen(
     var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
     var hopSequence by remember { mutableStateOf(0L) }
     fun requestManualHop(point: LatLng) {
-        val prior = selected?.point ?: activePoint ?: realSample?.point ?: point
+        val prior = selected?.point ?: activePoint ?: realSample?.point ?: camera.center
         if (prior != point && !isMotionSession) {
             hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
