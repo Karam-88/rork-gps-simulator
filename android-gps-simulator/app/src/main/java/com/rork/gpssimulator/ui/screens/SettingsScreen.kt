@@ -119,7 +119,7 @@ import com.rork.gpssimulator.util.Format
 import kotlin.math.roundToInt
 
 /** Which single-choice sheet is currently open. */
-private enum class OpenSheet { NONE, THEME, LANGUAGE, MAP_TYPE, UNITS, SPEED }
+private enum class OpenSheet { NONE, THEME, LANGUAGE, MAP_TYPE, MAP_THEME, UNITS, SPEED }
 
 /** Which numeric entry dialog is open. */
 private enum class OpenNumberDialog { NONE, ACCURACY, ALTITUDE, CUSTOM_SPEED }
@@ -289,7 +289,7 @@ fun SettingsScreen(
         ) {
             // ================= GENERAL =================
             val generalTerms = arrayOf(
-                strings[K.theme], strings[K.language], strings[K.map_type],
+                strings[K.theme], strings[K.language], strings[K.map_type], "map appearance", "map theme", "خريطة",
                 strings[K.distance_units], strings[K.reset_settings], "theme", "language", "units",
             )
             if (filter.matches(*generalTerms)) {
@@ -344,6 +344,20 @@ fun SettingsScreen(
                                 MapType.TERRAIN -> strings[K.terrain]
                             },
                             onClick = { openSheet = OpenSheet.MAP_TYPE },
+                            showChevron = true,
+                        )
+                        RowDivider()
+                    }
+                    if (filter.matches("Map appearance", "map theme", "night map", "الوضع الليلي", "مظهر الخريطة")) {
+                        SettingRow(
+                            icon = Icons.Default.Brightness6,
+                            title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
+                            value = when (settings.mapTheme) {
+                                ThemeMode.SYSTEM -> strings[K.theme_system]
+                                ThemeMode.LIGHT -> strings[K.theme_light]
+                                ThemeMode.DARK -> strings[K.theme_dark]
+                            },
+                            onClick = { openSheet = OpenSheet.MAP_THEME },
                             showChevron = true,
                         )
                         RowDivider()
@@ -998,6 +1012,17 @@ fun SettingsScreen(
             },
             selected = settings.language,
             onSelect = { value -> viewModel.updateSettings { it.copy(language = value, followSystemLanguage = false) } },
+            onDismiss = { openSheet = OpenSheet.NONE },
+        )
+        OpenSheet.MAP_THEME -> SelectionSheet(
+            title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
+            options = listOf(
+                SelectionOption(ThemeMode.SYSTEM, strings[K.theme_system]),
+                SelectionOption(ThemeMode.LIGHT, strings[K.theme_light]),
+                SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
+            ),
+            selected = settings.mapTheme,
+            onSelect = { value -> viewModel.updateSettings { it.copy(mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.MAP_TYPE -> SelectionSheet(
