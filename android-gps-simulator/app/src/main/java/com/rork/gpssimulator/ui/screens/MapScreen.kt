@@ -289,6 +289,10 @@ fun MapScreen(
             )
         }
     }
+    val mapMarkers = markers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+        listOf(MapMarker(point = destination, color = Color(0xFFE53935),
+            style = MarkerStyle.DESTINATION))
+    } ?: emptyList())
     val polylines = routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
@@ -297,7 +301,7 @@ fun MapScreen(
         MapView(
             camera = camera,
             mapType = settings.mapType,
-            markers = markers,
+            markers = mapMarkers,
             polylines = polylines,
             pulseFraction = { pulse.value },
             hopRequest = hopRequest,
