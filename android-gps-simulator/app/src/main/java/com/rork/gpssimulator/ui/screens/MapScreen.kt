@@ -191,13 +191,14 @@ fun MapScreen(
     var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
     var hopSequence by remember { mutableStateOf(0L) }
     fun requestManualHop(point: LatLng) {
-        val prior = selected?.point ?: activePoint ?: realSample?.point ?: point
-        if (isMockActive && prior != point && !isMotionSession) {
+        val prior = selected?.point ?: activePoint ?: realSample?.point ?: camera.center
+        if (prior != point && !isMotionSession) {
             hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
     }
-    LaunchedEffect(isMockActive, isMotionSession) {
-        if (!isMockActive || isMotionSession) hopRequest = null
+    LaunchedEffect(isMotionSession) {
+        // Preserve the first manually triggered hop before mock mode becomes active.
+        if (isMotionSession) hopRequest = null
     }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
