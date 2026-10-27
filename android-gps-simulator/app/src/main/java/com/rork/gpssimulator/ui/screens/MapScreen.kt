@@ -702,13 +702,13 @@ private fun ActiveMockActionBar(
         GlassActionButton(
             icon = Icons.Default.Star,
             label = favoriteLabel,
-            accent = Color(0xFFD5A329),
+            accent = Color(0xFFB98A17),
             onClick = onFavorite,
         )
         GlassActionButton(
             icon = Icons.Default.LocationOn,
             label = selectLabel,
-            accent = Color(0xFF3985DD),
+            accent = Color(0xFF246CBF),
             onClick = onSelect,
         )
         GlassActionButton(
