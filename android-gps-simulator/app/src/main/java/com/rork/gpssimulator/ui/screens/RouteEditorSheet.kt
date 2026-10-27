@@ -340,7 +340,7 @@ fun RouteEditorSheet(
                             shape = RoundedCornerShape(12.dp),
                         ) {
                             Text(
-                                text = strings[K.start_route],
+                                text = if (settings.language == AppLanguage.GERMAN) "Starten" else strings[K.start_route],
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
                                 softWrap = false,
