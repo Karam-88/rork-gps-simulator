@@ -94,6 +94,7 @@ enum class MarkerStyle {
     ACTIVE,
     CANDIDATE,
     REAL,
+    DESTINATION,
 }
 
 data class MapMarker(
@@ -129,6 +130,7 @@ data class MapCircle(
 fun MapView(
     camera: MapCameraState,
     mapType: MapType,
+    darkMap: Boolean = false,
     modifier: Modifier = Modifier,
     markers: List<MapMarker> = emptyList(),
     polylines: List<MapPolyline> = emptyList(),
@@ -146,6 +148,7 @@ fun MapView(
         VectorMapView(
             camera = camera,
             mapType = mapType,
+            darkMap = darkMap,
             markers = markers.filterNot { it.renderInOverlay },
             polylines = polylines,
             circles = circles + markers.filter { it.renderInOverlay && it.radiusMeters > 0 }.map {
