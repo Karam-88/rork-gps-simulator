@@ -187,26 +187,16 @@ fun MapScreen(
         sessionKind == SessionKind.JOYSTICK || settings.joystickEnabled
 
     val reducedMotion = rememberReducedMotion()
-    val hopScale = remember { Animatable(1f) }
-    var lastStaticMockPoint by remember { mutableStateOf<LatLng?>(null) }
-
-    LaunchedEffect(activePoint, sessionKind, isMockActive, reducedMotion) {
-        val point = activePoint
-        if (!isMockActive || point == null || isMotionSession) {
-            lastStaticMockPoint = null
-            hopScale.snapTo(1f)
-        } else {
-            val prior = lastStaticMockPoint
-            lastStaticMockPoint = point
-            if (prior != point && !reducedMotion) {
-                // Bounce at the new position on screen. Avoid visually simulating
-                // geographic travel, especially across countries or waterways.
-                // One rabbit hop only: rise once, land once, then remain still.
-                hopScale.snapTo(1f)
-                hopScale.animateTo(1.28f, animationSpec = tween(230))
-                hopScale.animateTo(1f, animationSpec = tween(320))
-            } else hopScale.snapTo(1f)
+    var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
+    var hopSequence by remember { mutableStateOf(0L) }
+    fun requestManualHop(point: LatLng) {
+        val prior = selected?.point ?: activePoint ?: realSample?.point ?: point
+        if (prior != point && !isMotionSession) {
+            hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
+    }
+    LaunchedEffect(isMockActive, isMotionSession) {
+        if (!isMockActive || isMotionSession) hopRequest = null
     }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
@@ -275,6 +265,7 @@ fun MapScreen(
                     point = it.point,
                     color = MaterialTheme.colorScheme.primary,
                     style = MarkerStyle.CANDIDATE,
+                    renderInOverlay = true,
                 ),
             )
         }
@@ -286,7 +277,7 @@ fun MapScreen(
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
-                    visualScale = hopScale.value,
+                    renderInOverlay = true,
                 ),
             )
         }
@@ -302,6 +293,14 @@ fun MapScreen(
             markers = markers,
             polylines = polylines,
             pulseFraction = { pulse.value },
+            hopRequest = hopRequest,
+            onMapTap = { point ->
+                if (!isMotionSession) {
+                    requestManualHop(point)
+                    viewModel.selectPoint(point)
+                    if (isMockActive) viewModel.moveMockTo(point)
+                }
+            },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
@@ -420,6 +419,7 @@ fun MapScreen(
                     .shadow(12.dp, CircleShape)
                     .clickable(role = Role.Button) {
                         showMenuPanel = false
+                        requestManualHop(camera.center)
                         viewModel.selectPoint(camera.center)
                         viewModel.startMock()
                     },
@@ -568,6 +568,7 @@ fun MapScreen(
                     onStop = { viewModel.stopMock() },
                     onSelect = {
                         val point = camera.center
+                        requestManualHop(point)
                         viewModel.selectPoint(point)
                         viewModel.moveMockTo(point)
                     },

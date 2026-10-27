@@ -91,6 +91,13 @@ private class LibreHolder(
         view.onCreate(null)
         view.getMapAsync { ready ->
             map = ready
+            camera.projection = { point ->
+                ready.projection.toScreenLocation(NativeLatLng(point.lat, point.lng)).let {
+                    androidx.compose.ui.geometry.Offset(it.x, it.y)
+                }
+            }
+            camera.projectionRevision++
+            view.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> camera.projectionRevision++ }
             ready.uiSettings.apply {
                 isCompassEnabled = false
                 isAttributionEnabled = true
@@ -101,6 +108,7 @@ private class LibreHolder(
             ready.setStyle(Style.Builder().fromUri("https://tiles.openfreemap.org/styles/liberty")) {
                 syncCamera(camera)
                 redraw()
+                camera.projectionRevision++
             }
             ready.addOnMapClickListener { p ->
                 onTap?.invoke(LatLng(p.latitude, p.longitude))
@@ -111,6 +119,7 @@ private class LibreHolder(
                     reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
             }
             ready.addOnCameraMoveListener {
+                camera.projectionRevision++
                 if (!programmaticMove) {
                     val pos = ready.cameraPosition
                     pos.target?.let {
@@ -136,6 +145,8 @@ private class LibreHolder(
         view.onResume()
     }
     fun destroy() {
+        camera.projection = null
+        camera.projectionRevision++
         if (started) {
             view.onPause()
             view.onStop()

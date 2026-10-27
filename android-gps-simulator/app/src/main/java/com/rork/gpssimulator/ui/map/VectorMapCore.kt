@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +36,13 @@ class MapCameraState(
         internal set
     var isUserInteracting by mutableStateOf(false)
         internal set
+
+    internal var projection: ((LatLng) -> Offset?)? = null
+    internal var projectionRevision by mutableIntStateOf(0)
+    internal fun project(point: LatLng): Offset? {
+        projectionRevision // Invalidate the Canvas for pan, zoom, bearing and map layout.
+        return projection?.invoke(point)
+    }
 
     val center: LatLng get() = LatLng(centerLat, centerLng)
 
@@ -96,6 +105,7 @@ data class MapMarker(
     val label: String? = null,
     val style: MarkerStyle = MarkerStyle.REAL,
     val visualScale: Float = 1f,
+    val renderInOverlay: Boolean = false,
 )
 
 data class MapPolyline(
@@ -127,30 +137,23 @@ fun MapView(
     pulseFraction: () -> Float = { 0f },
     onMapTap: ((LatLng) -> Unit)? = null,
     onCameraIdle: ((LatLng, Float) -> Unit)? = null,
+    hopRequest: RabbitHopRequest? = null,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     @Suppress("UNUSED_EXPRESSION")
     pulseFraction
 
     Box(modifier = modifier) {
-        val renderer: @Composable (Modifier) -> Unit = { mapModifier ->
-            if (BuildConfig.DEBUG) {
-                MapLibreTestView(camera, mapType, mapModifier, markers, polylines, circles, onMapTap, onCameraIdle)
-            } else {
-                VectorMapView(camera, mapType, mapModifier, markers, polylines, circles, onMapTap, onCameraIdle)
-            }
+        val nativeMarkers = markers.filterNot { it.renderInOverlay }
+        val nativeCircles = circles + markers.filter { it.renderInOverlay && it.radiusMeters > 0 }.map {
+            MapCircle(it.point, it.radiusMeters, it.color.copy(alpha = 0.30f), it.color.copy(alpha = 0.14f))
         }
-        renderer(Modifier.fillMaxSize())
-        /*VectorMapView(
-            camera = camera,
-            mapType = mapType,
-            markers = markers,
-            polylines = polylines,
-            circles = circles,
-            onMapTap = onMapTap,
-            onCameraIdle = onCameraIdle,
-            modifier = Modifier.fillMaxSize(),
-        )*/
+        if (BuildConfig.DEBUG) {
+            MapLibreTestView(camera, mapType, Modifier.fillMaxSize(), nativeMarkers, polylines, nativeCircles, onMapTap, onCameraIdle)
+        } else {
+            VectorMapView(camera, mapType, Modifier.fillMaxSize(), nativeMarkers, polylines, nativeCircles, onMapTap, onCameraIdle)
+        }
+        RabbitHopOverlay(camera, markers.filter { it.renderInOverlay }, hopRequest)
         content()
     }
 }
