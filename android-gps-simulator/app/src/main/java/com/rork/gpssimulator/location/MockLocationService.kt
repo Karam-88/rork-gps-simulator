@@ -23,6 +23,7 @@ import com.rork.gpssimulator.i18n.Strings
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.util.Format
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -70,8 +71,8 @@ class MockLocationService : Service() {
     private var kind = SessionKind.STATIC
     private var route: SimRoute? = null
     private var routeTraveled = 0.0
-    private var joystickVector: Pair<Float, Float>? = null
-    private var isPaused = false
+    @Volatile private var joystickVector: Pair<Float, Float>? = null
+    @Volatile private var isPaused = false
     private var sessionStartedAt = 0L
     private var placeName = ""
     private var placeAddress = ""
@@ -370,8 +371,8 @@ class MockLocationService : Service() {
 
     private fun startStaticLoop() {
         pushJob?.cancel()
-        pushJob = serviceScope.launch {
-            while (true) {
+        pushJob = serviceScope.launch(Dispatchers.Default) {
+            while (isActive) {
                 val config = repository.settings.value
                 delay(config.updateIntervalMs.toLong().coerceIn(200L, 1_000L))
                 val session = MockSessionBus.session.value ?: break
@@ -398,7 +399,7 @@ class MockLocationService : Service() {
 
     private fun startRouteLoop(route: SimRoute) {
         pushJob?.cancel()
-        pushJob = serviceScope.launch {
+        pushJob = serviceScope.launch(Dispatchers.Default) {
             val points = if (route.loop && route.points.size > 1) {
                 route.points + route.points.first()
             } else {
@@ -408,7 +409,7 @@ class MockLocationService : Service() {
             if (total <= 0.0) return@launch
 
             var traveled = 0.0
-            while (true) {
+            while (isActive) {
                 val config = repository.settings.value
                 // The initial mock position is set once when the route starts.
                 // Subsequent updates follow the resolved road geometry smoothly.
@@ -440,7 +441,7 @@ class MockLocationService : Service() {
                         // refreshing the destination until the user explicitly stops.
                         // Otherwise the final fix becomes stale and Maps may fall back
                         // to a real location even though the foreground service remains.
-                        while (MockSessionBus.session.value != null) {
+                        while (isActive && MockSessionBus.session.value != null) {
                             val holdConfig = repository.settings.value
                             delay(holdConfig.updateIntervalMs.toLong().coerceIn(200L, 1_000L))
                             if (MockSessionBus.session.value == null) break
