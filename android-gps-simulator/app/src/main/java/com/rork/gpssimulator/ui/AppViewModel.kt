@@ -74,6 +74,8 @@ data class DiagnosticsReport(
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
+    val ratingPrompt = com.rork.gpssimulator.ui.rating.RatingPromptController(app)
+
     private val repository = AppRepository.getInstance(app)
     private val readinessProbe = MockLocationController(app)
     private val realLocation = RealLocationSource(app)
@@ -396,7 +398,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun stopMock() {
-        boundService?.stopSession()
+        val service = boundService ?: return
+        val session = MockSessionBus.session.value
+        service.stopSession()
+        // Only an explicit successful stop qualifies; provider failures and failed starts do not.
+        if (session != null && MockSessionBus.session.value == null) {
+            ratingPrompt.completedSuccessfully(System.currentTimeMillis() - session.sessionStartedAt)
+        }
     }
 
     fun togglePause() {
