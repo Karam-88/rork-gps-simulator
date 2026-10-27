@@ -255,7 +255,7 @@ fun MapScreen(
                 add(
                     MapMarker(
                         point = it.point,
-                        color = appColors.success,
+                        color = Color(0xFF2583FA),
                         radiusMeters = it.accuracy.toDouble(),
                         style = MarkerStyle.REAL,
                     ),
@@ -278,7 +278,7 @@ fun MapScreen(
             add(
                 MapMarker(
                     point = it,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFFF04444),
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
