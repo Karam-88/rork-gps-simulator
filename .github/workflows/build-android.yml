@@ -11,6 +11,7 @@ on:
       - feature/gps-overhaul-phase1-20261025
       - fix/post-v26-controls-20261026
       - integration/gps-rating-internal-v28
+      - feature/maplibre-debug-apk-20261027
   pull_request:
     branches:
       - main
@@ -48,7 +49,8 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: Verify Google Maps key
+      - name: Verify Google Maps key (release builds only)
+        if: github.ref_name != 'feature/maplibre-debug-apk-20261027'
         run: |
           if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
             echo "GOOGLE_MAPS_API_KEY repository secret is missing."
@@ -104,7 +106,7 @@ jobs:
           fi
 
       - name: Restore release keystore
-        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        if: github.event_name != 'pull_request' && github.ref_name != 'feature/maplibre-debug-apk-20261027' && env.SIGNED_RELEASE_READY == 'true'
         run: |
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-keystore.jks
           chmod 600 release-keystore.jks
