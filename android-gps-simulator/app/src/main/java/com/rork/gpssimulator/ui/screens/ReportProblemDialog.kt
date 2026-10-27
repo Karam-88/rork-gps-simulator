@@ -6,6 +6,7 @@ import android.os.Build
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +75,8 @@ fun ReportProblemDialog(
     var sent by remember { mutableStateOf(false) }
     var sendError by remember { mutableStateOf(false) }
     var selectedIssue by remember { mutableStateOf(0) }
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
     val arabic = language == AppLanguage.ARABIC
     val issueLabels = if (arabic) listOf(
         "الموقع لا يتحرك", "الموقع يعود إلى الحقيقي", "مشكلة في المسار",
@@ -101,20 +106,29 @@ fun ReportProblemDialog(
         title = { Text(copy.title) },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(if (arabic) "اختر نوع المشكلة" else "Choose the issue", fontWeight = FontWeight.SemiBold)
                 issueLabels.forEachIndexed { index, label ->
                     FilterChip(
                         selected = selectedIssue == index,
-                        onClick = { selectedIssue = index },
+                        onClick = {
+                            selectedIssue = index
+                            scope.launch { scrollState.animateScrollTo(scrollState.maxValue) }
+                        },
                         label = { Text(label) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                Text(tips[selectedIssue], color = MaterialTheme.colorScheme.primary)
-                Text(if (arabic) "إذا استمرت المشكلة، أرسل تقريرًا لفريق دعم GPS Simulator." else "If the issue persists, send a report to GPS Simulator support.")
+                Text(
+                    tips[selectedIssue],
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable {
+                        scope.launch { scrollState.animateScrollTo(scrollState.maxValue) }
+                    },
+                )
+                Text(if (arabic) "اكتب تفاصيل المشكلة في الحقل التالي لتفعيل زر إرسال البلاغ." else "Describe the issue below to enable Send report.")
                 OutlinedTextField(
                     value = description,
                     onValueChange = { if (it.length <= 2000) description = it },
