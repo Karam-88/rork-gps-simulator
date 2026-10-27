@@ -48,7 +48,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 33
-        versionName = "1.1.28-closed-test"
+        versionName = "1.1.28-internal-test"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
