@@ -80,6 +80,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val ratingPrompt = com.rork.gpssimulator.ui.rating.RatingPromptController(app)
 
+    val relocationAnimations = com.rork.gpssimulator.ui.map.RelocationAnimations()
+
     private val repository = AppRepository.getInstance(app)
     private val readinessProbe = MockLocationController(app)
     private val realLocation = RealLocationSource(app)
@@ -347,23 +349,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectPoint(point: LatLng) {
+        selectLocation(SelectedLocation(point, "", "", isResolving = true))
+    }
+
+    fun selectSaved(location: SavedLocation) {
+        selectLocation(SelectedLocation(location.point, location.name, location.address))
+        moveCamera(location.point)
+    }
+
+    /** Shared by map taps, search, coordinate tools, saved places, favourites and history. */
+    private fun selectLocation(selection: SelectedLocation) {
+        val point = selection.point
         if (!point.isValid()) {
             postMessage("Invalid coordinate", isError = true)
             return
         }
-        _selected.value = SelectedLocation(point, "", "", isResolving = true)
-        if (_mockState.value != MockState.MOCK_ACTIVE) {
+        val previous = _selected.value?.point ?: _realSample.value?.point
+        _selected.value = selection
+        if (MockSessionBus.session.value != null) {
+            // Relocate the real mock provider immediately; publish the visual event only on success.
+            moveMockTo(point)
+        } else {
             _mockState.value = MockState.SELECTED
+            relocationAnimations.request(previous, point)
+            if (selection.isResolving) resolvePlace(point)
         }
-        resolvePlace(point)
-    }
-
-    fun selectSaved(location: SavedLocation) {
-        _selected.value = SelectedLocation(location.point, location.name, location.address)
-        if (_mockState.value != MockState.MOCK_ACTIVE) {
-            _mockState.value = MockState.SELECTED
-        }
-        moveCamera(location.point)
     }
 
     fun clearSelection() {
@@ -402,6 +412,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
         val context = getApplication<Application>()
         ContextCompat.startForegroundService(context, Intent(context, MockLocationService::class.java))
+        val previousMockPoint = MockSessionBus.session.value?.point
         val result = service.startSession(kind, selection.point, selection.name, selection.address, route)
         when (result) {
             is MockResult.Failure -> {
@@ -415,17 +426,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             MockResult.Success -> {
                 _selected.value = null
                 _mockReadiness.value = MockReadiness.READY
+                relocationAnimations.request(previousMockPoint, selection.point)
             }
         }
     }
 
     fun moveMockTo(point: LatLng) {
-        if (MockSessionBus.session.value == null) {
-            startMock()
-            return
-        }
         if (!point.isValid()) {
             postMessage("Invalid coordinate", isError = true)
+            return
+        }
+        val previous = MockSessionBus.session.value?.point
+        if (previous == null) {
+            selectPoint(point)
+            startMock()
             return
         }
         val service = requireBoundService() ?: return
@@ -436,12 +450,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             is MockResult.Failure -> postMessage(result.message, isError = true)
             MockResult.Success -> {
                 _selected.value = null
+                relocationAnimations.request(previous, point)
                 moveCamera(point)
             }
         }
     }
 
     fun stopMock() {
+        relocationAnimations.clear()
         val service = boundService ?: return
         val session = MockSessionBus.session.value
         service.stopSession()
@@ -544,12 +560,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         context,
                         Intent(context, MockLocationService::class.java),
                     )
+                    val previousMockPoint = MockSessionBus.session.value?.point
                     when (val startResult = service.startSession(
                         SessionKind.ROUTE, start, route.name, "", roadRoute,
                     )) {
                         is MockResult.Failure -> postMessage(routeMessage(startResult.message), isError = true)
                         MockResult.Success -> {
                             _selected.value = null
+                            relocationAnimations.request(previousMockPoint, start)
                             moveCamera(start)
                             onStarted()
                         }
