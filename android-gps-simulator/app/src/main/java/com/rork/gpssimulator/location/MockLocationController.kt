@@ -59,6 +59,9 @@ class MockLocationController(context: Context) {
     }
 
     private val installedProviders = mutableSetOf<String>()
+    private var lastPushElapsedMs = 0L
+    private var lastHeartbeatElapsedMs = 0L
+    private var pushCount = 0L
 
     @Volatile
     var isRunning: Boolean = false
@@ -121,6 +124,10 @@ class MockLocationController(context: Context) {
             }
 
             isRunning = true
+            lastPushElapsedMs = 0L
+            lastHeartbeatElapsedMs = 0L
+            pushCount = 0L
+            Log.i(TAG, "MOCK_DIAG session_started providers=${installedProviders.joinToString(",")}")
             when (val push = push(point, accuracy, altitude, speed, bearing)) {
                 is MockResult.Failure -> {
                     stop()
@@ -152,23 +159,38 @@ class MockLocationController(context: Context) {
             return MockResult.Failure(MockFailure.PROVIDER_ERROR, "Mock session is not running")
         }
 
-        return try {
-            installedProviders.forEach { provider ->
+        val nowMs = SystemClock.elapsedRealtime()
+        val gapMs = if (lastPushElapsedMs == 0L) 0L else nowMs - lastPushElapsedMs
+        if (gapMs > 3_000L) Log.w(TAG, "MOCK_DIAG update_gap_ms=$gapMs")
+        lastPushElapsedMs = nowMs
+        var firstFailure: Exception? = null
+        var failedProvider: String? = null
+        installedProviders.forEach { provider ->
+            try {
                 manager.setTestProviderLocation(
                     provider,
                     buildLocation(provider, point, accuracy, altitude, speed, bearing),
                 )
+            } catch (e: Exception) {
+                if (firstFailure == null) {
+                    firstFailure = e
+                    failedProvider = provider
+                }
+                Log.e(TAG, "MOCK_DIAG provider_push_failed provider=$provider error=${e.javaClass.simpleName}", e)
             }
-            MockResult.Success
-        } catch (e: SecurityException) {
-            showMockSetupToast()
-            MockResult.Failure(
-                MockFailure.NOT_SELECTED_AS_MOCK_APP,
-                "Mock location permission was revoked",
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to push mock location: ${e.javaClass.simpleName}")
-            MockResult.Failure(MockFailure.PROVIDER_ERROR, "Could not update mock location")
+        }
+        pushCount++
+        if (nowMs - lastHeartbeatElapsedMs >= 5_000L) {
+            Log.i(TAG, "MOCK_DIAG heartbeat pushes=$pushCount gap_ms=$gapMs providers=${installedProviders.joinToString(",")}")
+            lastHeartbeatElapsedMs = nowMs
+        }
+        when (firstFailure) {
+            null -> MockResult.Success
+            is SecurityException -> {
+                showMockSetupToast()
+                MockResult.Failure(MockFailure.NOT_SELECTED_AS_MOCK_APP, "Mock location permission was revoked ($failedProvider)")
+            }
+            else -> MockResult.Failure(MockFailure.PROVIDER_ERROR, "Could not update mock location ($failedProvider)")
         }
     }
 
@@ -183,6 +205,7 @@ class MockLocationController(context: Context) {
             }
             removeTestProviderQuietly(manager, provider)
         }
+        Log.i(TAG, "MOCK_DIAG session_stopped")
         installedProviders.clear()
         isRunning = false
     }
