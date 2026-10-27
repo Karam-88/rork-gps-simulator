@@ -240,7 +240,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
             if (wasActive) {
                 _selected.value = null
-                recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+                // A user stop starts recovery synchronously; avoid resetting its UI
+                // when the session StateFlow delivers the stop notification.
+                if (!recoveringRealLocation && _realRecoveryStatus.value == null) {
+                    recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+                }
             }
         }
         wasSessionActive = session != null
@@ -473,6 +477,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val service = boundService ?: return
         val session = MockSessionBus.session.value
         service.stopSession()
+        // Show the real-location recovery notification on the STOP action itself,
+        // instead of relying on a later StateFlow collection/update.
+        if (session != null && MockSessionBus.session.value == null) {
+            recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+        }
         // Only an explicit successful stop qualifies; provider failures and failed starts do not.
         if (session != null && MockSessionBus.session.value == null) {
             ratingPrompt.completedSuccessfully(System.currentTimeMillis() - session.sessionStartedAt)
