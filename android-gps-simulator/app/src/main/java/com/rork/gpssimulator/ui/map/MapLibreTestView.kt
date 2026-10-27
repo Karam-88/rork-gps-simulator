@@ -83,6 +83,7 @@ private class LibreHolder(
     private var map: MapLibreMap? = null
     private var started = false
     private var programmaticMove = false
+    private var styleReady = false
     private var markers: List<MapMarker> = emptyList()
     private var lines: List<MapPolyline> = emptyList()
     private var circles: List<MapCircle> = emptyList()
@@ -106,6 +107,7 @@ private class LibreHolder(
                 isTiltGesturesEnabled = false
             }
             ready.setStyle(Style.Builder().fromUri("https://tiles.openfreemap.org/styles/liberty")) {
+                styleReady = true
                 syncCamera(camera)
                 redraw()
                 camera.projectionRevision++
@@ -120,7 +122,7 @@ private class LibreHolder(
             }
             ready.addOnCameraMoveListener {
                 camera.projectionRevision++
-                if (!programmaticMove) {
+                if (styleReady && !programmaticMove) {
                     val pos = ready.cameraPosition
                     pos.target?.let {
                         camera.snapTo(LatLng(it.latitude, it.longitude), pos.zoom.toFloat())
@@ -128,6 +130,7 @@ private class LibreHolder(
                 }
             }
             ready.addOnCameraIdleListener {
+                if (!styleReady || programmaticMove) return@addOnCameraIdleListener
                 camera.isUserInteracting = false
                 val pos = ready.cameraPosition
                 pos.target?.let {
@@ -156,7 +159,7 @@ private class LibreHolder(
     }
     fun syncCamera(state: MapCameraState) {
         val m = map ?: return
-        if (state.isUserInteracting) return
+        if (!styleReady || state.isUserInteracting) return
         val current = m.cameraPosition
         val target = current.target
         if (target != null &&
