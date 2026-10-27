@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -278,7 +279,7 @@ private class GoogleMapHolder(
                 MarkerOptions()
                     .position(GoogleLatLng(marker.point.lat, marker.point.lng))
                     .icon(markerIcon(mapView.context, marker))
-                    .anchor(0.5f, 0.5f),
+                    .anchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
             )
         }
     }
@@ -331,11 +332,38 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             canvas.drawCircle(center, center, px * 0.07f, paint)
         }
         MarkerStyle.REAL -> {
+            // Compact Google-Maps-like dot: translucent halo, slim white rim, solid blue core.
+            paint.style = Paint.Style.FILL
+            paint.color = marker.color.copy(alpha = 0.14f).toArgb()
+            canvas.drawCircle(center, center, px * 0.46f, paint)
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, center, px * 0.265f, paint)
+            paint.color = marker.color.toArgb()
+            canvas.drawCircle(center, center, px * 0.205f, paint)
+        }
+        MarkerStyle.DESTINATION -> {
+            val pin = Path().apply {
+                moveTo(center, px * 0.95f)
+                cubicTo(px * 0.22f, px * 0.56f, px * 0.17f, px * 0.42f,
+                    px * 0.17f, px * 0.35f)
+                cubicTo(px * 0.17f, px * 0.02f, px * 0.83f, px * 0.02f,
+                    px * 0.83f, px * 0.35f)
+                cubicTo(px * 0.83f, px * 0.55f, px * 0.68f, px * 0.76f,
+                    center, px * 0.95f)
+                close()
+            }
             paint.style = Paint.Style.FILL
             paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.40f, paint)
+            paint.setShadowLayer(2.5f * density, 0f, 1.5f * density, 0x55000000)
+            canvas.drawPath(pin, paint)
+            paint.clearShadowLayer()
+            canvas.save()
+            canvas.scale(0.88f, 0.88f, center, px * 0.50f)
             paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.31f, paint)
+            canvas.drawPath(pin, paint)
+            canvas.restore()
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, px * 0.34f, px * 0.11f, paint)
         }
     }
 
