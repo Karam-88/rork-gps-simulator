@@ -8,6 +8,11 @@ on:
       - test/combined-dex-share-rating-1-1-15
       - release/1.1.16-rc
       - feature/meta-sdk-on-1.1.16-stable
+      - feature/gps-overhaul-phase1-20261025
+      - fix/post-v26-controls-20261026
+      - integration/gps-rating-internal-v28
+      - fix/mock-gps-provider-consistency
+      - integration/gps-stable-plus-map-ui-20261027
   pull_request:
     branches:
       - main
@@ -19,7 +24,6 @@ jobs:
 
     env:
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-      META_FACEBOOK_CLIENT_TOKEN: ${{ secrets.META_FACEBOOK_CLIENT_TOKEN }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -53,16 +57,24 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Meta Client Token for test release
-        if: github.event_name != 'pull_request'
-        run: |
-          if [ -z "$META_FACEBOOK_CLIENT_TOKEN" ]; then
-            echo "::error::META_FACEBOOK_CLIENT_TOKEN is missing; refusing to build the Meta-enabled test release."
-            exit 1
-          fi
-
+      # Debug artifacts are not a reliable Maps QA signal: a CI debug keystore
+      # does not necessarily match the SHA-1 authorized for the production Maps key.
+      # On branch pushes the signed release APK is the preferred QA artifact;
+      # a Play-signed internal-track install may still be required if the upload
+      # certificate differs from the Play App Signing certificate.
       - name: Build Debug APK
         run: ./gradlew assembleDebug
+
+      - name: Run JVM regression tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Upload JVM regression results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gps-simulator-unit-test-results
+          path: android-gps-simulator/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: error
 
       - name: Verify R8 Release build (PR only)
         if: github.event_name == 'pull_request'
@@ -126,6 +138,39 @@ jobs:
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         run: ./gradlew clean assembleRelease bundleRelease
 
+      - name: Verify no advertising ID permission in signed release APK
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          test -n "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)
+          test -x "$AAPT"
+          "$AAPT" dump permissions "$APK" | tee /tmp/release-permissions.txt
+          if grep -Fq 'com.google.android.gms.permission.AD_ID' /tmp/release-permissions.txt; then
+            echo "::error::AD_ID permission unexpectedly present in release APK; check remaining SDKs."
+            exit 1
+          fi
+
+      - name: Verify no advertising ID permission in signed release AAB
+        if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
+        run: |
+          set -euo pipefail
+          AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$AAB"
+          python3 - "$AAB" <<'PY'
+          import sys, zipfile
+          path = sys.argv[1]
+          with zipfile.ZipFile(path) as archive:
+              names = archive.namelist()
+              assert 'base/manifest/AndroidManifest.xml' in names, 'Missing base manifest in AAB'
+              manifest = archive.read('base/manifest/AndroidManifest.xml')
+              # Android App Bundles encode the manifest as protobuf, not plain XML.
+              # The permission string must occur in the base module's string table.
+              if b'com.google.android.gms.permission.AD_ID' in manifest:
+                  raise SystemExit('AD_ID is unexpectedly present in base AAB manifest: check remaining SDKs')
+              print('AD_ID permission string absent from base AAB manifest')
+          PY
+
       - name: Upload signed Release APK
         if: github.event_name != 'pull_request' && env.SIGNED_RELEASE_READY == 'true'
         uses: actions/upload-artifact@v4
@@ -156,3 +201,4 @@ jobs:
       - name: Clean signing files
         if: always() && github.event_name != 'pull_request'
         run: rm -f release-keystore.jks key.properties
+

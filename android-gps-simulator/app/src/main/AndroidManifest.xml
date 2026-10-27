@@ -38,12 +38,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RorkApp">
 
-        <!-- Meta App Events; disabled if no build-time Client Token is configured. -->
-        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id" />
-        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token" />
-        <meta-data android:name="com.facebook.sdk.AutoInitEnabled" android:value="${META_APP_EVENTS_ENABLED}" />
-        <meta-data android:name="com.facebook.sdk.AutoLogAppEventsEnabled" android:value="${META_APP_EVENTS_ENABLED}" />
-
         <!-- Injected at build time from the GOOGLE_MAPS_API_KEY repository secret. -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"

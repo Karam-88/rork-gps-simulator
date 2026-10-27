@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /problem_reports/{reportId} {
+      allow get, list, update, delete: if false;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'userId', 'issueType', 'description', 'appVersion',
+          'androidVersion', 'deviceModel', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userId', 'issueType', 'description', 'appVersion',
+          'androidVersion', 'deviceModel', 'createdAt'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.issueType is int
+        && request.resource.data.issueType >= 0
+        && request.resource.data.issueType <= 5
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 1
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.appVersion is string
+        && request.resource.data.appVersion.size() <= 100
+        && request.resource.data.androidVersion is string
+        && request.resource.data.androidVersion.size() <= 100
+        && request.resource.data.deviceModel is string
+        && request.resource.data.deviceModel.size() <= 200
+        && request.resource.data.createdAt == request.time;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

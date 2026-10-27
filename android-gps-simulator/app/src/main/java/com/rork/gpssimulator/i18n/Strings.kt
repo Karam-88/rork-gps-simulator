@@ -39,7 +39,7 @@ enum class K {
     section_advanced,
 
     // General settings
-    theme, theme_system, theme_light, theme_dark, language, lang_english, lang_arabic,
+    theme, theme_system, theme_light, theme_dark, language, lang_english, lang_arabic, follow_phone_language,
     map_type, distance_units, units_auto, units_metric, units_imperial, reset_settings,
     reset_settings_desc, reset_settings_confirm, settings_reset,
 
@@ -72,7 +72,7 @@ enum class K {
     export_locations, export_routes, import_locations, import_gpx, clear_favorites,
     clear_favorites_confirm, clear_presets, clear_presets_confirm, delete_all_data,
     delete_all_data_desc, delete_all_data_confirm, local_data_info, local_data_body,
-    export_success, import_success, import_failed, nothing_to_export,
+    export_success, import_success, import_failed, nothing_to_export, no_data_to_clear,
 
     // App
     share_app, share_app_desc, rate_app, rate_app_desc, send_feedback,
@@ -252,6 +252,7 @@ private val EN: Map<K, String> = mapOf(
     K.theme_light to "Light",
     K.theme_dark to "Dark",
     K.language to "Language",
+    K.follow_phone_language to "Use phone language",
     K.lang_english to "English",
     K.lang_arabic to "العربية",
     K.map_type to "Map Type",
@@ -348,13 +349,14 @@ private val EN: Map<K, String> = mapOf(
     K.import_success to "Import complete",
     K.import_failed to "File could not be read",
     K.nothing_to_export to "Nothing to export",
+    K.no_data_to_clear to "No saved data to clear",
 
     K.share_app to "Share App",
     K.share_app_desc to "Send a link using the Android share sheet",
     K.rate_app to "Rate App",
-    K.rate_app_desc to "Opens the store listing when published",
+    K.rate_app_desc to "Rate this free app on Google Play",
     K.send_feedback to "Send Feedback",
-    K.send_feedback_desc to "Requires a configured support destination",
+    K.send_feedback_desc to "Email the GPS Simulator support team",
     K.privacy_policy to "Privacy Policy",
     K.terms_of_service to "Terms of Service",
     K.open_source_licenses to "Open Source Licenses",
@@ -587,6 +589,7 @@ private val AR: Map<K, String> = mapOf(
     K.theme_light to "فاتح",
     K.theme_dark to "داكن",
     K.language to "اللغة",
+    K.follow_phone_language to "استخدام لغة الهاتف تلقائيًا",
     K.lang_english to "English",
     K.lang_arabic to "العربية",
     K.map_type to "نوع الخريطة",
@@ -683,13 +686,14 @@ private val AR: Map<K, String> = mapOf(
     K.import_success to "اكتمل الاستيراد",
     K.import_failed to "تعذّرت قراءة الملف",
     K.nothing_to_export to "لا يوجد ما يتم تصديره",
+    K.no_data_to_clear to "لا توجد بيانات محفوظة لمسحها",
 
     K.share_app to "مشاركة التطبيق",
     K.share_app_desc to "إرسال رابط عبر قائمة المشاركة",
     K.rate_app to "تقييم التطبيق",
-    K.rate_app_desc to "يفتح صفحة المتجر عند النشر",
+    K.rate_app_desc to "قيّم التطبيق المجاني على Google Play",
     K.send_feedback to "إرسال ملاحظات",
-    K.send_feedback_desc to "يتطلب وجهة دعم مُعدّة",
+    K.send_feedback_desc to "أرسل ملاحظاتك إلى بريد دعم التطبيق",
     K.privacy_policy to "سياسة الخصوصية",
     K.terms_of_service to "شروط الاستخدام",
     K.open_source_licenses to "تراخيص المصادر المفتوحة",
@@ -777,12 +781,51 @@ private val AR: Map<K, String> = mapOf(
 
 /** Resolved string table for the active language. */
 class Strings(val language: AppLanguage) {
-    private val table: Map<K, String> = if (language == AppLanguage.ARABIC) AR else EN
+    private val table: Map<K, String> = when (language) {
+        AppLanguage.ARABIC -> AR
+        AppLanguage.ENGLISH -> EN
+        else -> primaryLocaleTranslations[language].orEmpty()
+    }
     private val fallback: Map<K, String> = EN
 
     operator fun get(key: K): String = table[key] ?: fallback[key] ?: key.name
 }
 
-enum class AppLanguage { ENGLISH, ARABIC }
+enum class AppLanguage(val nativeName: String, val languageCode: String) {
+    ENGLISH("English", "en"),
+    ARABIC("العربية", "ar"),
+    GERMAN("Deutsch", "de"),
+    FRENCH("Français", "fr"),
+    SPANISH("Español", "es"),
+    PORTUGUESE_BRAZIL("Português (Brasil)", "pt"),
+    TURKISH("Türkçe", "tr"),
+    RUSSIAN("Русский", "ru"),
+    HINDI("हिन्दी", "hi"),
+    INDONESIAN("Bahasa Indonesia", "id"),
+    JAPANESE("日本語", "ja"),
+    CHINESE_SIMPLIFIED("简体中文", "zh");
+
+    companion object {
+        fun effective(selected: AppLanguage, followSystem: Boolean, locale: java.util.Locale): AppLanguage =
+            if (followSystem) fromDeviceLocale(locale) else selected
+
+        fun fromDeviceLocale(locale: java.util.Locale = java.util.Locale.getDefault()): AppLanguage {
+            return when (locale.language.lowercase(java.util.Locale.ROOT)) {
+                "ar" -> ARABIC
+                "de" -> GERMAN
+                "fr" -> FRENCH
+                "es" -> SPANISH
+                "pt" -> PORTUGUESE_BRAZIL
+                "tr" -> TURKISH
+                "ru" -> RUSSIAN
+                "hi" -> HINDI
+                "id", "in" -> INDONESIAN
+                "ja" -> JAPANESE
+                "zh" -> CHINESE_SIMPLIFIED
+                else -> ENGLISH
+            }
+        }
+    }
+}
 
 val LocalStrings = staticCompositionLocalOf { Strings(AppLanguage.ENGLISH) }

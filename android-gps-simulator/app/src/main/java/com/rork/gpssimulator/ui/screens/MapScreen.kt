@@ -4,10 +4,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,8 +30,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
@@ -45,6 +51,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,6 +66,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -73,9 +83,14 @@ import com.rork.gpssimulator.data.model.MapType
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.data.model.SavedKind
 import com.rork.gpssimulator.data.model.SessionKind
+import com.rork.gpssimulator.data.model.ThemeMode
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
+import com.rork.gpssimulator.ui.components.AppUpdateNoticeDialog
+import com.rork.gpssimulator.ui.components.UpdateNotificationDot
+import com.rork.gpssimulator.ui.components.rememberPlayUpdateAvailable
 import com.rork.gpssimulator.ui.components.Crosshair
 import com.rork.gpssimulator.ui.components.JoystickControl
 import com.rork.gpssimulator.ui.components.SelectionOption
@@ -112,6 +127,7 @@ fun MapScreen(
     onOpenSearch: () -> Unit,
     onOpenFavorites: () -> Unit,
     onOpenRoutes: () -> Unit,
+    onRatingPromptSafeChanged: (Boolean) -> Unit = {},
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -130,6 +146,7 @@ fun MapScreen(
     val activePoint by viewModel.activePoint.collectAsState()
     val activePlace by viewModel.activePlace.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    val recoveryStatus by viewModel.realRecoveryStatus.collectAsState()
     val elapsedMs by viewModel.elapsedMs.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val sessionKind by viewModel.sessionKind.collectAsState()
@@ -160,12 +177,34 @@ fun MapScreen(
     )
     var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
+    var showProblemDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val ratingSafe = !showLayerSheet && !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
+        !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
+    androidx.compose.runtime.DisposableEffect(ratingSafe) {
+        onRatingPromptSafeChanged(ratingSafe)
+        onDispose { onRatingPromptSafeChanged(false) }
+    }
+    val updateAvailable = rememberPlayUpdateAvailable()
     var centeredOnInitialRealFix by remember { mutableStateOf(false) }
     val isMockActive = mockState == MockState.MOCK_ACTIVE
     val isMotionSession = sessionKind == SessionKind.ROUTE ||
         sessionKind == SessionKind.JOYSTICK || settings.joystickEnabled
 
     val reducedMotion = rememberReducedMotion()
+    var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
+    var hopSequence by remember { mutableStateOf(0L) }
+    fun requestManualHop(point: LatLng) {
+        val prior = selected?.point ?: activePoint ?: realSample?.point ?: camera.center
+        if (prior != point && !isMotionSession) {
+            hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
+        }
+    }
+    LaunchedEffect(isMotionSession) {
+        // Keep a manual hop visible when choosing a location before starting mock GPS.
+        // Only route/joystick motion suppresses the decorative single-hop animation.
+        if (isMotionSession) hopRequest = null
+    }
     val transition = rememberInfiniteTransition(label = "pulse")
     val pulse = transition.animateFloat(
         initialValue = 0f,
@@ -203,17 +242,33 @@ fun MapScreen(
     LaunchedEffect(activePoint, sessionKind) {
         val point = activePoint ?: return@LaunchedEffect
         if (sessionKind == SessionKind.ROUTE || sessionKind == SessionKind.JOYSTICK) {
-            camera.snapTo(point)
+            // Follow the current mock coordinate throughout the journey.
+            // The initial session position is reached immediately; later
+            // updates use the configured map animation for a smooth follow.
+            camera.animateTo(
+                point = point,
+                newZoom = camera.zoom,
+                animate = settings.animateMap,
+            )
         }
     }
 
+    val darkMap = when (settings.mapTheme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> when (settings.theme) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
+    }
     val markers = buildList {
         if (!isMockActive) {
             realSample?.let {
                 add(
                     MapMarker(
                         point = it.point,
-                        color = appColors.success,
+                        color = Color(0xFF2583FA),
                         radiusMeters = it.accuracy.toDouble(),
                         style = MarkerStyle.REAL,
                     ),
@@ -226,21 +281,29 @@ fun MapScreen(
                     point = it.point,
                     color = MaterialTheme.colorScheme.primary,
                     style = MarkerStyle.CANDIDATE,
+                    renderInOverlay = true,
                 ),
             )
         }
-        activePoint?.let {
+        // The active (blue) marker represents an actual mock session only.
+        // Selecting a point before starting must not render a fake current-location dot.
+        if (isMockActive) activePoint?.let {
             add(
                 MapMarker(
                     point = it,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFFF04444),
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
+                    renderInOverlay = true,
                 ),
             )
         }
     }
+    val mapMarkers = markers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+        listOf(MapMarker(point = destination, color = Color(0xFFE53935),
+            style = MarkerStyle.DESTINATION))
+    } ?: emptyList())
     val polylines = routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
@@ -249,9 +312,14 @@ fun MapScreen(
         MapView(
             camera = camera,
             mapType = settings.mapType,
-            markers = markers,
+            darkMap = darkMap,
+            markers = mapMarkers,
             polylines = polylines,
             pulseFraction = { pulse.value },
+            hopRequest = hopRequest,
+            // Tapping the map only interacts with the map. The bottom select
+            // button is the sole action that commits the crosshair position.
+            onMapTap = { _ -> },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
@@ -262,43 +330,101 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.Center),
         )
 
-        Column(
+        Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (isMockActive) {
-                MockActiveBanner(
-                    lat = activePoint?.lat ?: 0.0,
-                    lng = activePoint?.lng ?: 0.0,
-                    accuracy = settings.accuracyM,
-                    altitude = settings.altitudeM,
-                    speedKmh = currentSpeed,
-                    elapsedMs = elapsedMs,
-                    isPaused = isPaused,
-                    units = settings.units,
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    StatusPill(
-                        text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
-                        dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
+            Box(modifier = Modifier.weight(1f)) {
+                if (isMockActive) {
+                    MockActiveBanner(
+                        lat = activePoint?.lat ?: 0.0,
+                        lng = activePoint?.lng ?: 0.0,
+                        accuracy = settings.accuracyM,
+                        altitude = settings.altitudeM,
+                        speedKmh = currentSpeed,
+                        elapsedMs = elapsedMs,
+                        isPaused = isPaused,
+                        units = settings.units,
                     )
-                    CoordinatePill(
-                        lat = camera.centerLat,
-                        lng = camera.centerLng,
-                        latLabel = strings[K.lat],
-                        lngLabel = strings[K.lng],
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StatusPill(
+                            text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
+                            dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
+                        )
+                        CoordinatePill(
+                            lat = camera.centerLat,
+                            lng = camera.centerLng,
+                            latLabel = strings[K.lat],
+                            lngLabel = strings[K.lng],
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
                 }
             }
+            // Keep problem reporting permanently accessible. Show a separate update
+            // action directly below it only when Google Play confirms availability.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        .clickable(role = Role.Button) {
+                            showMenuPanel = false
+                            showProblemDialog = true
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HelpOutline,
+                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "الإبلاغ عن مشكلة" else "Report a problem",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+                if (updateAvailable) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                            .clickable(role = Role.Button) {
+                                showMenuPanel = false
+                                showUpdateDialog = true
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                "تحديث التطبيق" else "Update app",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(21.dp),
+                        )
+                        UpdateNotificationDot(modifier = Modifier.align(Alignment.TopEnd))
+                    }
+                }
+            }
+        }
+        if (showUpdateDialog) {
+            AppUpdateNoticeDialog(
+                arabic = settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC,
+                onDismiss = { showUpdateDialog = false },
+            )
+        }
+        if (showProblemDialog) {
+            ReportProblemDialog(
+                language = com.rork.gpssimulator.i18n.LocalStrings.current.language,
+                onDismiss = { showProblemDialog = false },
+            )
         }
 
         Column(
@@ -316,7 +442,7 @@ fun MapScreen(
             }
             MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
                 showMenuPanel = false
-                viewModel.returnToRealLocation()
+                viewModel.centerOnCurrentLocation()
             }
             MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
                 showMenuPanel = false
@@ -335,6 +461,7 @@ fun MapScreen(
                     .shadow(12.dp, CircleShape)
                     .clickable(role = Role.Button) {
                         showMenuPanel = false
+                        requestManualHop(camera.center)
                         viewModel.selectPoint(camera.center)
                         viewModel.startMock()
                     },
@@ -395,6 +522,7 @@ fun MapScreen(
                     },
                     onRate = {
                         showMenuPanel = false
+                        viewModel.ratingPrompt.choseToRate()
                         showRatingConfirmation = true
                         val browserUrl = Uri.parse("https://play.google.com/store/apps/details?id=com.rork.gpssimulator")
                         try {
@@ -432,7 +560,7 @@ fun MapScreen(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
-                .padding(start = 8.dp, bottom = 100.dp + bottomInset),
+                .padding(start = 8.dp, bottom = (if (isMockActive) 148.dp else 100.dp) + bottomInset),
         )
 
         Column(
@@ -440,7 +568,7 @@ fun MapScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 34.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (settings.joystickEnabled && isMockActive) {
@@ -482,6 +610,7 @@ fun MapScreen(
                     onStop = { viewModel.stopMock() },
                     onSelect = {
                         val point = camera.center
+                        requestManualHop(point)
                         viewModel.selectPoint(point)
                         viewModel.moveMockTo(point)
                     },
@@ -499,6 +628,16 @@ fun MapScreen(
                 )
             }
         }
+
+        // Draw last inside the map Box so controls and attribution cannot cover
+        // the recovery notification after STOP. No full-screen input scrim.
+        com.rork.gpssimulator.ui.components.RealRecoveryNotice(
+            status = if (isMockActive) null else recoveryStatus,
+            onRetry = viewModel::retryRealRecovery,
+            onDismiss = viewModel::dismissRealRecovery,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
+        )
     }
 
     if (showLayerSheet) {
@@ -506,7 +645,6 @@ fun MapScreen(
             title = strings[K.map_type],
             options = listOf(
                 SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.DETAILED_STREETS, strings[K.detailed_streets]),
                 SelectionOption(MapType.SATELLITE, strings[K.satellite]),
                 SelectionOption(MapType.TERRAIN, strings[K.terrain]),
             ),
@@ -604,46 +742,99 @@ private fun ActiveMockActionBar(
     onFavorite: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(78.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().height(72.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BottomActionButton(Icons.Default.Close, stopLabel, dangerColor, Color.White, onStop, Modifier.weight(1f))
-        BottomActionButton(Icons.Default.MyLocation, selectLabel, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, onSelect, Modifier.weight(1f))
-        BottomActionButton(Icons.Default.Star, favoriteLabel, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, onFavorite, Modifier.weight(1f))
+        GlassActionButton(
+            icon = Icons.Default.Star,
+            label = favoriteLabel,
+            accent = Color(0xFFD5A329),
+            onClick = onFavorite,
+        )
+        GlassActionButton(
+            icon = Icons.Default.LocationOn,
+            label = selectLabel,
+            accent = Color(0xFF3985DD),
+            onClick = onSelect,
+        )
+        GlassActionButton(
+            icon = Icons.Default.Close,
+            label = stopLabel,
+            accent = dangerColor,
+            isStop = true,
+            onClick = onStop,
+        )
     }
 }
 
 @Composable
-private fun BottomActionButton(
+private fun GlassActionButton(
     icon: ImageVector,
     label: String,
-    containerColor: Color,
-    contentColor: Color,
+    accent: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    isStop: Boolean = false,
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxHeight()
-            .shadow(6.dp, RoundedCornerShape(18.dp))
-            .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor,
+    val container = accent.copy(alpha = if (isStop) 0.92f else 0.18f)
+    val reducedMotion = rememberReducedMotion()
+    val glowTransition = rememberInfiniteTransition(label = "stopButtonGlow")
+    val glowPulse by glowTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "stopGlowPulse",
+    )
+    val pulse = if (reducedMotion) 0.45f else glowPulse
+    Box(
+        modifier = Modifier.size(88.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(icon, contentDescription = label, tint = contentColor, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = label,
-                color = contentColor,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        if (isStop) {
+            // Radial-gradient circle is drawn directly, avoiding rectangular blur artifacts.
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .drawBehind {
+                        val glowRadius = size.minDimension * (0.43f + pulse * 0.07f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    accent.copy(alpha = 0.62f + pulse * 0.24f),
+                                    accent.copy(alpha = 0.26f + pulse * 0.19f),
+                                    Color.Transparent,
+                                ),
+                                center = Offset(size.width / 2f, size.height / 2f),
+                                radius = glowRadius,
+                            ),
+                            radius = glowRadius,
+                        )
+                    },
             )
+        }
+        Surface(
+            modifier = Modifier
+                .size(72.dp)
+                .clickable(role = Role.Button, onClick = onClick),
+            shape = CircleShape,
+            color = container,
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                accent.copy(alpha = if (isStop) 0.98f else 0.92f),
+            ),
+            shadowElevation = 0.dp,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = if (isStop) Color.White else accent,
+                    modifier = Modifier.size(34.dp),
+                )
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Route
@@ -108,7 +109,8 @@ fun RoutesScreen(
     val isPaused by viewModel.isPaused.collectAsState()
 
     var query by remember { mutableStateOf("") }
-    var showEditor by remember { mutableStateOf(false) }
+    // Open route creation immediately; saved routes remain one tap away.
+    var showEditor by remember { mutableStateOf(true) }
     var editing by remember { mutableStateOf<SimRoute?>(null) }
     var pendingDelete by remember { mutableStateOf<SimRoute?>(null) }
 
@@ -127,6 +129,11 @@ fun RoutesScreen(
                         text = strings[K.routes_title],
                         style = MaterialTheme.typography.headlineSmall,
                     )
+                },
+                actions = {
+                    IconButton(onClick = { showEditor = false; editing = null }) {
+                        Icon(Icons.Default.History, contentDescription = strings[K.routes_title])
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -205,8 +212,7 @@ fun RoutesScreen(
                             route = route,
                             units = settings.units,
                             onStart = {
-                                viewModel.startRoute(route)
-                                onRouteStarted()
+                                viewModel.startRoute(route, onStarted = onRouteStarted)
                             },
                             onEdit = {
                                 editing = route
@@ -229,6 +235,16 @@ fun RoutesScreen(
                 viewModel.postMessage(strings[K.route_saved])
                 showEditor = false
                 editing = null
+            },
+            onStart = { route ->
+                // Keep the editor visible while road routing is validated.
+                // Only dismiss after the mock-location service confirms success.
+                viewModel.startRoute(route, onStarted = {
+                    viewModel.saveRoute(route)
+                    showEditor = false
+                    editing = null
+                    onRouteStarted()
+                })
             },
             onDismiss = {
                 showEditor = false

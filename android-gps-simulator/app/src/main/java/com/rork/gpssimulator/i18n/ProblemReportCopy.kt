@@ -1,0 +1,161 @@
+package com.rork.gpssimulator.i18n
+
+internal data class ProblemReportCopy(
+    val title: String,
+    val hint: String,
+    val description: String,
+    val send: String,
+    val cancel: String,
+    val sending: String,
+    val success: String,
+    val failure: String,
+    val validation: String,
+    val close: String,
+)
+
+internal fun problemReportCopy(language: AppLanguage): ProblemReportCopy = when (language) {
+    AppLanguage.ARABIC -> ProblemReportCopy(
+        "الإبلاغ عن مشكلة",
+        "صف المشكلة التي واجهتك بالتفصيل…",
+        "أخبرنا عن المشكلة التي واجهتك في تطبيق GPS Simulator وسنقوم بمراجعتها وإصلاحها في أقرب وقت ممكن.",
+        "إرسال إلى فريق الدعم",
+        "إلغاء",
+        "جارٍ إرسال البلاغ…",
+        "تم إرسال بلاغك بنجاح. شكرًا لمساعدتنا على تحسين التطبيق!",
+        "تعذر الإرسال. تحقق من اتصالك وحاول مجددًا.",
+        "اكتب تفاصيل المشكلة أولًا.",
+        "إغلاق",
+    )
+    AppLanguage.ENGLISH -> ProblemReportCopy(
+        "Report a problem",
+        "Describe the problem in detail…",
+        "Tell us about the problem you encountered in GPS Simulator. We will review it and work to fix it as soon as possible.",
+        "Send to support",
+        "Cancel",
+        "Sending report…",
+        "Your report was sent. Thank you for helping us improve the app!",
+        "Could not send. Check your connection and try again.",
+        "Please describe the problem first.",
+        "Close",
+    )
+    AppLanguage.GERMAN -> ProblemReportCopy(
+        "Problem melden",
+        "Beschreibe das Problem im Detail…",
+        "Erzähle uns, welches Problem du mit GPS Simulator hattest. Wir prüfen es und kümmern uns so schnell wie möglich darum.",
+        "An den Support senden",
+        "Abbrechen",
+        "Bericht wird gesendet…",
+        "Dein Bericht wurde gesendet. Danke für deine Unterstützung!",
+        "Senden fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
+        "Bitte beschreibe zuerst das Problem.",
+        "Schließen",
+    )
+    AppLanguage.FRENCH -> ProblemReportCopy(
+        "Signaler un problème",
+        "Décrivez le problème en détail…",
+        "Décrivez le problème rencontré dans GPS Simulator. Nous l’examinerons et tenterons de le résoudre au plus vite.",
+        "Envoyer à l’assistance",
+        "Annuler",
+        "Envoi en cours…",
+        "Votre signalement a été envoyé. Merci de nous aider à améliorer l’application !",
+        "Échec de l’envoi. Vérifiez votre connexion et réessayez.",
+        "Veuillez décrire le problème.",
+        "Fermer",
+    )
+    AppLanguage.SPANISH -> ProblemReportCopy(
+        "Informar de un problema",
+        "Describe el problema en detalle…",
+        "Cuéntanos qué problema has tenido con GPS Simulator. Lo revisaremos e intentaremos solucionarlo lo antes posible.",
+        "Enviar a soporte",
+        "Cancelar",
+        "Enviando informe…",
+        "Tu informe se ha enviado. ¡Gracias por ayudarnos a mejorar la aplicación!",
+        "No se pudo enviar. Comprueba tu conexión e inténtalo de nuevo.",
+        "Describe el problema primero.",
+        "Cerrar",
+    )
+    AppLanguage.PORTUGUESE_BRAZIL -> ProblemReportCopy(
+        "Relatar um problema",
+        "Descreva o problema em detalhes…",
+        "Conte o que aconteceu no GPS Simulator. Vamos analisar o problema e tentar resolvê-lo o mais rápido possível.",
+        "Enviar ao suporte",
+        "Cancelar",
+        "Enviando relato…",
+        "Seu relato foi enviado. Obrigado por ajudar a melhorar o aplicativo!",
+        "Não foi possível enviar. Verifique sua conexão e tente novamente.",
+        "Descreva o problema primeiro.",
+        "Fechar",
+    )
+    AppLanguage.TURKISH -> ProblemReportCopy(
+        "Sorun bildir",
+        "Sorunu ayrıntılı olarak açıklayın…",
+        "GPS Simulator uygulamasında karşılaştığınız sorunu bize anlatın. İnceleyip en kısa sürede çözmeye çalışacağız.",
+        "Destek ekibine gönder",
+        "İptal",
+        "Bildirim gönderiliyor…",
+        "Bildiriminiz gönderildi. Uygulamayı geliştirmemize yardımcı olduğunuz için teşekkürler!",
+        "Gönderilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+        "Lütfen önce sorunu açıklayın.",
+        "Kapat",
+    )
+    AppLanguage.RUSSIAN -> ProblemReportCopy(
+        "Сообщить о проблеме",
+        "Подробно опишите проблему…",
+        "Расскажите о проблеме в GPS Simulator. Мы рассмотрим её и постараемся исправить как можно скорее.",
+        "Отправить в поддержку",
+        "Отмена",
+        "Отправка сообщения…",
+        "Сообщение отправлено. Спасибо за помощь в улучшении приложения!",
+        "Не удалось отправить. Проверьте подключение и повторите попытку.",
+        "Сначала опишите проблему.",
+        "Закрыть",
+    )
+    AppLanguage.HINDI -> ProblemReportCopy(
+        "समस्या की रिपोर्ट करें",
+        "समस्या का विस्तार से वर्णन करें…",
+        "GPS Simulator में आई समस्या के बारे में हमें बताएँ। हम इसकी जाँच करेंगे और जल्द से जल्द इसे ठीक करने का प्रयास करेंगे।",
+        "सहायता टीम को भेजें",
+        "रद्द करें",
+        "रिपोर्ट भेजी जा रही है…",
+        "आपकी रिपोर्ट भेज दी गई है। ऐप को बेहतर बनाने में मदद के लिए धन्यवाद!",
+        "भेजा नहीं जा सका। कनेक्शन जाँचें और फिर कोशिश करें।",
+        "कृपया पहले समस्या का वर्णन करें।",
+        "बंद करें",
+    )
+    AppLanguage.INDONESIAN -> ProblemReportCopy(
+        "Laporkan masalah",
+        "Jelaskan masalah secara terperinci…",
+        "Ceritakan masalah yang Anda alami di GPS Simulator. Kami akan meninjaunya dan berusaha memperbaikinya secepat mungkin.",
+        "Kirim ke tim dukungan",
+        "Batal",
+        "Mengirim laporan…",
+        "Laporan Anda terkirim. Terima kasih telah membantu meningkatkan aplikasi!",
+        "Gagal mengirim. Periksa koneksi Anda dan coba lagi.",
+        "Jelaskan masalahnya terlebih dahulu.",
+        "Tutup",
+    )
+    AppLanguage.JAPANESE -> ProblemReportCopy(
+        "問題を報告",
+        "問題の詳細を入力してください…",
+        "GPS Simulatorで発生した問題をお知らせください。内容を確認し、できるだけ早く解決できるよう対応します。",
+        "サポートに送信",
+        "キャンセル",
+        "送信中…",
+        "送信しました。アプリの改善にご協力いただきありがとうございます！",
+        "送信できませんでした。接続を確認して再試行してください。",
+        "問題の内容を入力してください。",
+        "閉じる",
+    )
+    AppLanguage.CHINESE_SIMPLIFIED -> ProblemReportCopy(
+        "报告问题",
+        "请详细描述您遇到的问题…",
+        "请告诉我们您在 GPS Simulator 中遇到的问题。我们会进行审核并尽快解决。",
+        "发送给支持团队",
+        "取消",
+        "正在发送…",
+        "报告已发送。感谢您帮助我们改进应用！",
+        "发送失败。请检查网络连接后重试。",
+        "请先描述问题。",
+        "关闭",
+    )
+}

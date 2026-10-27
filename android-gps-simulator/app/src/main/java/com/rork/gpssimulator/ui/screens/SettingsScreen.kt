@@ -76,6 +76,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -116,7 +119,7 @@ import com.rork.gpssimulator.util.Format
 import kotlin.math.roundToInt
 
 /** Which single-choice sheet is currently open. */
-private enum class OpenSheet { NONE, THEME, LANGUAGE, MAP_TYPE, UNITS, SPEED }
+private enum class OpenSheet { NONE, THEME, LANGUAGE, MAP_TYPE, MAP_THEME, UNITS, SPEED }
 
 /** Which numeric entry dialog is open. */
 private enum class OpenNumberDialog { NONE, ACCURACY, ALTITUDE, CUSTOM_SPEED }
@@ -150,6 +153,7 @@ fun SettingsScreen(
     onOpenLicenses: () -> Unit,
     onOpenPresets: () -> Unit,
     onOpenRoutes: () -> Unit,
+    onTestRatingDialog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalStrings.current
@@ -226,6 +230,10 @@ fun SettingsScreen(
         }
     }
 
+    // Settings rows follow the selected UI language; keep the map canvas itself LTR.
+    CompositionLocalProvider(
+        LocalLayoutDirection provides if (settings.language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr,
+    ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -281,7 +289,7 @@ fun SettingsScreen(
         ) {
             // ================= GENERAL =================
             val generalTerms = arrayOf(
-                strings[K.theme], strings[K.language], strings[K.map_type],
+                strings[K.theme], strings[K.language], strings[K.map_type], "map appearance", "map theme", "خريطة",
                 strings[K.distance_units], strings[K.reset_settings], "theme", "language", "units",
             )
             if (filter.matches(*generalTerms)) {
@@ -301,16 +309,26 @@ fun SettingsScreen(
                         )
                         RowDivider()
                     }
-                    if (filter.matches(strings[K.language], "language", "arabic", "english")) {
+                    if (filter.matches(strings[K.language], "language", "arabic", "english", "automatic")) {
+                        SwitchRow(
+                            icon = Icons.Default.Language,
+                            title = strings[K.follow_phone_language],
+                            checked = settings.followSystemLanguage,
+                            onCheckedChange = { enabled ->
+                                viewModel.updateSettings {
+                                    it.copy(followSystemLanguage = enabled)
+                                }
+                            },
+                        )
+                        RowDivider()
                         SettingRow(
                             icon = Icons.Default.Language,
                             title = strings[K.language],
-                            value = if (settings.language == AppLanguage.ARABIC) {
-                                strings[K.lang_arabic]
-                            } else {
-                                strings[K.lang_english]
-                            },
+                            value = settings.language.nativeName,
                             onClick = { openSheet = OpenSheet.LANGUAGE },
+                            // Manual language selection stays accessible even when
+                            // following the phone language. Selection disables auto mode.
+                            enabled = true,
                             showChevron = true,
                         )
                         RowDivider()
@@ -326,6 +344,20 @@ fun SettingsScreen(
                                 MapType.TERRAIN -> strings[K.terrain]
                             },
                             onClick = { openSheet = OpenSheet.MAP_TYPE },
+                            showChevron = true,
+                        )
+                        RowDivider()
+                    }
+                    if (filter.matches("Map appearance", "map theme", "night map", "الوضع الليلي", "مظهر الخريطة")) {
+                        SettingRow(
+                            icon = Icons.Default.Brightness6,
+                            title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
+                            value = when (settings.mapTheme) {
+                                ThemeMode.SYSTEM -> strings[K.theme_system]
+                                ThemeMode.LIGHT -> strings[K.theme_light]
+                                ThemeMode.DARK -> strings[K.theme_dark]
+                            },
+                            onClick = { openSheet = OpenSheet.MAP_THEME },
                             showChevron = true,
                         )
                         RowDivider()
@@ -745,7 +777,7 @@ fun SettingsScreen(
                             icon = Icons.Default.Upload,
                             title = strings[K.export_locations],
                             description = strings[K.import_export_desc],
-                            enabled = savedLocations.isNotEmpty(),
+                            enabled = true,
                             onClick = {
                                 if (savedLocations.isEmpty()) {
                                     viewModel.postMessage(strings[K.nothing_to_export], isError = true)
@@ -774,7 +806,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.CloudUpload,
                             title = strings[K.export_routes],
-                            enabled = routes.isNotEmpty(),
+                            enabled = true,
                             onClick = {
                                 if (routes.isEmpty()) {
                                     viewModel.postMessage(strings[K.nothing_to_export], isError = true)
@@ -804,8 +836,11 @@ fun SettingsScreen(
                             icon = Icons.Default.DeleteSweep,
                             title = strings[K.clear_history],
                             iconTint = appColors.warning,
-                            enabled = history.isNotEmpty(),
-                            onClick = { confirm = OpenConfirm.CLEAR_HISTORY },
+                            enabled = true,
+                            onClick = {
+                                if (history.isEmpty()) viewModel.postMessage(strings[K.no_data_to_clear])
+                                else confirm = OpenConfirm.CLEAR_HISTORY
+                            },
                         )
                         RowDivider()
                     }
@@ -814,8 +849,11 @@ fun SettingsScreen(
                             icon = Icons.Default.Star,
                             title = strings[K.clear_favorites],
                             iconTint = appColors.warning,
-                            enabled = savedLocations.any { it.kind == SavedKind.FAVORITE },
-                            onClick = { confirm = OpenConfirm.CLEAR_FAVORITES },
+                            enabled = true,
+                            onClick = {
+                                if (savedLocations.none { it.kind == SavedKind.FAVORITE }) viewModel.postMessage(strings[K.no_data_to_clear])
+                                else confirm = OpenConfirm.CLEAR_FAVORITES
+                            },
                         )
                         RowDivider()
                     }
@@ -824,8 +862,11 @@ fun SettingsScreen(
                             icon = Icons.Default.Science,
                             title = strings[K.clear_presets],
                             iconTint = appColors.warning,
-                            enabled = savedLocations.any { it.kind == SavedKind.PRESET },
-                            onClick = { confirm = OpenConfirm.CLEAR_PRESETS },
+                            enabled = true,
+                            onClick = {
+                                if (savedLocations.none { it.kind == SavedKind.PRESET }) viewModel.postMessage(strings[K.no_data_to_clear])
+                                else confirm = OpenConfirm.CLEAR_PRESETS
+                            },
                         )
                         RowDivider()
                     }
@@ -852,9 +893,9 @@ fun SettingsScreen(
             // ================= APP =================
             val appTerms = arrayOf(
                 strings[K.share_app], strings[K.rate_app], strings[K.send_feedback],
-                strings[K.privacy_policy], strings[K.terms_of_service],
-                strings[K.open_source_licenses], strings[K.about], "share", "rate", "about",
-                "privacy", "terms", "license",
+                strings[K.privacy_policy],
+                strings[K.open_source_licenses], strings[K.about], "share", "rate", "about", "rating test", "تجربة التقييم",
+                "privacy", "license",
             )
             if (filter.matches(*appTerms)) {
                 SectionHeader(strings[K.section_app])
@@ -874,8 +915,30 @@ fun SettingsScreen(
                             icon = Icons.Default.StarRate,
                             title = strings[K.rate_app],
                             description = strings[K.rate_app_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = {
+                                viewModel.ratingPrompt.choseToRate()
+                                openPlayStoreListing(context)
+                            },
+                            showChevron = true,
+                        )
+                        RowDivider()
+                    }
+                    if (com.rork.gpssimulator.BuildConfig.VERSION_NAME.contains("internal-test") &&
+                        filter.matches("تجربة نافذة التقييم", "rating test", "bewertung testen")) {
+                        SettingRow(
+                            icon = Icons.Default.StarRate,
+                            title = when (strings.language) {
+                                AppLanguage.ARABIC -> "تجربة نافذة التقييم"
+                                AppLanguage.GERMAN -> "Bewertungsdialog testen"
+                                else -> "Test rating dialog"
+                            },
+                            description = when (strings.language) {
+                                AppLanguage.ARABIC -> "معاينة النافذة دون تغيير سجل تقييمك"
+                                AppLanguage.GERMAN -> "Vorschau ohne Änderung des Bewertungsstatus"
+                                else -> "Preview without changing your rating status"
+                            },
+                            onClick = onTestRatingDialog,
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -884,8 +947,8 @@ fun SettingsScreen(
                             icon = Icons.Default.Description,
                             title = strings[K.send_feedback],
                             description = strings[K.send_feedback_desc],
-                            value = strings[K.not_configured],
-                            enabled = false,
+                            onClick = { sendFeedback(context) },
+                            showChevron = true,
                         )
                         RowDivider()
                     }
@@ -895,15 +958,6 @@ fun SettingsScreen(
                             title = strings[K.privacy_policy],
                             onClick = { openPrivacyPolicy(context) },
                             showChevron = true,
-                        )
-                        RowDivider()
-                    }
-                    if (filter.matches(strings[K.terms_of_service], "terms")) {
-                        SettingRow(
-                            icon = Icons.Default.Gavel,
-                            title = strings[K.terms_of_service],
-                            value = strings[K.not_configured],
-                            enabled = false,
                         )
                         RowDivider()
                     }
@@ -953,23 +1007,32 @@ fun SettingsScreen(
         )
         OpenSheet.LANGUAGE -> SelectionSheet(
             title = strings[K.language],
-            options = listOf(
-                SelectionOption(AppLanguage.ENGLISH, strings[K.lang_english]),
-                SelectionOption(AppLanguage.ARABIC, strings[K.lang_arabic]),
-            ),
+            options = AppLanguage.entries.map { language ->
+                SelectionOption(language, language.nativeName)
+            },
             selected = settings.language,
-            onSelect = { value -> viewModel.updateSettings { it.copy(language = value) } },
+            onSelect = { value -> viewModel.updateSettings { it.copy(language = value, followSystemLanguage = false) } },
+            onDismiss = { openSheet = OpenSheet.NONE },
+        )
+        OpenSheet.MAP_THEME -> SelectionSheet(
+            title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
+            options = listOf(
+                SelectionOption(ThemeMode.SYSTEM, strings[K.theme_system]),
+                SelectionOption(ThemeMode.LIGHT, strings[K.theme_light]),
+                SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
+            ),
+            selected = settings.mapTheme,
+            onSelect = { value -> viewModel.updateSettings { it.copy(mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.MAP_TYPE -> SelectionSheet(
             title = strings[K.map_type],
             options = listOf(
                 SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.DETAILED_STREETS, strings[K.detailed_streets]),
                 SelectionOption(MapType.SATELLITE, strings[K.satellite]),
                 SelectionOption(MapType.TERRAIN, strings[K.terrain]),
             ),
-            selected = settings.mapType,
+            selected = if (settings.mapType == MapType.DETAILED_STREETS) MapType.STANDARD else settings.mapType,
             onSelect = { value -> viewModel.updateSettings { it.copy(mapType = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
@@ -1121,6 +1184,7 @@ fun SettingsScreen(
         )
         OpenConfirm.NONE -> Unit
     }
+    }
 }
 
 /** Row showing Android mock-location readiness with a Configure action. */
@@ -1195,5 +1259,30 @@ private fun openPrivacyPolicy(context: android.content.Context) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
     } catch (e: ActivityNotFoundException) {
         // No browser available on this device.
+    }
+}
+
+/** Store and support actions are intentionally independent of map and mock-GPS state. */
+private fun openPlayStoreListing(context: android.content.Context) {
+    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+    try {
+        context.startActivity(market)
+    } catch (_: ActivityNotFoundException) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+        } catch (_: ActivityNotFoundException) {
+            // The device does not have a browser or store activity.
+        }
+    }
+}
+
+private fun sendFeedback(context: android.content.Context) {
+    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gps.simulator.support@gmail.com")).apply {
+        putExtra(Intent.EXTRA_SUBJECT, "GPS Simulator — Feedback")
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, null))
+    } catch (_: ActivityNotFoundException) {
+        // No email application installed.
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -29,10 +30,13 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rork.gpssimulator.data.model.ThemeMode
+import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.i18n.Strings
@@ -73,6 +77,14 @@ fun AppNavigation() {
     val viewModel: AppViewModel = viewModel()
     val settings by viewModel.settings.collectAsState()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val phoneLocale = configuration.locales[0]
+    val preferredPhoneLanguage = AppLanguage.fromDeviceLocale(phoneLocale)
+    LaunchedEffect(preferredPhoneLanguage, settings.followSystemLanguage) {
+        if (settings.followSystemLanguage && settings.language != preferredPhoneLanguage) {
+            viewModel.updateSettings { it.copy(language = preferredPhoneLanguage) }
+        }
+    }
     val onboardingPrefs = remember {
         context.getSharedPreferences("gps_simulator_onboarding", Context.MODE_PRIVATE)
     }
@@ -89,7 +101,8 @@ fun AppNavigation() {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val strings = remember(settings.language) { Strings(settings.language) }
+    val effectiveLanguage = AppLanguage.effective(settings.language, settings.followSystemLanguage, phoneLocale)
+    val strings = remember(effectiveLanguage) { Strings(effectiveLanguage) }
     val isArabic = settings.language == AppLanguage.ARABIC
     // Keep the complete application UI physically left-to-right even when
     // Android itself is using an RTL system language.
@@ -113,6 +126,17 @@ fun AppNavigation() {
                     onFinished = {
                         onboardingPrefs.edit().putBoolean("gps_setup_modal_v2_completed", true).apply()
                         setupSeen = true
+                    },
+                    selectedLanguage = settings.language,
+                    followSystemLanguage = settings.followSystemLanguage,
+                    onLanguageSelected = { choice ->
+                        viewModel.updateSettings {
+                            if (choice == null) it.copy(followSystemLanguage = true)
+                            else it.copy(
+                                language = AppLanguage.entries.firstOrNull { it.languageCode == choice } ?: AppLanguage.ENGLISH,
+                                followSystemLanguage = false,
+                            )
+                        }
                     },
                 )
             } else {
@@ -139,6 +163,31 @@ private fun AppScaffold(
     val snackbarHostState = remember { SnackbarHostState() }
     val message by viewModel.message.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    val mockState by viewModel.mockState.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    val context = LocalContext.current
+    val pendingRating by viewModel.ratingPrompt.pending.collectAsState()
+    var showRatingPrompt by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var showRatingPreview by remember { mutableStateOf(false) }
+    var mapIdle by remember { mutableStateOf(false) }
+    val entry by navController.currentBackStackEntryAsState()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+    val safeForRating = com.rork.gpssimulator.ui.rating.RatingPromptPolicy.safeToShow(
+        entry?.destination?.route == Routes.MAP, mapIdle,
+        mockState == MockState.MOCK_ACTIVE, lifecycleState == Lifecycle.State.RESUMED,
+    )
+    LaunchedEffect(pendingRating, safeForRating) {
+        if (pendingRating && safeForRating) {
+            kotlinx.coroutines.delay(1500)
+            viewModel.ratingPrompt.shown()
+            showRatingPrompt = true
+        }
+        if (!safeForRating && showRatingPrompt) {
+            showRatingPrompt = false
+            viewModel.ratingPrompt.postpone()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -174,6 +223,30 @@ private fun AppScaffold(
         viewModel.consumeMessage()
     }
 
+    if ((showRatingPrompt && safeForRating) || showRatingPreview) {
+        val language = LocalStrings.current.language
+        val dark = when (settings.theme) {
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+        }
+        com.rork.gpssimulator.ui.rating.PremiumRatingDialog(
+            language = language,
+            darkTheme = dark,
+            onLater = {
+                if (!showRatingPreview) viewModel.ratingPrompt.postpone()
+                showRatingPrompt = false
+                showRatingPreview = false
+            },
+            onRate = {
+                if (!showRatingPreview) viewModel.ratingPrompt.choseToRate()
+                showRatingPrompt = false
+                showRatingPreview = false
+                com.rork.gpssimulator.ui.rating.openPlayRating(context)
+            },
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -189,6 +262,7 @@ private fun AppScaffold(
                 MapScreen(
                     viewModel = viewModel,
                     bottomInset = bottomInset,
+                    onRatingPromptSafeChanged = { mapIdle = it },
                     onOpenSearch = { navController.navigate(Routes.SEARCH) },
                     onOpenFavorites = { navController.navigateToTopLevel(Routes.PRESETS) },
                     onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
@@ -229,6 +303,7 @@ private fun AppScaffold(
                     onOpenLicenses = { navController.navigate(Routes.LICENSES) },
                     onOpenPresets = { navController.navigateToTopLevel(Routes.PRESETS) },
                     onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
+                    onTestRatingDialog = { showRatingPreview = true },
                 )
             }
             composable(Routes.SEARCH) {
@@ -250,6 +325,17 @@ private fun AppScaffold(
             composable(Routes.MOCK_SETUP) {
                 GpsReadinessChecklist(
                     onFinished = { navController.popBackStack() },
+                    selectedLanguage = settings.language,
+                    followSystemLanguage = settings.followSystemLanguage,
+                    onLanguageSelected = { choice ->
+                        viewModel.updateSettings {
+                            if (choice == null) it.copy(followSystemLanguage = true)
+                            else it.copy(
+                                language = AppLanguage.entries.firstOrNull { it.languageCode == choice } ?: AppLanguage.ENGLISH,
+                                followSystemLanguage = false,
+                            )
+                        }
+                    },
                 )
             }
             composable(Routes.ABOUT) {

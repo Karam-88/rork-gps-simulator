@@ -326,62 +326,74 @@ fun MockActiveBanner(
         label = "dotAlpha",
     )
 
+    var detailsExpanded by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shadowElevation = 8.dp,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
+        shadowElevation = 4.dp,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { detailsExpanded = !detailsExpanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
                 StatusDot(
-                    color = if (isPaused) {
-                        appColors.warning
-                    } else {
-                        MaterialTheme.colorScheme.primary.copy(alpha = dotAlpha)
-                    },
-                    size = 12,
+                    color = if (isPaused) appColors.warning
+                    else MaterialTheme.colorScheme.primary.copy(alpha = dotAlpha),
+                    size = 8,
                 )
-                Spacer(Modifier.width(10.dp))
                 Text(
                     text = strings[K.mock_location_active_banner],
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.weight(1f),
                 )
-                if (isPaused) {
-                    Text(
-                        text = strings[K.pause],
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = appColors.warning,
-                    )
-                }
+                Text(
+                    text = Format.elapsed(elapsedMs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = if (detailsExpanded) "⌃" else "⌄",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
 
-            Spacer(Modifier.height(14.dp))
-
+            Spacer(Modifier.height(5.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 StatCell(strings[K.lat], Format.coord(lat), Modifier.weight(1f))
                 StatCell(strings[K.lng], Format.coord(lng), Modifier.weight(1f))
-                StatCell(
-                    strings[K.altitude],
-                    Format.shortDistance(altitude.toDouble(), units),
-                    Modifier.weight(0.85f),
-                )
             }
 
-            Spacer(Modifier.height(12.dp))
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                StatCell(strings[K.speed], Format.speed(speedKmh, units), Modifier.weight(1f))
-                StatCell(
-                    strings[K.accuracy],
-                    Format.shortDistance(accuracy.toDouble(), units),
-                    Modifier.weight(1f),
-                )
-                StatCell(strings[K.elapsed], Format.elapsed(elapsedMs), Modifier.weight(0.85f))
+            if (detailsExpanded) {
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    StatCell(
+                        strings[K.altitude],
+                        Format.shortDistance(altitude.toDouble(), units),
+                        Modifier.weight(1f),
+                    )
+                    StatCell(strings[K.speed], Format.speed(speedKmh, units), Modifier.weight(1f))
+                    StatCell(
+                        strings[K.accuracy],
+                        Format.shortDistance(accuracy.toDouble(), units),
+                        Modifier.weight(1f),
+                    )
+                }
+                if (isPaused) {
+                    Text(
+                        text = strings[K.pause],
+                        style = MaterialTheme.typography.labelSmall,
+                        color = appColors.warning,
+                    )
+                }
             }
         }
     }

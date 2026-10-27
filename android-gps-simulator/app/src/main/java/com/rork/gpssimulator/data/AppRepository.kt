@@ -11,6 +11,7 @@ import com.rork.gpssimulator.data.model.SavedKind
 import com.rork.gpssimulator.data.model.SavedLocation
 import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.data.model.SimRoute
+import com.rork.gpssimulator.i18n.AppLanguage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +32,14 @@ class AppRepository(context: Context) {
         encodeDefaults = true
     }
 
-    private val _settings = MutableStateFlow(load(KEY_SETTINGS, AppSettings()))
+    // A stored manual selection takes precedence. Automatic mode follows the
+    // current Android language each time the repository is created.
+    private val _settings = MutableStateFlow(
+        load(KEY_SETTINGS, AppSettings()).let { saved ->
+            if (saved.followSystemLanguage) saved.copy(language = AppLanguage.fromDeviceLocale())
+            else saved
+        },
+    )
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
     private val _saved = MutableStateFlow(loadList<SavedLocation>(KEY_SAVED))
@@ -105,7 +113,10 @@ class AppRepository(context: Context) {
     // ---- Settings ----
 
     fun updateSettings(transform: (AppSettings) -> AppSettings) {
-        val next = transform(_settings.value)
+        val proposed = transform(_settings.value)
+        val next = if (proposed.followSystemLanguage) {
+            proposed.copy(language = AppLanguage.fromDeviceLocale())
+        } else proposed
         _settings.value = next
         store(KEY_SETTINGS, next)
     }
@@ -114,6 +125,7 @@ class AppRepository(context: Context) {
         val current = _settings.value
         // Keep the persisted camera so the map does not jump unexpectedly.
         val fresh = AppSettings(
+            language = AppLanguage.fromDeviceLocale(),
             lastCameraLat = current.lastCameraLat,
             lastCameraLng = current.lastCameraLng,
             lastCameraZoom = current.lastCameraZoom,

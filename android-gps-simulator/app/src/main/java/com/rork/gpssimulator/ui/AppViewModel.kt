@@ -5,6 +5,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.SystemClock
+import com.rork.gpssimulator.i18n.AppLanguage
+import com.rork.gpssimulator.i18n.RealRecoveryStatus
+import com.rork.gpssimulator.i18n.realRecoveryMessage
 import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -30,6 +34,7 @@ import com.rork.gpssimulator.location.MockLocationService
 import com.rork.gpssimulator.location.MockResult
 import com.rork.gpssimulator.location.MockSessionBus
 import com.rork.gpssimulator.location.PlaceResult
+import com.rork.gpssimulator.location.RoadRoutingService
 import com.rork.gpssimulator.location.RealLocationSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -72,6 +77,8 @@ data class DiagnosticsReport(
 )
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
+
+    val ratingPrompt = com.rork.gpssimulator.ui.rating.RatingPromptController(app)
 
     private val repository = AppRepository.getInstance(app)
     private val readinessProbe = MockLocationController(app)
@@ -150,6 +157,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var elapsedTickerJob: Job? = null
     private var realRecoveryJob: Job? = null
     private var wasSessionActive = false
+    private var recoveringRealLocation = false
+    private var recoveryNeedsRestart = false
 
     @Volatile
     private var boundService: MockLocationService? = null
@@ -163,6 +172,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             boundService = null
         }
     }
+
+    private val _realRecoveryStatus = MutableStateFlow<RealRecoveryStatus?>(null)
+    internal val realRecoveryStatus = _realRecoveryStatus.asStateFlow()
+    private var recoveryDismissJob: Job? = null
 
     init {
         app.bindService(Intent(app, MockLocationService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
@@ -196,7 +209,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applySession(session: MockSessionBus.Session?) {
         if (session != null) {
+            dismissRealRecovery()
             realRecoveryJob?.cancel()
+            recoveringRealLocation = false
+            recoveryNeedsRestart = false
+            if (!wasSessionActive) realLocation.stopUpdates()
             _mockState.value = MockState.MOCK_ACTIVE
             _activePoint.value = session.point
             _activePlace.value = SelectedLocation(session.point, session.placeName, session.placeAddress)
@@ -223,7 +240,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
             if (wasActive) {
                 _selected.value = null
-                recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+                // A user stop starts recovery synchronously; avoid resetting its UI
+                // when the session StateFlow delivers the stop notification.
+                if (!recoveringRealLocation && _realRecoveryStatus.value == null) {
+                    recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+                }
             }
         }
         wasSessionActive = session != null
@@ -239,63 +260,121 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun recoverRealLocationAfterMockStop(recenter: Boolean) {
-        if (!_permissionGranted.value) {
-            refreshPermissionState()
+    fun dismissRealRecovery() {
+        recoveryDismissJob?.cancel()
+        _realRecoveryStatus.value = null
+    }
+
+    fun retryRealRecovery() {
+        if (MockSessionBus.session.value != null) return
+        recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+    }
+
+    private fun recoveryMessage(status: RealRecoveryStatus) {
+        if (recoveringRealLocation || status == RealRecoveryStatus.RESTORED) {
+            if (MockSessionBus.session.value != null) return
+            recoveryDismissJob?.cancel()
+            _realRecoveryStatus.value = status
+            if (status == RealRecoveryStatus.RESTORED) {
+                recoveryDismissJob = viewModelScope.launch {
+                    delay(3_000L)
+                    _realRecoveryStatus.value = null
+                }
+            }
+            Log.i(TAG, "REAL_RECOVERY status=$status")
             return
         }
+        val config = settings.value
+        val locales = getApplication<Application>().resources.configuration.locales
+        val language = AppLanguage.effective(config.language, config.followSystemLanguage, locales[0])
+        postMessage(realRecoveryMessage(language, status),
+            isError = status != RealRecoveryStatus.ACQUIRING && status != RealRecoveryStatus.RESTORED)
+        Log.i(TAG, "REAL_RECOVERY status=$status")
+    }
 
+    private fun recoverRealLocationAfterMockStop(recenter: Boolean) {
         realRecoveryJob?.cancel()
-
-        // Keep the last known genuine position visible instead of clearing it while
-        // Android reacquires a fresh fix after the mock provider is removed.
-        val cachedReal = _realSample.value
-        if (recenter && cachedReal != null) {
-            moveCamera(cachedReal.point, MY_LOCATION_ZOOM)
+        realLocation.stopUpdates()
+        recoveringRealLocation = true
+        recoveryNeedsRestart = false
+        _realSample.value = null
+        _mockState.value = MockState.REAL_GPS
+        // The service records this only AFTER injection has stopped and providers are removed.
+        val boundary = MockSessionBus.lastStop
+        if (boundary?.cleanupSucceeded == false) {
+            recoveryNeedsRestart = true
+            recoveryMessage(RealRecoveryStatus.CLEANUP_ERROR)
+            return
         }
-
-        var acceptedFreshFix = false
-        realLocation.startUpdates(settings.value.usePlayServices, 250L) { sample ->
-            if (MockSessionBus.session.value != null || acceptedFreshFix) return@startUpdates
-            acceptedFreshFix = true
-            _realSample.value = sample
-            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
-            startRealUpdates()
-        }
-
-        realRecoveryJob = viewModelScope.launch {
-            delay(1500L)
-            if (!acceptedFreshFix && MockSessionBus.session.value == null) {
-                realLocation.lastKnown(settings.value.usePlayServices)?.let { sample ->
-                    _realSample.value = sample
+        val afterNanos = maxOf(boundary?.elapsedNanos ?: 0L, SystemClock.elapsedRealtimeNanos())
+        _permissionGranted.value = realLocation.hasPermission()
+        recoveryMessage(RealRecoveryStatus.ACQUIRING)
+        realLocation.startUpdates(settings.value.usePlayServices, 1_000L,
+            freshAfterNanos = afterNanos,
+            onIssue = { issue ->
+                recoveryNeedsRestart = issue != RealLocationSource.Issue.DISABLED
+                recoveryMessage(when (issue) {
+                    RealLocationSource.Issue.PERMISSION -> RealRecoveryStatus.PERMISSION
+                    RealLocationSource.Issue.DISABLED -> RealRecoveryStatus.DISABLED
+                    RealLocationSource.Issue.PROVIDER_ERROR -> RealRecoveryStatus.PROVIDER_ERROR
+                })
+            },
+        ) { sample ->
+            if (MockSessionBus.session.value == null) {
+                _realSample.value = sample
+                if (recoveringRealLocation) {
+                    recoveringRealLocation = false
+                    recoveryNeedsRestart = false
+                    realRecoveryJob?.cancel()
                     if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+                    recoveryMessage(RealRecoveryStatus.RESTORED)
+                    startRealUpdates()
                 }
-                startRealUpdates()
             }
-            _mockReadiness.value = readinessProbe.checkReadiness(_permissionGranted.value)
+        }
+        realRecoveryJob = viewModelScope.launch {
+            delay(10_000L)
+            if (recoveringRealLocation && MockSessionBus.session.value == null && !recoveryNeedsRestart) {
+                recoveryMessage(if (realLocation.isLocationEnabled()) RealRecoveryStatus.TIMEOUT else RealRecoveryStatus.DISABLED)
+                // Timeout is a status, not listener teardown. A later genuine fix still
+                // completes recovery automatically, without opening another application.
+            }
         }
     }
 
     fun refreshPermissionState() {
         val granted = realLocation.hasPermission()
         _permissionGranted.value = granted
-        _mockReadiness.value = if (MockSessionBus.session.value != null) {
-            MockReadiness.READY
-        } else {
-            readinessProbe.checkReadiness(granted)
+        if (MockSessionBus.session.value != null) {
+            _mockReadiness.value = MockReadiness.READY
+            return
         }
-        if (granted) {
-            realLocation.lastKnown(settings.value.usePlayServices)?.let { _realSample.value = it }
-            startRealUpdates()
+        _mockReadiness.value = readinessProbe.checkReadiness(granted)
+        if (recoveringRealLocation) {
+            if (recoveryNeedsRestart && granted) recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+            else if (!granted) {
+                realLocation.stopUpdates()
+                recoveryNeedsRestart = true
+                recoveryMessage(RealRecoveryStatus.PERMISSION)
+            }
+            return // Foreground/resume must not replace the recovery callback.
         }
+        if (granted) startRealUpdates() else realLocation.stopUpdates()
     }
 
     private fun startRealUpdates() {
-        if (!_permissionGranted.value) return
-        realLocation.startUpdates(settings.value.usePlayServices, 2000L) { sample ->
-            if (MockSessionBus.session.value == null) {
-                _realSample.value = sample
-            }
+        if (!_permissionGranted.value || MockSessionBus.session.value != null || recoveringRealLocation) return
+        realLocation.startUpdates(settings.value.usePlayServices, 2000L,
+            freshAfterNanos = MockSessionBus.lastStop?.elapsedNanos ?: 0L,
+            onIssue = { issue ->
+                recoveryMessage(when (issue) {
+                    RealLocationSource.Issue.PERMISSION -> RealRecoveryStatus.PERMISSION
+                    RealLocationSource.Issue.DISABLED -> RealRecoveryStatus.DISABLED
+                    RealLocationSource.Issue.PROVIDER_ERROR -> RealRecoveryStatus.PROVIDER_ERROR
+                })
+            },
+        ) { sample ->
+            if (MockSessionBus.session.value == null) _realSample.value = sample
         }
     }
 
@@ -395,7 +474,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun stopMock() {
-        boundService?.stopSession()
+        val service = boundService ?: return
+        val session = MockSessionBus.session.value
+        service.stopSession {
+            // Recovery starts only after both platform and fused cleanup complete.
+            if (session != null && MockSessionBus.session.value == null) {
+                recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+            }
+            // Only an explicit successful stop qualifies; provider failures and failed starts do not.
+            if (session != null && MockSessionBus.session.value == null) {
+                ratingPrompt.completedSuccessfully(System.currentTimeMillis() - session.sessionStartedAt)
+            }
+        }
     }
 
     fun togglePause() {
@@ -404,6 +494,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setJoystickVector(x: Float, y: Float) {
         boundService?.setJoystickVector(x, y)
+    }
+
+    /** Centers the map on the effective location without ending a mock session.
+     * Never substitute the physical GPS fix while a mock provider is active.
+     */
+    fun centerOnCurrentLocation() {
+        if (_mockState.value == MockState.MOCK_ACTIVE) {
+            val mockPoint = MockSessionBus.session.value?.point ?: _activePoint.value
+            if (mockPoint != null) {
+                moveCamera(mockPoint, MY_LOCATION_ZOOM)
+                return
+            }
+            postMessage("Mock location is not available yet", isError = true)
+            return
+        }
+        returnToRealLocation()
     }
 
     fun returnToRealLocation(recenter: Boolean = true) {
@@ -416,28 +522,83 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startRoute(route: SimRoute) {
-        if (route.points.size < 2) {
-            postMessage("Add at least two points", isError = true)
+    private var routePreparationJob: Job? = null
+
+    /**
+     * Never start the mock session before road routing succeeds.
+     * A network/server/profile error leaves any existing GPS session unchanged.
+     */
+    private fun routeMessage(message: String): String {
+        if (settings.value.language != com.rork.gpssimulator.i18n.AppLanguage.ARABIC) return message
+        return when {
+            message.contains("at least two", true) || message.contains("2–12", true) -> "أضف نقطتين على الأقل للمسار (الحد الأقصى 12 نقطة)."
+            message.contains("Current location unavailable", true) -> "الموقع الحالي غير متاح. انتظر حتى يتم تحديد موقع GPS وحاول مجددًا."
+            message.contains("permission", true) -> "يجب منح إذن الموقع قبل بدء المحاكاة."
+            message.contains("already being calculated", true) -> "جارٍ حساب المسار بالفعل، يرجى الانتظار."
+            message.contains("Calculating a route", true) -> "جارٍ حساب المسار على الطرق الفعلية…"
+            message.contains("server", true) || message.contains("unavailable", true) -> "تعذر الاتصال بخادم حساب الطرق. تحقق من الإنترنت وحاول مجددًا."
+            message.contains("waypoint", true) || message.contains("road or path", true) -> "إحدى نقاط المسار غير مدعومة على الطرق. عدّل موقع النقطة وحاول مجددًا."
+            message.contains("geometry", true) -> "تعذر قراءة الطريق المحسوب. عدّل نقاط المسار وحاول مجددًا."
+            message.contains("too long", true) -> "المسار طويل جدًا. قلل عدد نقاطه."
+            else -> message
+        }
+    }
+
+    fun startRoute(route: SimRoute, onStarted: () -> Unit = {}) {
+        // A single chosen destination starts at the latest available physical GPS fix.
+        // Never silently use a mock position as the origin of a new route.
+        val routeToResolve = if (route.points.size == 1) {
+            val origin = _realSample.value?.point
+                ?: realLocation.lastKnown(settings.value.usePlayServices)?.point
+            if (origin == null) {
+                postMessage(routeMessage("Current location unavailable. Wait for a GPS fix."), isError = true)
+                return
+            }
+            route.copy(points = listOf(origin, route.points.first()))
+        } else route
+        if (routeToResolve.points.size < 2) {
+            postMessage(routeMessage("Add at least two points"), isError = true)
             return
         }
         if (!_permissionGranted.value) {
-            postMessage("Location permission is required", isError = true)
+            postMessage(routeMessage("Location permission is required"), isError = true)
             _mockReadiness.value = MockReadiness.PERMISSION_REQUIRED
             return
         }
-        val service = requireBoundService() ?: return
-        val start = route.points.first()
-
-        val context = getApplication<Application>()
-        ContextCompat.startForegroundService(context, Intent(context, MockLocationService::class.java))
-        val result = service.startSession(SessionKind.ROUTE, start, route.name, "", route)
-        when (result) {
-            is MockResult.Failure -> postMessage(result.message, isError = true)
-            MockResult.Success -> {
-                _selected.value = null
-                moveCamera(start)
-            }
+        if (routePreparationJob?.isActive == true) {
+            postMessage(routeMessage("A route is already being calculated"), isError = true)
+            return
+        }
+        routePreparationJob = viewModelScope.launch {
+            postMessage(routeMessage("Calculating a route on real roads and paths…"))
+            val result = RoadRoutingService().resolve(routeToResolve)
+            result.fold(
+                onSuccess = { roadRoute ->
+                    val service = requireBoundService() ?: return@fold
+                    val start = roadRoute.points.first()
+                    val context = getApplication<Application>()
+                    ContextCompat.startForegroundService(
+                        context,
+                        Intent(context, MockLocationService::class.java),
+                    )
+                    when (val startResult = service.startSession(
+                        SessionKind.ROUTE, start, route.name, "", roadRoute,
+                    )) {
+                        is MockResult.Failure -> postMessage(routeMessage(startResult.message), isError = true)
+                        MockResult.Success -> {
+                            _selected.value = null
+                            moveCamera(start)
+                            onStarted()
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    postMessage(
+                        routeMessage(error.message ?: "Road routing unavailable. No simulation started."),
+                        isError = true,
+                    )
+                },
+            )
         }
     }
 
@@ -623,3 +784,4 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private const val MY_LOCATION_ZOOM = 16f
     }
 }
+

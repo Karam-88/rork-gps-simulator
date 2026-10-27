@@ -1,6 +1,7 @@
 import java.util.Properties
 
 plugins {
+    id("com.google.gms.google-services")
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -33,16 +34,6 @@ val googleMapsApiKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
     .orElse("")
     .get()
 
-// Meta App Events token supplied through CI secret or Gradle property; never committed.
-val metaFacebookClientToken = providers.environmentVariable("META_FACEBOOK_CLIENT_TOKEN")
-    .orElse(providers.gradleProperty("META_FACEBOOK_CLIENT_TOKEN"))
-    .orElse("")
-    .get()
-val metaAppEventsEnabled = metaFacebookClientToken.isNotBlank()
-if (!metaAppEventsEnabled) {
-    logger.warn("Meta Client Token not configured; Facebook app-event logging is disabled.")
-}
-
 if (googleMapsApiKey.isBlank()) {
     logger.warn("WARNING: GOOGLE_MAPS_API_KEY is not configured; Google Maps will not render.")
 }
@@ -53,13 +44,12 @@ android {
 
     defaultConfig {
         applicationId = "com.rork.gpssimulator"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 21
-        versionName = "1.1.17"
+        versionCode = 32
+        versionName = "1.1.27-internal-test"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
-        manifestPlaceholders["META_APP_EVENTS_ENABLED"] = metaAppEventsEnabled
-        resValue("string", "facebook_client_token", if (metaAppEventsEnabled) metaFacebookClientToken else "UNCONFIGURED")
     }
 
     signingConfigs {
@@ -107,6 +97,10 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -128,12 +122,17 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.koin.androidx.compose)
 
-    // Google is used only as the map renderer. Search/geocoding/routes continue to use
+    // Google supplies map rendering and real-location recovery. Search/geocoding/routes use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
-    // Meta SDK for app activation/install attribution, retaining stable GPS features.
-    implementation("com.facebook.android:facebook-android-sdk:16.3.0")
-
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.androidx.ui.tooling)
 }
+

@@ -7,12 +7,18 @@ import android.location.LocationManager
 import android.location.provider.ProviderProperties
 import android.os.Build
 import android.os.SystemClock
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.rork.gpssimulator.data.AppRepository
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MockReadiness
 import com.rork.gpssimulator.i18n.AppLanguage
+import com.rork.gpssimulator.BuildConfig
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.location.LocationServices
 
 /**
  * Result of attempting to start or push a system-level mock location.
@@ -45,7 +51,10 @@ enum class MockFailure {
  * mock app, Android throws SecurityException and we surface a precise failure instead
  * of pretending the session started.
  */
-class MockLocationController(context: Context) {
+class MockLocationController(
+    context: Context,
+    private val onAsyncFailure: (MockResult.Failure) -> Unit = {},
+) {
 
     private val appContext = context.applicationContext
     private val locationManager =
@@ -59,6 +68,39 @@ class MockLocationController(context: Context) {
     }
 
     private val installedProviders = mutableSetOf<String>()
+    private var lastPushElapsedMs = 0L
+    private var lastHeartbeatElapsedMs = 0L
+    private var pushCount = 0L
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(appContext) }
+    private var useFused = false
+    private var sessionGeneration = 0L
+    private val fusedPump = MockFusedPump<Location>(
+        setMode = { enabled, done ->
+            fusedClient.setMockMode(enabled).addOnCompleteListener { task ->
+                diagnostic("fused_mode=$enabled success=${task.isSuccessful}")
+                done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused mode cancelled"))
+            }
+        },
+        send = { location, done ->
+            fusedClient.setMockLocation(location).addOnCompleteListener { task ->
+                done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused update cancelled"))
+            }
+        },
+        onFailure = { error ->
+            diagnostic("fused_failed error=${error.javaClass.simpleName}")
+            val failedGeneration = sessionGeneration
+            // Avoid re-entering a start/push before its synchronous work finishes.
+            mainHandler.post {
+                if (isRunning && sessionGeneration == failedGeneration) onAsyncFailure(MockResult.Failure(
+                    if (error is SecurityException) MockFailure.NOT_SELECTED_AS_MOCK_APP else MockFailure.PROVIDER_ERROR,
+                    "Could not update Google Play Services mock location",
+                ))
+            }
+        },
+    )
+
+    val isStopping: Boolean get() = fusedPump.isStopping
 
     @Volatile
     var isRunning: Boolean = false
@@ -73,11 +115,12 @@ class MockLocationController(context: Context) {
         if (!hasLocationPermission) return MockReadiness.PERMISSION_REQUIRED
         if (isRunning) return MockReadiness.READY
 
-        val probe = LocationManager.GPS_PROVIDER
+        // Never replace the real GPS provider merely to check the mock app-op.
+        val probe = "gps_simulator_readiness_probe"
         return try {
             addTestProvider(manager, probe)
             manager.setTestProviderEnabled(probe, true)
-            removeTestProviderQuietly(manager, probe)
+            manager.removeTestProvider(probe)
             MockReadiness.READY
         } catch (e: SecurityException) {
             Log.i(TAG, "Mock location not permitted: app is not the selected mock location app")
@@ -88,6 +131,8 @@ class MockLocationController(context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "Unexpected mock readiness failure: ${e.javaClass.simpleName}")
             MockReadiness.SETUP_REQUIRED
+        } finally {
+            removeTestProviderQuietly(manager, probe)
         }
     }
 
@@ -97,30 +142,42 @@ class MockLocationController(context: Context) {
      * not enter the MOCK_ACTIVE state in that case.
      */
     fun start(point: LatLng, accuracy: Float, altitude: Double, speed: Float, bearing: Float): MockResult {
+        if (isStopping) return MockResult.Failure(MockFailure.PROVIDER_ERROR, "Mock location cleanup is still pending")
+        sessionGeneration++
         val manager = locationManager
             ?: return MockResult.Failure(MockFailure.PROVIDER_ERROR, "LocationManager unavailable")
 
         return try {
-            installedProviders.clear()
-            targetProviders.forEach { provider ->
+            // Replacing a session must not remove/re-add working providers: that
+            // briefly exposes the underlying real source between sessions.
+            targetProviders.filterNot { it in installedProviders }.forEach { provider ->
                 try {
                     addTestProvider(manager, provider)
-                    manager.setTestProviderEnabled(provider, true)
                     installedProviders.add(provider)
+                    manager.setTestProviderEnabled(provider, true)
                 } catch (e: IllegalArgumentException) {
                     // Provider not supported on this device; skip it but keep the others.
+                    installedProviders.remove(provider)
+                    removeTestProviderQuietly(manager, provider)
                     Log.i(TAG, "Provider $provider unavailable for mocking")
                 }
             }
 
-            if (installedProviders.isEmpty()) {
+            if (LocationManager.GPS_PROVIDER !in installedProviders ||
+                LocationManager.NETWORK_PROVIDER !in installedProviders) {
+                stop()
                 return MockResult.Failure(
                     MockFailure.PROVIDER_ERROR,
-                    "No location provider accepted a test provider",
+                    "GPS and network mock providers are required",
                 )
             }
 
             isRunning = true
+            useFused = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(appContext) == ConnectionResult.SUCCESS
+            lastPushElapsedMs = 0L
+            lastHeartbeatElapsedMs = 0L
+            pushCount = 0L
+            diagnostic("session_started providers=${installedProviders.joinToString(",")} play_services=$useFused")
             when (val push = push(point, accuracy, altitude, speed, bearing)) {
                 is MockResult.Failure -> {
                     stop()
@@ -130,7 +187,7 @@ class MockLocationController(context: Context) {
             }
         } catch (e: SecurityException) {
             isRunning = false
-            removeAllQuietly()
+            stop()
             showMockSetupToast()
             MockResult.Failure(
                 MockFailure.NOT_SELECTED_AS_MOCK_APP,
@@ -138,7 +195,7 @@ class MockLocationController(context: Context) {
             )
         } catch (e: Exception) {
             isRunning = false
-            removeAllQuietly()
+            stop()
             Log.e(TAG, "Failed to start mock location: ${e.javaClass.simpleName}")
             MockResult.Failure(MockFailure.PROVIDER_ERROR, "Could not start mock location")
         }
@@ -152,39 +209,70 @@ class MockLocationController(context: Context) {
             return MockResult.Failure(MockFailure.PROVIDER_ERROR, "Mock session is not running")
         }
 
-        return try {
-            installedProviders.forEach { provider ->
+        val nowMs = SystemClock.elapsedRealtime()
+        val gapMs = if (lastPushElapsedMs == 0L) 0L else nowMs - lastPushElapsedMs
+        if (gapMs > 3_000L) diagnostic("update_gap_ms=$gapMs")
+        lastPushElapsedMs = nowMs
+        var firstFailure: Exception? = null
+        var failedProvider: String? = null
+        // Identical position and timestamps for every source in this update.
+        val fix = buildLocation(LocationManager.GPS_PROVIDER, point, accuracy, altitude, speed, bearing)
+        installedProviders.forEach { provider ->
+            try {
                 manager.setTestProviderLocation(
                     provider,
-                    buildLocation(provider, point, accuracy, altitude, speed, bearing),
+                    Location(fix).apply { this.provider = provider },
                 )
+            } catch (e: Exception) {
+                if (firstFailure == null) {
+                    firstFailure = e
+                    failedProvider = provider
+                }
+                diagnostic("provider_push_failed provider=$provider error=${e.javaClass.simpleName}")
             }
-            MockResult.Success
-        } catch (e: SecurityException) {
-            showMockSetupToast()
-            MockResult.Failure(
-                MockFailure.NOT_SELECTED_AS_MOCK_APP,
-                "Mock location permission was revoked",
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to push mock location: ${e.javaClass.simpleName}")
-            MockResult.Failure(MockFailure.PROVIDER_ERROR, "Could not update mock location")
+        }
+        if (firstFailure == null && useFused) {
+            fusedPump.submit(Location(fix).apply { provider = "fused" })
+        }
+        pushCount++
+        if (nowMs - lastHeartbeatElapsedMs >= 5_000L) {
+            diagnostic("heartbeat pushes=$pushCount gap_ms=$gapMs providers=${installedProviders.joinToString(",")}")
+            lastHeartbeatElapsedMs = nowMs
+        }
+        return when (firstFailure) {
+            null -> MockResult.Success
+            is SecurityException -> {
+                showMockSetupToast()
+                MockResult.Failure(MockFailure.NOT_SELECTED_AS_MOCK_APP, "Mock location permission was revoked ($failedProvider)")
+            }
+            else -> MockResult.Failure(MockFailure.PROVIDER_ERROR, "Could not update mock location ($failedProvider)")
         }
     }
 
     /** Stops the session and removes every installed test provider. */
-    fun stop() {
-        val manager = locationManager ?: return
-        installedProviders.forEach { provider ->
-            try {
-                manager.setTestProviderEnabled(provider, false)
-            } catch (e: Exception) {
-                Log.d(TAG, "Provider $provider already disabled")
-            }
-            removeTestProviderQuietly(manager, provider)
-        }
-        installedProviders.clear()
+    fun stop(completed: (Boolean) -> Unit = {}): Boolean {
+        // Injection is disarmed before any provider is removed.
+        sessionGeneration++
         isRunning = false
+        val manager = locationManager
+        installedProviders.toList().forEach { provider ->
+            try {
+                // Removing the test provider restores the underlying real provider directly.
+                manager?.removeTestProvider(provider)
+                installedProviders.remove(provider)
+                Log.i(TAG, "REAL_RECOVERY mock_provider_removed provider=$provider")
+            } catch (e: IllegalArgumentException) {
+                // Older Android versions throw if it has already been removed.
+                installedProviders.remove(provider)
+                Log.i(TAG, "REAL_RECOVERY mock_provider_already_removed provider=$provider")
+            } catch (e: Exception) {
+                Log.e(TAG, "REAL_RECOVERY mock_provider_removal_failed provider=$provider", e)
+            }
+        }
+        Log.i(TAG, "REAL_RECOVERY injection_stopped cleanup_ok=${installedProviders.isEmpty()}")
+        val platformClean = installedProviders.isEmpty()
+        fusedPump.stop { fusedClean -> completed(platformClean && fusedClean) }
+        return installedProviders.isEmpty()
     }
 
     private fun showMockSetupToast() {
@@ -198,8 +286,8 @@ class MockLocationController(context: Context) {
     }
 
     private fun addTestProvider(manager: LocationManager, provider: String) {
-        // Remove any stale provider left behind by a previous process.
-        removeTestProviderQuietly(manager, provider)
+        // addTestProvider atomically replaces an existing provider with this name.
+        // Do not remove first and expose a real fix in the registration gap.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             manager.addTestProvider(
                 provider,
@@ -238,12 +326,6 @@ class MockLocationController(context: Context) {
         }
     }
 
-    private fun removeAllQuietly() {
-        val manager = locationManager ?: return
-        targetProviders.forEach { removeTestProviderQuietly(manager, it) }
-        installedProviders.clear()
-    }
-
     @SuppressLint("NewApi")
     private fun buildLocation(
         provider: String,
@@ -271,4 +353,9 @@ class MockLocationController(context: Context) {
     companion object {
         private const val TAG = "MockLocationController"
     }
+
+    private fun diagnostic(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "MOCK_DIAG $message")
+    }
 }
+

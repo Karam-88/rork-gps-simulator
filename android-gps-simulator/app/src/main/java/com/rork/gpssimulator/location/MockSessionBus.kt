@@ -25,6 +25,11 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 object MockSessionBus {
 
+    data class StopBoundary(val elapsedNanos: Long, val cleanupSucceeded: Boolean)
+    // Written before publishing session=null, so readers never race provider cleanup.
+    var lastStop: StopBoundary? = null
+        internal set
+
     /** Live, authoritative snapshot of what is currently being fed to Android. */
     data class Session(
         val kind: SessionKind,
