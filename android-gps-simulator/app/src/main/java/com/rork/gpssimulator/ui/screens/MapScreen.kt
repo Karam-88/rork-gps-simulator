@@ -83,6 +83,8 @@ import com.rork.gpssimulator.data.model.MapType
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.data.model.SavedKind
 import com.rork.gpssimulator.data.model.SessionKind
+import com.rork.gpssimulator.data.model.ThemeMode
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
@@ -251,6 +253,15 @@ fun MapScreen(
         }
     }
 
+    val darkMap = when (settings.mapTheme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> when (settings.theme) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
+    }
     val markers = buildList {
         if (!isMockActive) {
             realSample?.let {
@@ -301,6 +312,7 @@ fun MapScreen(
         MapView(
             camera = camera,
             mapType = settings.mapType,
+            darkMap = darkMap,
             markers = mapMarkers,
             polylines = polylines,
             pulseFraction = { pulse.value },
