@@ -126,7 +126,8 @@ fun RouteEditorSheet(
     }
     LaunchedEffect(currentLocation, initialRoutePoint) {
         if (awaitingInitialFix && initialRoutePoint == null && currentLocation != null) {
-            camera.snapTo(currentLocation, 15f)
+            camera.isUserInteracting = false
+            camera.snapTo(currentLocation, 16f)
             awaitingInitialFix = false
         }
     }
@@ -237,7 +238,10 @@ fun RouteEditorSheet(
                             points.add(camera.center)
                         }
                         SmallMapAction(Icons.Default.MyLocation, strings[K.my_location]) {
-                            currentLocation?.let { camera.snapTo(it, 16f) }
+                            currentLocation?.let {
+                                camera.isUserInteracting = false
+                                camera.snapTo(it, 16f)
+                            }
                         }
                         if (points.isNotEmpty()) {
                             SmallMapAction(Icons.Default.Close, strings[K.delete]) {
