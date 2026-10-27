@@ -76,11 +76,12 @@ class MockLocationController(context: Context) {
         if (!hasLocationPermission) return MockReadiness.PERMISSION_REQUIRED
         if (isRunning) return MockReadiness.READY
 
-        val probe = LocationManager.GPS_PROVIDER
+        // Never replace the real GPS provider merely to check the mock app-op.
+        val probe = "gps_simulator_readiness_probe"
         return try {
             addTestProvider(manager, probe)
             manager.setTestProviderEnabled(probe, true)
-            removeTestProviderQuietly(manager, probe)
+            manager.removeTestProvider(probe)
             MockReadiness.READY
         } catch (e: SecurityException) {
             Log.i(TAG, "Mock location not permitted: app is not the selected mock location app")
@@ -91,6 +92,8 @@ class MockLocationController(context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "Unexpected mock readiness failure: ${e.javaClass.simpleName}")
             MockReadiness.SETUP_REQUIRED
+        } finally {
+            removeTestProviderQuietly(manager, probe)
         }
     }
 
@@ -108,8 +111,8 @@ class MockLocationController(context: Context) {
             targetProviders.forEach { provider ->
                 try {
                     addTestProvider(manager, provider)
-                    manager.setTestProviderEnabled(provider, true)
                     installedProviders.add(provider)
+                    manager.setTestProviderEnabled(provider, true)
                 } catch (e: IllegalArgumentException) {
                     // Provider not supported on this device; skip it but keep the others.
                     Log.i(TAG, "Provider $provider unavailable for mocking")
@@ -195,19 +198,26 @@ class MockLocationController(context: Context) {
     }
 
     /** Stops the session and removes every installed test provider. */
-    fun stop() {
-        val manager = locationManager ?: return
-        installedProviders.forEach { provider ->
-            try {
-                manager.setTestProviderEnabled(provider, false)
-            } catch (e: Exception) {
-                Log.d(TAG, "Provider $provider already disabled")
-            }
-            removeTestProviderQuietly(manager, provider)
-        }
-        Log.i(TAG, "MOCK_DIAG session_stopped")
-        installedProviders.clear()
+    fun stop(): Boolean {
+        // Injection is disarmed before any provider is removed.
         isRunning = false
+        val manager = locationManager ?: return installedProviders.isEmpty()
+        installedProviders.toList().forEach { provider ->
+            try {
+                // Removing the test provider restores the underlying real provider directly.
+                manager.removeTestProvider(provider)
+                installedProviders.remove(provider)
+                Log.i(TAG, "REAL_RECOVERY mock_provider_removed provider=$provider")
+            } catch (e: IllegalArgumentException) {
+                // Older Android versions throw if it has already been removed.
+                installedProviders.remove(provider)
+                Log.i(TAG, "REAL_RECOVERY mock_provider_already_removed provider=$provider")
+            } catch (e: Exception) {
+                Log.e(TAG, "REAL_RECOVERY mock_provider_removal_failed provider=$provider", e)
+            }
+        }
+        Log.i(TAG, "REAL_RECOVERY injection_stopped cleanup_ok=${installedProviders.isEmpty()}")
+        return installedProviders.isEmpty()
     }
 
     private fun showMockSetupToast() {

@@ -22,6 +22,8 @@ import com.rork.gpssimulator.data.model.SimRoute
 import com.rork.gpssimulator.i18n.Strings
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.util.Format
+import kotlinx.coroutines.Dispatchers
+import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -62,7 +64,7 @@ class MockLocationService : Service() {
 
     private lateinit var repository: AppRepository
     private lateinit var mockController: MockLocationController
-    private val serviceScope = CoroutineScope(SupervisorJob())
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var pushJob: Job? = null
 
     private var kind = SessionKind.STATIC
@@ -177,10 +179,17 @@ class MockLocationService : Service() {
     }
 
     override fun onDestroy() {
-        MockSessionBus.setServiceRunning(false)
         pushJob?.cancel()
         serviceScope.cancel()
-        mockController.stop()
+        val clean = mockController.stop()
+        if (MockSessionBus.session.value != null) {
+            // An unexpected destruction must not leave the UI believing injection
+            // continues. Keep the persisted record for the existing sticky restart.
+            MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
+            MockSessionBus.publish(null)
+        }
+        MockSessionBus.setServiceRunning(false)
+        Log.i(TAG, "REAL_RECOVERY service_destroyed cleanup_ok=$clean")
         super.onDestroy()
     }
 
@@ -329,10 +338,17 @@ class MockLocationService : Service() {
         val session = MockSessionBus.session.value
         pushJob?.cancel()
         pushJob = null
-        mockController.stop()
+        // Push loops and Stop now share the main dispatcher: no cancelled loop can
+        // inject or publish a stale session between cleanup and session=null.
+        val clean = mockController.stop()
+        MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
+        Log.i(TAG, "REAL_RECOVERY stop_completed cleanup_ok=$clean elapsed_ns=${MockSessionBus.lastStop?.elapsedNanos}")
         session?.let { finishSession(it) }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        // A bound service can remain alive until the Activity unbinds; injection
+        // and foreground operation have nevertheless ended synchronously here.
+        Log.i(TAG, "REAL_RECOVERY foreground_stopped")
     }
 
     private fun finishSession(session: MockSessionBus.Session) {

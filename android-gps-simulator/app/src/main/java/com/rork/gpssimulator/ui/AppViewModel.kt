@@ -5,6 +5,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.SystemClock
+import com.rork.gpssimulator.i18n.AppLanguage
+import com.rork.gpssimulator.i18n.RealRecoveryStatus
+import com.rork.gpssimulator.i18n.realRecoveryMessage
 import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -153,6 +157,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var elapsedTickerJob: Job? = null
     private var realRecoveryJob: Job? = null
     private var wasSessionActive = false
+    private var recoveringRealLocation = false
+    private var recoveryNeedsRestart = false
 
     @Volatile
     private var boundService: MockLocationService? = null
@@ -200,6 +206,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun applySession(session: MockSessionBus.Session?) {
         if (session != null) {
             realRecoveryJob?.cancel()
+            recoveringRealLocation = false
+            recoveryNeedsRestart = false
+            if (!wasSessionActive) realLocation.stopUpdates()
             _mockState.value = MockState.MOCK_ACTIVE
             _activePoint.value = session.point
             _activePlace.value = SelectedLocation(session.point, session.placeName, session.placeAddress)
@@ -242,60 +251,61 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private fun recoveryMessage(status: RealRecoveryStatus) {
+        val config = settings.value
+        val locales = getApplication<Application>().resources.configuration.locales
+        val language = AppLanguage.effective(config.language, config.followSystemLanguage, locales[0])
+        postMessage(realRecoveryMessage(language, status),
+            isError = status != RealRecoveryStatus.ACQUIRING && status != RealRecoveryStatus.RESTORED)
+        Log.i(TAG, "REAL_RECOVERY status=$status")
+    }
+
     private fun recoverRealLocationAfterMockStop(recenter: Boolean) {
         realRecoveryJob?.cancel()
-        if (!_permissionGranted.value) {
-            refreshPermissionState()
+        realLocation.stopUpdates()
+        recoveringRealLocation = true
+        recoveryNeedsRestart = false
+        _realSample.value = null
+        _mockState.value = MockState.REAL_GPS
+        // The service records this only AFTER injection has stopped and providers are removed.
+        val boundary = MockSessionBus.lastStop
+        if (boundary?.cleanupSucceeded == false) {
+            recoveryNeedsRestart = true
+            recoveryMessage(RealRecoveryStatus.CLEANUP_ERROR)
             return
         }
-
-        // Android may need time to reacquire a non-mock fix after test providers
-        // are removed. Do not treat a cached pre-simulation fix as a fresh one.
-        val stopTimeMs = System.currentTimeMillis()
-        var freshFixReceived = false
-        val preferPlayServices = settings.value.usePlayServices
-
-        // Keep a genuinely real cached fix visible while waiting, if available.
-        realLocation.lastKnown(preferPlayServices)?.let { sample ->
-            _realSample.value = sample
-            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
-        }
-
-        realLocation.startUpdates(preferPlayServices, 500L) { sample ->
-            if (MockSessionBus.session.value != null) return@startUpdates
-            _realSample.value = sample
-            // Only a fix generated after the mock session ended completes recovery.
-            if (sample.timestamp >= stopTimeMs - 500L) {
-                freshFixReceived = true
-                if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
-            }
-        }
-
-        realRecoveryJob = viewModelScope.launch {
-            // Keep the real provider listener active rather than replacing it
-            // after 1.5 seconds, which could discard the first new GPS fix.
-            repeat(12) {
-                if (MockSessionBus.session.value != null) return@launch
-                if (freshFixReceived) return@repeat
-                delay(1_000L)
-                if (!freshFixReceived && MockSessionBus.session.value == null && it % 3 == 2) {
-                    // Some devices only resume reporting after re-registering.
-                    realLocation.startUpdates(preferPlayServices, 500L) { sample ->
-                        if (MockSessionBus.session.value != null) return@startUpdates
-                        _realSample.value = sample
-                        if (sample.timestamp >= stopTimeMs - 500L) {
-                            freshFixReceived = true
-                            if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
-                        }
-                    }
-                }
-            }
+        val afterNanos = boundary?.elapsedNanos ?: SystemClock.elapsedRealtimeNanos()
+        _permissionGranted.value = realLocation.hasPermission()
+        recoveryMessage(RealRecoveryStatus.ACQUIRING)
+        realLocation.startUpdates(settings.value.usePlayServices, 1_000L,
+            freshAfterNanos = afterNanos,
+            onIssue = { issue ->
+                recoveryNeedsRestart = issue != RealLocationSource.Issue.DISABLED
+                recoveryMessage(when (issue) {
+                    RealLocationSource.Issue.PERMISSION -> RealRecoveryStatus.PERMISSION
+                    RealLocationSource.Issue.DISABLED -> RealRecoveryStatus.DISABLED
+                    RealLocationSource.Issue.PROVIDER_ERROR -> RealRecoveryStatus.PROVIDER_ERROR
+                })
+            },
+        ) { sample ->
             if (MockSessionBus.session.value == null) {
-                startRealUpdates()
-                if (!freshFixReceived) {
-                    postMessage("Waiting for a fresh GPS fix. Check that device location is enabled.", isError = true)
+                _realSample.value = sample
+                if (recoveringRealLocation) {
+                    recoveringRealLocation = false
+                    recoveryNeedsRestart = false
+                    realRecoveryJob?.cancel()
+                    if (recenter) moveCamera(sample.point, MY_LOCATION_ZOOM)
+                    recoveryMessage(RealRecoveryStatus.RESTORED)
+                    startRealUpdates()
                 }
-                _mockReadiness.value = readinessProbe.checkReadiness(_permissionGranted.value)
+            }
+        }
+        realRecoveryJob = viewModelScope.launch {
+            delay(12_000L)
+            if (recoveringRealLocation && MockSessionBus.session.value == null && !recoveryNeedsRestart) {
+                recoveryMessage(if (realLocation.isLocationEnabled()) RealRecoveryStatus.TIMEOUT else RealRecoveryStatus.DISABLED)
+                // Timeout is a status, not listener teardown. A later genuine fix still
+                // completes recovery automatically, without opening another application.
             }
         }
     }
@@ -303,23 +313,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshPermissionState() {
         val granted = realLocation.hasPermission()
         _permissionGranted.value = granted
-        _mockReadiness.value = if (MockSessionBus.session.value != null) {
-            MockReadiness.READY
-        } else {
-            readinessProbe.checkReadiness(granted)
+        if (MockSessionBus.session.value != null) {
+            _mockReadiness.value = MockReadiness.READY
+            return
         }
-        if (granted) {
-            realLocation.lastKnown(settings.value.usePlayServices)?.let { _realSample.value = it }
-            startRealUpdates()
+        _mockReadiness.value = readinessProbe.checkReadiness(granted)
+        if (recoveringRealLocation) {
+            if (recoveryNeedsRestart && granted) recoverRealLocationAfterMockStop(settings.value.returnToRealOnStop)
+            else if (!granted) {
+                realLocation.stopUpdates()
+                recoveryNeedsRestart = true
+                recoveryMessage(RealRecoveryStatus.PERMISSION)
+            }
+            return // Foreground/resume must not replace the recovery callback.
         }
+        if (granted) startRealUpdates() else realLocation.stopUpdates()
     }
 
     private fun startRealUpdates() {
-        if (!_permissionGranted.value) return
-        realLocation.startUpdates(settings.value.usePlayServices, 2000L) { sample ->
-            if (MockSessionBus.session.value == null) {
-                _realSample.value = sample
-            }
+        if (!_permissionGranted.value || MockSessionBus.session.value != null || recoveringRealLocation) return
+        realLocation.startUpdates(settings.value.usePlayServices, 2000L,
+            freshAfterNanos = MockSessionBus.lastStop?.elapsedNanos ?: 0L,
+            onIssue = { issue ->
+                recoveryMessage(when (issue) {
+                    RealLocationSource.Issue.PERMISSION -> RealRecoveryStatus.PERMISSION
+                    RealLocationSource.Issue.DISABLED -> RealRecoveryStatus.DISABLED
+                    RealLocationSource.Issue.PROVIDER_ERROR -> RealRecoveryStatus.PROVIDER_ERROR
+                })
+            },
+        ) { sample ->
+            if (MockSessionBus.session.value == null) _realSample.value = sample
         }
     }
 
