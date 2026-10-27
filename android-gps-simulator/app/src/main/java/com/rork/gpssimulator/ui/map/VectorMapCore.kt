@@ -94,6 +94,7 @@ enum class MarkerStyle {
     ACTIVE,
     CANDIDATE,
     REAL,
+    DESTINATION,
 }
 
 data class MapMarker(
