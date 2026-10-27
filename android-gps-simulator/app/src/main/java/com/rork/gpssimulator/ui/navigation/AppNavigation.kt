@@ -168,6 +168,7 @@ private fun AppScaffold(
     val context = LocalContext.current
     val pendingRating by viewModel.ratingPrompt.pending.collectAsState()
     var showRatingPrompt by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var showRatingPreview by remember { mutableStateOf(false) }
     var mapIdle by remember { mutableStateOf(false) }
     val entry by navController.currentBackStackEntryAsState()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -222,7 +223,7 @@ private fun AppScaffold(
         viewModel.consumeMessage()
     }
 
-    if (showRatingPrompt && safeForRating) {
+    if ((showRatingPrompt && safeForRating) || showRatingPreview) {
         val language = LocalStrings.current.language
         val dark = when (settings.theme) {
             ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -233,12 +234,14 @@ private fun AppScaffold(
             language = language,
             darkTheme = dark,
             onLater = {
-                viewModel.ratingPrompt.postpone()
+                if (!showRatingPreview) viewModel.ratingPrompt.postpone()
                 showRatingPrompt = false
+                showRatingPreview = false
             },
             onRate = {
-                viewModel.ratingPrompt.choseToRate()
+                if (!showRatingPreview) viewModel.ratingPrompt.choseToRate()
                 showRatingPrompt = false
+                showRatingPreview = false
                 com.rork.gpssimulator.ui.rating.openPlayRating(context)
             },
         )
@@ -300,6 +303,7 @@ private fun AppScaffold(
                     onOpenLicenses = { navController.navigate(Routes.LICENSES) },
                     onOpenPresets = { navController.navigateToTopLevel(Routes.PRESETS) },
                     onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
+                    onTestRatingDialog = { showRatingPreview = true },
                 )
             }
             composable(Routes.SEARCH) {
