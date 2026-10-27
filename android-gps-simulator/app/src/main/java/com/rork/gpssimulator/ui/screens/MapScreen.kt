@@ -282,6 +282,19 @@ fun MapScreen(
             )
         }
     }
+    // The destination must remain visible at the final route coordinate,
+    // independent of the selected-point crosshair and the moving mock marker.
+    routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+        markers.add(
+            MapMarker(
+                point = destination,
+                color = Color(0xFFE53935),
+                label = "Destination",
+                style = MarkerStyle.REAL,
+                renderInOverlay = false,
+            ),
+        )
+    }
     val polylines = routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
