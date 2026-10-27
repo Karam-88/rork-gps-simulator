@@ -184,7 +184,7 @@ class MockLocationController(context: Context) {
             Log.i(TAG, "MOCK_DIAG heartbeat pushes=$pushCount gap_ms=$gapMs providers=${installedProviders.joinToString(",")}")
             lastHeartbeatElapsedMs = nowMs
         }
-        when (firstFailure) {
+        return when (firstFailure) {
             null -> MockResult.Success
             is SecurityException -> {
                 showMockSetupToast()
