@@ -336,10 +336,16 @@ fun RouteEditorSheet(
                                 )
                             },
                             enabled = isValid,
-                            modifier = Modifier.weight(1.5f).height(44.dp),
+                            modifier = Modifier.weight(1.8f).heightIn(min = 52.dp),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text(strings[K.start_route], style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = strings[K.start_route],
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
