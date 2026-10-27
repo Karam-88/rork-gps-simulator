@@ -36,8 +36,8 @@ fun Crosshair(
         val tickInner = unit * 0.46f * scale
         val tickOuter = unit * 0.77f * scale
         val halo = Color.White.copy(alpha = 0.9f)
-        val ringWidth = 5.dp.toPx()
-        val haloWidth = 7.dp.toPx()
+        val ringWidth = 3.dp.toPx()
+        val haloWidth = 5.dp.toPx()
 
         // Short cardinal ticks overlap the ring, like the blue target in the reference.
         fun tick(dx: Float, dy: Float) {
