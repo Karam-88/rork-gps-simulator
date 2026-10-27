@@ -43,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -108,13 +109,27 @@ fun RouteEditorSheet(
         mutableStateListOf<LatLng>().apply { existing?.points?.let { addAll(it) } }
     }
 
-    val currentLocation = activePoint ?: realSample?.point
+    // The editor should start at the device's real position, not the old world/map
+    // camera seed. A running mock session must not override the real GPS preview.
+    val currentLocation = realSample?.point ?: activePoint
+    val initialRoutePoint = existing?.points?.firstOrNull()
     val camera = rememberMapCameraState(
-        initialCenter = existing?.points?.firstOrNull()
+        initialCenter = initialRoutePoint
             ?: currentLocation
             ?: LatLng(settings.lastCameraLat, settings.lastCameraLng),
-        initialZoom = 14f,
+        initialZoom = 15f,
     )
+    // GPS is asynchronous. The first composition may have no location yet;
+    // recenter once when the first fix arrives, without chasing later updates.
+    var awaitingInitialFix by remember {
+        mutableStateOf(initialRoutePoint == null && currentLocation == null)
+    }
+    LaunchedEffect(currentLocation, initialRoutePoint) {
+        if (awaitingInitialFix && initialRoutePoint == null && currentLocation != null) {
+            camera.snapTo(currentLocation, 15f)
+            awaitingInitialFix = false
+        }
+    }
 
     val routeName = name.trim().ifBlank { "${strings[K.create_route]} ${System.currentTimeMillis() / 1000}" }
     val draft = SimRoute(
