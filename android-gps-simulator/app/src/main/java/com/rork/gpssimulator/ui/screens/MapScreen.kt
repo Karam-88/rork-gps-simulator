@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
@@ -353,25 +354,48 @@ fun MapScreen(
                     }
                 }
             }
-            // Single circular touch target: no nested Surface, shadow or second ring.
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(MaterialTheme.colorScheme.surface, CircleShape)
-                    .clickable(role = Role.Button) {
-                        showMenuPanel = false
-                        if (updateAvailable) showUpdateDialog = true else showProblemDialog = true
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.HelpOutline,
-                    contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
-                        "الإبلاغ عن مشكلة" else "Report a problem",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(21.dp),
-                )
-                if (updateAvailable) UpdateNotificationDot(modifier = Modifier.align(Alignment.TopEnd))
+            // Keep problem reporting permanently accessible. Show a separate update
+            // action directly below it only when Google Play confirms availability.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        .clickable(role = Role.Button) {
+                            showMenuPanel = false
+                            showProblemDialog = true
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HelpOutline,
+                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "الإبلاغ عن مشكلة" else "Report a problem",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+                if (updateAvailable) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                            .clickable(role = Role.Button) {
+                                showMenuPanel = false
+                                showUpdateDialog = true
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                "تحديث التطبيق" else "Update app",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(21.dp),
+                        )
+                        UpdateNotificationDot(modifier = Modifier.align(Alignment.TopEnd))
+                    }
+                }
             }
         }
         if (showUpdateDialog) {
