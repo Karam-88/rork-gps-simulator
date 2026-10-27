@@ -125,6 +125,8 @@ dependencies {
     // Google supplies map rendering and real-location recovery. Search/geocoding/routes use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
+    // Offline-capable open-source renderer for directly installed debug APKs.
+    implementation("org.maplibre.gl:android-sdk:11.13.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
 
