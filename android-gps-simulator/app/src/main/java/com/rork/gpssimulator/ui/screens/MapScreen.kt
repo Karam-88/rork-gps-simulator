@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
@@ -298,13 +299,9 @@ fun MapScreen(
             polylines = polylines,
             pulseFraction = { pulse.value },
             hopRequest = hopRequest,
-            onMapTap = { point ->
-                if (!isMotionSession) {
-                    requestManualHop(point)
-                    viewModel.selectPoint(point)
-                    if (isMockActive) viewModel.moveMockTo(point)
-                }
-            },
+            // Tapping the map only interacts with the map. The bottom select
+            // button is the sole action that commits the crosshair position.
+            onMapTap = { _ -> },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
@@ -705,7 +702,7 @@ private fun ActiveMockActionBar(
             onClick = onFavorite,
         )
         GlassActionButton(
-            icon = Icons.Default.MyLocation,
+            icon = Icons.Default.LocationOn,
             label = selectLabel,
             accent = Color(0xFF3985DD),
             onClick = onSelect,
