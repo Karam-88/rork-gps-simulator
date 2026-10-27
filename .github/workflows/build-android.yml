@@ -12,6 +12,7 @@ on:
       - fix/post-v26-controls-20261026
       - integration/gps-rating-internal-v28
       - fix/mock-gps-provider-consistency
+      - integration/gps-stable-plus-map-ui-20261027
   pull_request:
     branches:
       - main
