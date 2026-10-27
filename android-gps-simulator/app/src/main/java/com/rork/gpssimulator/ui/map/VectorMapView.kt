@@ -119,6 +119,13 @@ private class GoogleMapHolder(
         mapView.onCreate(null)
         mapView.getMapAsync { readyMap ->
             map = readyMap
+            cameraState.projection = { point ->
+                readyMap.projection.toScreenLocation(GoogleLatLng(point.lat, point.lng)).let {
+                    androidx.compose.ui.geometry.Offset(it.x.toFloat(), it.y.toFloat())
+                }
+            }
+            cameraState.projectionRevision++
+            mapView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> cameraState.projectionRevision++ }
 
             readyMap.uiSettings.apply {
                 isCompassEnabled = false
@@ -147,6 +154,7 @@ private class GoogleMapHolder(
                 }
             }
             readyMap.setOnCameraMoveListener {
+                cameraState.projectionRevision++
                 if (updatingFromCompose) return@setOnCameraMoveListener
                 val position = readyMap.cameraPosition
                 cameraState.centerLat = clampLatitude(position.target.latitude)
@@ -179,6 +187,8 @@ private class GoogleMapHolder(
     }
 
     fun destroy() {
+        cameraState.projection = null
+        cameraState.projectionRevision++
         if (started) {
             mapView.onPause()
             mapView.onStop()
