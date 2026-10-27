@@ -128,6 +128,13 @@ fun ReportProblemDialog(language: AppLanguage, onDismiss: () -> Unit) {
     val copy = remember(language) { problemReportCopy(language) }
     val dismiss = { if (!state.sending) { state.reset(); onDismiss() } }
     val secondary = Color(0xFFB7C2D5)
+    // Close only after Firestore confirms success; keep the dialog open on failure.
+    LaunchedEffect(state.sent) {
+        if (state.sent) {
+            state.reset()
+            onDismiss()
+        }
+    }
     CompositionLocalProvider(LocalLayoutDirection provides
         if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         Dialog(
@@ -138,37 +145,37 @@ fun ReportProblemDialog(language: AppLanguage, onDismiss: () -> Unit) {
             Box(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(16.dp),
                 contentAlignment = Alignment.Center) {
                 Surface(
-                    modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(30.dp),
+                    modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
                     color = Color(0xFF101720),
                     border = BorderStroke(1.dp, Color(0xFF397FFF)),
                     shadowElevation = 20.dp,
                 ) {
                     Column(
                         Modifier.background(Brush.radialGradient(listOf(Color(0x402F6ACA), Color.Transparent)))
-                            .verticalScroll(rememberScrollState()).padding(20.dp),
+                            .verticalScroll(rememberScrollState()).padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(Modifier.fillMaxWidth()) {
-                            SupportHeadset(Modifier.align(Alignment.Center).size(112.dp))
+                            SupportHeadset(Modifier.align(Alignment.Center).size(64.dp))
                             OutlinedIconButton(onClick = dismiss, enabled = !state.sending,
-                                modifier = Modifier.align(Alignment.TopEnd).size(48.dp),
+                                modifier = Modifier.align(Alignment.TopEnd).size(36.dp),
                                 border = BorderStroke(1.dp, Color(0xFF677693))) {
                                 Icon(Icons.Default.Close, copy.close, tint = Color.White)
                             }
                         }
-                        Text(copy.title, color = Color.White, fontSize = 26.sp, lineHeight = 34.sp,
+                        Text(copy.title, color = Color.White, fontSize = 22.sp, lineHeight = 28.sp,
                             fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().semantics { heading() })
-                        Text(copy.description, color = secondary, fontSize = 16.sp, lineHeight = 25.sp,
+                        Text(copy.description, color = secondary, fontSize = 14.sp, lineHeight = 20.sp,
                             textAlign = TextAlign.Center)
                         OutlinedTextField(
                             value = state.description, onValueChange = state::edit,
                             enabled = !state.sending && !state.sent,
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(copy.hint, color = Color(0xFF9DAAC0)) },
-                            minLines = 4, maxLines = 6, shape = RoundedCornerShape(20.dp),
+                            minLines = 3, maxLines = 4, shape = RoundedCornerShape(20.dp),
                             isError = state.invalid,
                             supportingText = {
                                 Text("${state.description.codePointCount(0, state.description.length)}/500",
@@ -204,7 +211,7 @@ fun ReportProblemDialog(language: AppLanguage, onDismiss: () -> Unit) {
                                 state.send(version)
                             },
                             enabled = enabled,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(RoundedCornerShape(28.dp))
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(28.dp))
                                 .background(Brush.verticalGradient(if (enabled)
                                     listOf(Color(0xFF379DFF), Color(0xFF315BFF))
                                     else listOf(Color(0xFF30496C), Color(0xFF263953)))),
@@ -216,12 +223,12 @@ fun ReportProblemDialog(language: AppLanguage, onDismiss: () -> Unit) {
                             if (state.sending) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
                             else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text(if (state.sending) copy.sending else copy.send, fontSize = 17.sp,
+                            Text(if (state.sending) copy.sending else copy.send, fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                         }
                         OutlinedButton(onClick = dismiss, enabled = !state.sending,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                             border = BorderStroke(1.dp, Color(0xFF64738C)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = secondary)) {
                             Text(if (state.sent) copy.close else copy.cancel, fontSize = 17.sp)
