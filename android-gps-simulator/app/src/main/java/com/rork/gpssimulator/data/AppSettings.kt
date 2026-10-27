@@ -15,6 +15,7 @@ data class AppSettings(
     val language: AppLanguage = AppLanguage.ENGLISH,
     val followSystemLanguage: Boolean = true,
     val mapType: MapType = MapType.STANDARD,
+    val mapTheme: ThemeMode = ThemeMode.SYSTEM,
     val units: UnitSystem = UnitSystem.AUTOMATIC,
 
     // Map behavior
