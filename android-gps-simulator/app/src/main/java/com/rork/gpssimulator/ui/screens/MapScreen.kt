@@ -198,7 +198,7 @@ fun MapScreen(
         } else {
             val prior = lastStaticMockPoint
             lastStaticMockPoint = point
-            if (prior != null && prior != point && !reducedMotion) {
+            if (prior != point && !reducedMotion) {
                 // Bounce at the new position on screen. Avoid visually simulating
                 // geographic travel, especially across countries or waterways.
                 // One rabbit hop only: rise once, land once, then remain still.
