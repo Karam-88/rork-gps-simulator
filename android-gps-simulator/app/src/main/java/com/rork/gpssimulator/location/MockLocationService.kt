@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.rork.gpssimulator.MainActivity
+import com.rork.gpssimulator.BuildConfig
 import com.rork.gpssimulator.data.AppRepository
 import com.rork.gpssimulator.data.AppSettings
 import com.rork.gpssimulator.data.model.GeofenceEvent
@@ -39,7 +40,7 @@ import kotlin.random.Random
 /**
  * Owns the *entire* lifetime of an active mock-location session.
  *
- * This is the fix for the core reported bug: previously the push loop and the
+ * Previously the push loop and the
  * system test-provider lived inside [com.rork.gpssimulator.ui.AppViewModel],
  * whose coroutine scope (and the test providers themselves, which Android
  * ties to the calling process) died as soon as the app was backgrounded long
@@ -67,6 +68,7 @@ class MockLocationService : Service() {
     private lateinit var mockController: MockLocationController
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var pushJob: Job? = null
+    private var stopping = false
 
     private var kind = SessionKind.STATIC
     private var route: SimRoute? = null
@@ -82,12 +84,17 @@ class MockLocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         repository = AppRepository.getInstance(applicationContext)
-        mockController = MockLocationController(applicationContext)
+        mockController = MockLocationController(applicationContext) { failure ->
+            MockSessionBus.emit(MockSessionBus.Event.Failure(failure.message))
+            stopSession()
+        }
+        diagnostic("service_created")
         createNotificationChannel()
         MockSessionBus.setServiceRunning(true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        diagnostic("service_start restart=${intent == null} start_id=$startId")
         if (intent?.action == ACTION_STOP_FROM_NOTIFICATION) {
             stopSession()
             return START_NOT_STICKY
@@ -147,8 +154,7 @@ class MockLocationService : Service() {
         // Known limitation: Route/Joystick sessions resume as a frozen point
         // at their last known coordinate rather than continuing to move, since
         // MockSessionRecord only persists the coordinate, not the full route.
-        // This still keeps mock location active (never reverts to real GPS)
-        // rather than a perfect resume.
+        // Restoration is best effort; there can be a gap during process death.
         kind = SessionKind.STATIC
         route = null
         joystickVector = null
@@ -182,15 +188,17 @@ class MockLocationService : Service() {
     override fun onDestroy() {
         pushJob?.cancel()
         serviceScope.cancel()
-        val clean = mockController.stop()
-        if (MockSessionBus.session.value != null) {
-            // An unexpected destruction must not leave the UI believing injection
-            // continues. Keep the persisted record for the existing sticky restart.
-            MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
-            MockSessionBus.publish(null)
+        val destroyedSession = MockSessionBus.session.value
+        mockController.stop { clean ->
+            if (destroyedSession != null && MockSessionBus.session.value === destroyedSession) {
+                // Do not clear a replacement service's newer session from a late callback.
+                // Keep the persisted record for the existing sticky restart.
+                MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
+                MockSessionBus.publish(null)
+            }
+            diagnostic("service_destroyed cleanup_ok=$clean")
         }
         MockSessionBus.setServiceRunning(false)
-        Log.i(TAG, "REAL_RECOVERY service_destroyed cleanup_ok=$clean")
         super.onDestroy()
     }
 
@@ -216,6 +224,10 @@ class MockLocationService : Service() {
         // immediately replaces this content; the failure path tears it down
         // again via stopForeground().
         startForeground(NOTIF_ID, buildStartingNotification())
+        if (stopping || mockController.isStopping) {
+            return MockResult.Failure(MockFailure.PROVIDER_ERROR, "Wait for mock location cleanup to finish")
+        }
+        diagnostic("session_start kind=$kind")
 
         val outgoing = MockSessionBus.session.value
         pushJob?.cancel()
@@ -230,13 +242,11 @@ class MockLocationService : Service() {
         )
         if (result is MockResult.Failure) {
             MockSessionBus.emit(MockSessionBus.Event.Failure(result.message))
-            if (outgoing != null) finishSession(outgoing)
             // startForeground() was already satisfied by the placeholder
             // notification posted at the top of this method, so this call just
             // tears that placeholder (or any prior session's notification)
             // back down, since this attempt failed.
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelfIfIdle()
+            stopSession()
             return result
         }
 
@@ -276,6 +286,7 @@ class MockLocationService : Service() {
      * the same session (its start time, its notification) alive.
      */
     fun moveTo(point: LatLng, placeName: String, placeAddress: String): MockResult {
+        if (stopping) return MockResult.Failure(MockFailure.PROVIDER_ERROR, "Wait for mock location cleanup to finish")
         if (MockSessionBus.session.value == null) {
             return startSession(SessionKind.STATIC, point, placeName, placeAddress)
         }
@@ -313,6 +324,7 @@ class MockLocationService : Service() {
     }
 
     fun togglePause() {
+        if (stopping) return
         val session = MockSessionBus.session.value ?: return
         isPaused = !isPaused
         MockSessionBus.publish(
@@ -327,6 +339,7 @@ class MockLocationService : Service() {
 
     /** Feeds a normalised joystick vector; (0,0) stops movement. */
     fun setJoystickVector(x: Float, y: Float) {
+        if (stopping) return
         if (MockSessionBus.session.value == null) return
         joystickVector = if (hypot(x, y) < 0.05f) null else x to y
         if (kind != SessionKind.ROUTE) {
@@ -335,21 +348,32 @@ class MockLocationService : Service() {
         }
     }
 
-    fun stopSession() {
+    fun stopSession(completed: () -> Unit = {}) {
+        // One completion per stop action/session: repeated taps while fused cleanup
+        // is pending must not duplicate history/recovery/rating qualification.
+        if (stopping) return
+        stopping = true
+        diagnostic("session_stopping")
         val session = MockSessionBus.session.value
         pushJob?.cancel()
         pushJob = null
         // Push loops and Stop now share the main dispatcher: no cancelled loop can
         // inject or publish a stale session between cleanup and session=null.
-        val clean = mockController.stop()
-        MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
-        Log.i(TAG, "REAL_RECOVERY stop_completed cleanup_ok=$clean elapsed_ns=${MockSessionBus.lastStop?.elapsedNanos}")
-        session?.let { finishSession(it) }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-        // A bound service can remain alive until the Activity unbinds; injection
-        // and foreground operation have nevertheless ended synchronously here.
-        Log.i(TAG, "REAL_RECOVERY foreground_stopped")
+        // A manual stop must not be resurrected by a sticky restart while the
+        // asynchronous fused cleanup is being acknowledged.
+        repository.clearMockSession()
+        mockController.stop { clean ->
+            MockSessionBus.lastStop = MockSessionBus.StopBoundary(SystemClock.elapsedRealtimeNanos(), clean)
+            Log.i(TAG, "REAL_RECOVERY stop_completed cleanup_ok=$clean elapsed_ns=${MockSessionBus.lastStop?.elapsedNanos}")
+            session?.let { finishSession(it) }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            // A bound service can remain alive until the Activity unbinds; injection
+            // and foreground operation have ended after both backends acknowledged cleanup.
+            Log.i(TAG, "REAL_RECOVERY foreground_stopped")
+            stopping = false
+            completed()
+        }
     }
 
     private fun finishSession(session: MockSessionBus.Session) {
@@ -363,15 +387,11 @@ class MockLocationService : Service() {
         isPaused = false
     }
 
-    private fun stopSelfIfIdle() {
-        if (MockSessionBus.session.value == null) stopSelf()
-    }
-
     // ---------- Push loops (ported from the previous ViewModel implementation) ----------
 
     private fun startStaticLoop() {
         pushJob?.cancel()
-        pushJob = serviceScope.launch(Dispatchers.Default) {
+        pushJob = serviceScope.launch {
             while (isActive) {
                 val config = repository.settings.value
                 delay(config.updateIntervalMs.toLong().coerceIn(200L, 1_000L))
@@ -399,14 +419,18 @@ class MockLocationService : Service() {
 
     private fun startRouteLoop(route: SimRoute) {
         pushJob?.cancel()
-        pushJob = serviceScope.launch(Dispatchers.Default) {
-            val points = if (route.loop && route.points.size > 1) {
-                route.points + route.points.first()
-            } else {
-                route.points
-            }
-            val total = points.zipWithNext().sumOf { (a, b) -> a.distanceTo(b) }
-            if (total <= 0.0) return@launch
+        val points = if (route.loop && route.points.size > 1) {
+            route.points + route.points.first()
+        } else {
+            route.points
+        }
+        val total = points.zipWithNext().sumOf { (a, b) -> a.distanceTo(b) }
+        if (total <= 0.0) {
+            // A degenerate route still needs a heartbeat until manual stop.
+            startStaticLoop()
+            return
+        }
+        pushJob = serviceScope.launch {
 
             var traveled = 0.0
             while (isActive) {
@@ -437,6 +461,7 @@ class MockLocationService : Service() {
                         if (!push(end, 0.0, config)) break
                         evaluateGeofences(end)
                         MockSessionBus.emit(MockSessionBus.Event.RouteFinished)
+                        diagnostic("route_completed holding_destination=true")
                         // A completed route is still an active mock session. Keep
                         // refreshing the destination until the user explicitly stops.
                         // Otherwise the final fix becomes stale and Maps may fall back
@@ -456,6 +481,7 @@ class MockLocationService : Service() {
                 publishSession(position, speedKmh, bearing, routeTraveledMeters = routeTraveled)
 
                 if (!push(position, speedKmh, config, bearing)) break
+                persist(position, config)
                 evaluateGeofences(position)
             }
         }
@@ -697,4 +723,9 @@ class MockLocationService : Service() {
         private const val PERSIST_INTERVAL_MS = 3_000L
         const val ACTION_STOP_FROM_NOTIFICATION = "com.rork.gpssimulator.action.STOP_MOCK"
     }
+
+    private fun diagnostic(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "MOCK_DIAG $message")
+    }
 }
+
