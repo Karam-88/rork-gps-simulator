@@ -316,8 +316,7 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             canvas.drawCircle(center, center, px * 0.40f, paint)
             paint.color = marker.color.toArgb()
             canvas.drawCircle(center, center, px * 0.31f, paint)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.09f, paint)
+            // Match the real-location dot: solid centre with a white outer rim.
             canvas.restore()
         }
         MarkerStyle.CANDIDATE -> {
@@ -334,9 +333,9 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
         MarkerStyle.REAL -> {
             paint.style = Paint.Style.FILL
             paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.28f, paint)
+            canvas.drawCircle(center, center, px * 0.40f, paint)
             paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.21f, paint)
+            canvas.drawCircle(center, center, px * 0.31f, paint)
         }
     }
 
