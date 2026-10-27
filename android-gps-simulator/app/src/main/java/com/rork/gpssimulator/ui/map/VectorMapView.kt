@@ -24,6 +24,7 @@ import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng as GoogleLatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.rork.gpssimulator.data.model.LatLng
 import com.rork.gpssimulator.data.model.MapType
 import kotlin.math.abs
@@ -40,6 +41,7 @@ import kotlin.math.roundToInt
 internal fun VectorMapView(
     camera: MapCameraState,
     mapType: MapType,
+    darkMap: Boolean = false,
     modifier: Modifier = Modifier,
     markers: List<MapMarker> = emptyList(),
     polylines: List<MapPolyline> = emptyList(),
@@ -62,8 +64,9 @@ internal fun VectorMapView(
         holder.onCameraIdle = onCameraIdle
     }
 
-    LaunchedEffect(mapType) {
+    LaunchedEffect(mapType, darkMap) {
         holder.setMapType(mapType)
+        holder.setDarkMap(darkMap)
     }
 
     LaunchedEffect(camera.centerLat, camera.centerLng, camera.zoom) {
@@ -110,6 +113,7 @@ private class GoogleMapHolder(
 
     private var map: GoogleMap? = null
     private var currentMapType: MapType? = null
+    private var darkMapEnabled = false
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
@@ -176,6 +180,7 @@ private class GoogleMapHolder(
             }
 
             setMapType(currentMapType ?: MapType.STANDARD)
+            setDarkMap(darkMapEnabled)
             redrawOverlays()
         }
     }
@@ -207,6 +212,11 @@ private class GoogleMapHolder(
             MapType.SATELLITE -> GoogleMap.MAP_TYPE_SATELLITE
             MapType.TERRAIN -> GoogleMap.MAP_TYPE_TERRAIN
         }
+    }
+
+    fun setDarkMap(enabled: Boolean) {
+        darkMapEnabled = enabled
+        map?.setMapStyle(if (enabled) MapStyleOptions(DARK_MAP_STYLE) else null)
     }
 
     fun syncCameraFromCompose(camera: MapCameraState) {
@@ -369,3 +379,19 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
 
     return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
+
+/** Dark navy Google Maps vector style; does not alter roads, routing or location services. */
+private val DARK_MAP_STYLE = """
+[
+ {"elementType":"geometry","stylers":[{"color":"#172437"}]},
+ {"elementType":"labels.text.fill","stylers":[{"color":"#9caec3"}]},
+ {"elementType":"labels.text.stroke","stylers":[{"color":"#172437"}]},
+ {"featureType":"road","elementType":"geometry","stylers":[{"color":"#354b65"}]},
+ {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#4e6580"}]},
+ {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#b9cbe0"}]},
+ {"featureType":"water","elementType":"geometry","stylers":[{"color":"#0b1a2e"}]},
+ {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#193b36"}]},
+ {"featureType":"landscape.natural","elementType":"geometry","stylers":[{"color":"#192d36"}]},
+ {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#26394d"}]}
+]
+""".trimIndent()
