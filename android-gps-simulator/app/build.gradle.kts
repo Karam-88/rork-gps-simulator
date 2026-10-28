@@ -124,6 +124,9 @@ dependencies {
 
     // Google supplies map rendering and real-location recovery. Search/geocoding/routes use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
+    // Free map renderer for the staged Google Maps replacement (issue #19).
+    // Keep Google Maps temporarily until the Compose map screen is migrated and tested.
+    implementation("org.maplibre.gl:android-sdk:11.13.1")
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
