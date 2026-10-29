@@ -138,7 +138,7 @@ fun MapView(
     pulseFraction: () -> Float = { 0f },
     onMapTap: ((LatLng) -> Unit)? = null,
     onMapLongPress: ((LatLng) -> Unit)? = null,
-    onCameraIdle: ((LatLng, Float) -> Unit)? = null,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)? = null,
     hopRequest: RabbitHopRequest? = null,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
