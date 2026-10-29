@@ -287,7 +287,7 @@ fun MapScreen(
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val markers = buildList {
-        if (!isMockActive) {
+        if (!isMockActive && settings.directTapSelection) {
             realSample?.let {
                 add(
                     MapMarker(
@@ -300,7 +300,7 @@ fun MapScreen(
                 )
             }
         }
-        selected?.let {
+        if (settings.directTapSelection) selected?.let {
             add(
                 MapMarker(
                     point = it.point,
