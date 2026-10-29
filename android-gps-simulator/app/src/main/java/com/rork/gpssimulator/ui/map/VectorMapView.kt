@@ -55,7 +55,7 @@ internal fun VectorMapView(
     circles: List<MapCircle> = emptyList(),
     onMapTap: ((LatLng) -> Unit)? = null,
     onMapLongPress: ((LatLng) -> Unit)? = null,
-    onCameraIdle: ((LatLng, Float) -> Unit)? = null,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val holder = remember {
@@ -109,7 +109,7 @@ private class VectorMapHolder(
     private val cameraState: MapCameraState,
     onMapTap: ((LatLng) -> Unit)?,
     onMapLongPress: ((LatLng) -> Unit)?,
-    onCameraIdle: ((LatLng, Float) -> Unit)?,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)?,
 ) {
     val mapView = NativeMapView(context)
     var onMapTap = onMapTap
@@ -117,6 +117,7 @@ private class VectorMapHolder(
     var onCameraIdle = onCameraIdle
 
     private var map: MapLibreMap? = null
+    private var userGestureMovedCamera = false
     private var currentStyle: String? = null
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
@@ -150,7 +151,8 @@ private class VectorMapHolder(
 
             readyMap.cameraPosition = cameraPosition(cameraState)
 
-            readyMap.addOnCameraMoveStartedListener {
+            readyMap.addOnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) userGestureMovedCamera = true
                 if (!updatingFromCompose) cameraState.isUserInteracting = true
             }
             readyMap.addOnCameraMoveListener {
@@ -171,7 +173,8 @@ private class VectorMapHolder(
                 cameraState.centerLat = point.lat
                 cameraState.centerLng = point.lng
                 cameraState.zoom = position.zoom.toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
-                onCameraIdle?.invoke(point, cameraState.zoom)
+                onCameraIdle?.invoke(point, cameraState.zoom, userGestureMovedCamera)
+                userGestureMovedCamera = false
             }
             readyMap.addOnMapLongClickListener { point ->
                 onMapLongPress?.invoke(LatLng(point.latitude, point.longitude))
