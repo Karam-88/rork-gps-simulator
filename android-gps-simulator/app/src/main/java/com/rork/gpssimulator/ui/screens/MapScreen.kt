@@ -389,7 +389,11 @@ fun MapScreen(
             Box(modifier = Modifier.weight(1f)) {
                 if (isMockActive) {
                     StatusPill(
-                        text = if (isPaused) "Mock GPS paused" else "Mock GPS active",
+                        text = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) {
+                            if (isPaused) "الموقع الوهمي متوقف مؤقتًا" else "الموقع الوهمي نشط"
+                        } else {
+                            if (isPaused) "Mock GPS paused" else "Mock GPS active"
+                        },
                         dotColor = Color(settings.mockMarkerColor.argb),
                     )
                 } else {
