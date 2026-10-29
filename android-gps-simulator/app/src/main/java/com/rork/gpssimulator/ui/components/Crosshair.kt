@@ -20,8 +20,8 @@ import com.rork.gpssimulator.data.CrosshairShape
 /** Shared by Settings and the screen-space map overlay. No camera-dependent scaling. */
 @Composable
 fun Crosshair(
-    color: Color = Color.White,
     modifier: Modifier = Modifier,
+    color: Color = Color.White,
     crosshairSize: Dp = 40.dp,
     thickness: Dp = 3.dp,
     opacity: Float = 0.9f,
