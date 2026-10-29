@@ -565,8 +565,9 @@ fun MapScreen(
 
         if (routeEditing) {
             Column(
-                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 58.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding()
+                    .padding(start = 12.dp, top = 112.dp, end = 12.dp),
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
