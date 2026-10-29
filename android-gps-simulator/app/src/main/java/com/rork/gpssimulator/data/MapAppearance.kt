@@ -17,6 +17,8 @@ enum class CrosshairColor(val argb: Long) {
 enum class MockMarkerColor(val argb: Long) {
     RED(0xFFDD4E49), GREEN(0xFF57BE65), PURPLE(0xFF9E52EB),
     ORANGE(0xFFEB7B2F), PINK(0xFFD74D96), YELLOW(0xFFE3B832),
+    LIGHT_BLUE(0xFF5DB8EE), BLUE(0xFF326FE4), CYAN(0xFF20C9CE),
+    TEAL(0xFF009B86), LIME(0xFFB4D94B), BLACK(0xFF222831),
 }
 
 /** All distances are dp. Stroke width never scales with the selected size. */
