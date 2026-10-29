@@ -462,8 +462,8 @@ fun MapScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         StatusPill(
-                            text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
-                            dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
+                            text = strings[K.real_gps],
+                            dotColor = appColors.success,
                         )
                     }
                 }
