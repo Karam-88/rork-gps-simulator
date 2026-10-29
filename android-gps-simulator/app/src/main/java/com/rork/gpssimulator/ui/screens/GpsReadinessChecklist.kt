@@ -315,7 +315,9 @@ fun GpsReadinessChecklist(
     val requestLocation = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { refresh() }
-    // Re-read Android settings as soon as the user returns from a system settings screen.\n    LifecycleEventEffect(Lifecycle.Event.ON_START) { refresh() }\n    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh() }
+    // Refresh every checklist item independently when returning from Android Settings.
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { refresh() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh() }
 
     val completed = listOf(
         status.developer, status.mockSelected, status.locationGranted, status.locationEnabled,
