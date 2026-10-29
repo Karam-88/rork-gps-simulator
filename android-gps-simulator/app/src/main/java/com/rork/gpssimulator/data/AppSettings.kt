@@ -15,7 +15,7 @@ data class AppSettings(
     val language: AppLanguage = AppLanguage.ENGLISH,
     val followSystemLanguage: Boolean = true,
     val mapType: MapType = MapType.STANDARD,
-    val mapTheme: ThemeMode = ThemeMode.SYSTEM,
+    val mapTheme: ThemeMode = ThemeMode.DARK,
     val units: UnitSystem = UnitSystem.AUTOMATIC,
 
     // Appearance only: never used by the mock-location engine.
