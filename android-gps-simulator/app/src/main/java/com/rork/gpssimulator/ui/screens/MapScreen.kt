@@ -591,7 +591,7 @@ fun MapScreen(
                                 })
                             }
                         } else {
-                            val point = if (settings.directTapSelection) selected ?: camera.center else camera.center
+                            val point = if (settings.directTapSelection) selected?.point ?: camera.center else camera.center
                             requestManualHop(point)
                             viewModel.selectPoint(point)
                             viewModel.startMock()
