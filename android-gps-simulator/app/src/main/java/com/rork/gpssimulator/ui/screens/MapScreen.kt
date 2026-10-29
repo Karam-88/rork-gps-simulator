@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -391,7 +392,7 @@ fun MapScreen(
                     Text(street, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f, fill = false))
+                        modifier = Modifier.widthIn(max = 220.dp))
                     IconButton(onClick = { viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
                         Icon(Icons.Default.Close,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء التحديد" else "Clear selection",
