@@ -27,6 +27,7 @@ data class AppSettings(
     val mockMarkerColor: MockMarkerColor = MockMarkerColor.RED,
 
     // Map behavior
+    val directTapSelection: Boolean = false,
     val animateMap: Boolean = true,
     val rememberLastPosition: Boolean = true,
     val returnToRealOnStop: Boolean = true,
