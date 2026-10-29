@@ -137,6 +137,7 @@ fun MapView(
     circles: List<MapCircle> = emptyList(),
     pulseFraction: () -> Float = { 0f },
     onMapTap: ((LatLng) -> Unit)? = null,
+    onMapLongPress: ((LatLng) -> Unit)? = null,
     onCameraIdle: ((LatLng, Float) -> Unit)? = null,
     hopRequest: RabbitHopRequest? = null,
     content: @Composable BoxScope.() -> Unit = {},
@@ -155,6 +156,7 @@ fun MapView(
                 MapCircle(it.point, it.radiusMeters, it.color.copy(alpha = 0.30f), it.color.copy(alpha = 0.14f))
             },
             onMapTap = onMapTap,
+            onMapLongPress = onMapLongPress,
             onCameraIdle = onCameraIdle,
             modifier = Modifier.fillMaxSize(),
         )
