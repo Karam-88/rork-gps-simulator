@@ -296,7 +296,14 @@ fun SettingsScreen(
                     SettingRow(
                         icon = Icons.Default.MyLocation,
                         title = if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بالنقر المباشر" else "Direct map tap selection",
-                        value = if (settings.directTapSelection) "👆" else "🎯",
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.Default.MyLocation,
+                                contentDescription = null,
+                                tint = if (settings.directTapSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        },
                         onClick = { viewModel.updateSettings { it.copy(directTapSelection = !it.directTapSelection) } },
                         showChevron = false,
                     )
