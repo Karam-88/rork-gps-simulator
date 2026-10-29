@@ -22,6 +22,9 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Compile and run JVM regression tests (no APK)
         run: bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug
       - name: Upload checks (no installable artifacts)
