@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -177,6 +178,8 @@ fun MapScreen(
     )
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
+    var showFavoriteNameDialog by remember { mutableStateOf(false) }
+    var favoriteName by remember { mutableStateOf("") }
     var showUpdateDialog by remember { mutableStateOf(false) }
     val ratingSafe = !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
         !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
@@ -540,6 +543,43 @@ fun MapScreen(
             }
         }
 
+        if (showFavoriteNameDialog) {
+            AlertDialog(
+                onDismissRequest = { showFavoriteNameDialog = false },
+                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ الموقع" else "Save location") },
+                text = {
+                    OutlinedTextField(
+                        value = favoriteName,
+                        onValueChange = { favoriteName = it },
+                        label = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الموقع" else "Location name") },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = favoriteName.isNotBlank(),
+                        onClick = {
+                            activePoint?.let { point ->
+                                viewModel.saveLocation(
+                                    name = favoriteName.trim(),
+                                    address = activePlace?.address.orEmpty(),
+                                    point = point,
+                                    kind = SavedKind.FAVORITE,
+                                )
+                                viewModel.postMessage(strings[K.saved])
+                            }
+                            showFavoriteNameDialog = false
+                        },
+                    ) { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ" else "Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFavoriteNameDialog = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء" else "Cancel")
+                    }
+                },
+            )
+        }
+
         if (showRatingConfirmation) {
             AlertDialog(
                 onDismissRequest = { showRatingConfirmation = false },
@@ -620,15 +660,8 @@ fun MapScreen(
                         viewModel.moveMockTo(point)
                     },
                     onFavorite = {
-                        activePoint?.let { point ->
-                            viewModel.saveLocation(
-                                name = activePlace?.name.orEmpty(),
-                                address = activePlace?.address.orEmpty(),
-                                point = point,
-                                kind = SavedKind.FAVORITE,
-                            )
-                            viewModel.postMessage(strings[K.saved])
-                        }
+                        favoriteName = activePlace?.name.orEmpty()
+                        showFavoriteNameDialog = true
                     },
                 )
             }
