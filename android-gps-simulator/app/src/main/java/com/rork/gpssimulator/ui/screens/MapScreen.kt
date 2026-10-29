@@ -365,6 +365,42 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
+        // Selected-point address: compact capsule below the GPS status, never a full-width panel.
+        selected?.let { location ->
+            val street = location.address.substringBefore(",").takeIf { it.isNotBlank() }
+                ?: location.name.takeIf { it.isNotBlank() }
+                ?: if (location.isResolving) {
+                    if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
+                } else "${location.point.lat}, ${location.point.lng}"
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 12.dp, top = 59.dp, end = 76.dp)
+                    .shadow(6.dp, RoundedCornerShape(50)),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null,
+                        tint = Color(0xFFE35A36), modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(street, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false))
+                    IconButton(onClick = { viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
+                        Icon(Icons.Default.Close,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء التحديد" else "Clear selection",
+                            modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+
         // Direct-tap mode uses the touched map coordinate, not the center reticle.
         if (!settings.directTapSelection) {
             Crosshair(
