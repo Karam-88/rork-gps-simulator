@@ -90,8 +90,8 @@ fun CrosshairAppearanceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             }
         }
         Text(strings[K.appearance_color], style = MaterialTheme.typography.titleMedium)
-        ColorChoices(CrosshairColor.entries.map { it.name to Color(it.argb) }, settings.crosshairColor.name) { name ->
-            viewModel.updateSettings { it.copy(crosshairColor = CrosshairColor.valueOf(name)) }
+        CrosshairColorStrip(settings.crosshairColor) { color ->
+            viewModel.updateSettings { it.copy(crosshairColor = color) }
         }
         AppearanceSlider(strings[K.crosshair_size], settings.crosshairSizeDp,
             "${settings.crosshairSizeDp.roundToInt()} dp", 20f..80f, 59) {
@@ -149,20 +149,55 @@ private fun AppearancePage(title: String, onBack: () -> Unit, compact: Boolean =
 @Composable
 private fun MapPreview(content: @Composable BoxScope.() -> Unit) {
     val strings = LocalStrings.current
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color(0xFF182435))) {
+    val surface = MaterialTheme.colorScheme.surfaceVariant
+    val road = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+        .background(surface)) {
         Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.matchParentSize()) {
-                val road = Color(0xFF3A526B)
-                fun street(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(road,
-                    Offset(size.width * x1, size.height * y1), Offset(size.width * x2, size.height * y2), 6.dp.toPx())
-                street(-0.1f, 0.2f, 1.1f, 0.85f); street(-0.1f, 0.95f, 1.1f, 0.1f)
-                street(0.2f, -0.2f, 0.4f, 1.2f); street(0.73f, -0.2f, 0.87f, 1.2f)
+                fun street(x1: Float, y1: Float, x2: Float, y2: Float) =
+                    drawLine(road, Offset(size.width * x1, size.height * y1),
+                        Offset(size.width * x2, size.height * y2), 3.dp.toPx())
+                street(-0.1f, 0.2f, 1.1f, 0.85f)
+                street(-0.1f, 0.95f, 1.1f, 0.1f)
+                street(0.2f, -0.2f, 0.4f, 1.2f)
+                street(0.73f, -0.2f, 0.87f, 1.2f)
             }
             content()
         }
-        Text(strings[K.appearance_preview], color = Color(0xFFB9C5D6),
+        Text(strings[K.appearance_preview], color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp))
+    }
+}
+
+@Composable
+private fun CrosshairColorStrip(selected: CrosshairColor, onSelect: (CrosshairColor) -> Unit) {
+    // A single compact row of 12 swatches, with no visible color names.
+    Row(
+        Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CrosshairColor.entries.forEach { color ->
+            Box(
+                modifier = Modifier.weight(1f).aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(Color(color.argb), CircleShape)
+                    .selectable(selected == color, role = Role.RadioButton,
+                        onClick = { onSelect(color) })
+                    .semantics { contentDescription = color.name },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected == color) {
+                    Icon(Icons.Default.Check, contentDescription = null,
+                        tint = if (color == CrosshairColor.WHITE || color == CrosshairColor.YELLOW ||
+                            color == CrosshairColor.LIME || color == CrosshairColor.CYAN)
+                            Color(0xFF14202B) else Color.White,
+                        modifier = Modifier.fillMaxSize(0.65f))
+                }
+            }
+        }
     }
 }
 
