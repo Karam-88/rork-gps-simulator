@@ -364,7 +364,15 @@ fun MapScreen(
                 if (routeEditing && routePreview == null && !routeCalculating) routeStops.add(point)
                 else if (!routeEditing) viewModel.selectPoint(point)
             },
-            onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
+            onCameraIdle = { center, zoom ->
+                viewModel.persistCamera(center, zoom)
+                // In crosshair mode the center is the selected location. Resolve its
+                // street after camera movement stops, without starting mock GPS.
+                if (!settings.directTapSelection && !routeEditing && !isMockActive &&
+                    selected?.point != center) {
+                    viewModel.selectPoint(center)
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
