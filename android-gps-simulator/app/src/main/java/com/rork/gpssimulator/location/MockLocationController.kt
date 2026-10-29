@@ -331,8 +331,8 @@ class MockLocationController(
                 true,
                 true,
                 true,
-                1, // POWER_REQUIREMENT_LOW
-                1, // ACCURACY_FINE
+                ProviderProperties.POWER_USAGE_LOW,
+                ProviderProperties.ACCURACY_FINE
             )
         }
     }
