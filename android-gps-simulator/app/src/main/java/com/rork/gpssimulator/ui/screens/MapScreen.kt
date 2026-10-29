@@ -175,7 +175,6 @@ fun MapScreen(
         initialCenter = initialCenter,
         initialZoom = initialZoom,
     )
-    var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -360,13 +359,6 @@ fun MapScreen(
                             text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
                             dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
                         )
-                        CoordinatePill(
-                            lat = camera.centerLat,
-                            lng = camera.centerLng,
-                            latLabel = strings[K.lat],
-                            lngLabel = strings[K.lng],
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
                     }
                 }
             }
@@ -444,9 +436,14 @@ fun MapScreen(
                 showMenuPanel = false
                 viewModel.centerOnCurrentLocation()
             }
-            MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
+            MapControlButton(
+                Icons.Default.Layers,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تبديل وضع الخريطة" else "Toggle map theme",
+            ) {
                 showMenuPanel = false
-                showLayerSheet = true
+                viewModel.updateSettings {
+                    it.copy(mapTheme = if (darkMap) ThemeMode.LIGHT else ThemeMode.DARK)
+                }
             }
         }
 
@@ -640,19 +637,6 @@ fun MapScreen(
         )
     }
 
-    if (showLayerSheet) {
-        SelectionSheet(
-            title = strings[K.map_type],
-            options = listOf(
-                SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.SATELLITE, strings[K.satellite]),
-                SelectionOption(MapType.TERRAIN, strings[K.terrain]),
-            ),
-            selected = settings.mapType,
-            onSelect = { type -> viewModel.updateSettings { it.copy(mapType = type) } },
-            onDismiss = { showLayerSheet = false },
-        )
-    }
 }
 
 @Composable
