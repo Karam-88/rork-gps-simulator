@@ -328,6 +328,10 @@ fun MapScreen(
                     viewModel.startMock()
                 }
             },
+            onMapLongPress = { point ->
+                // Long press only selects a point; it never starts mock GPS.
+                viewModel.selectPoint(point)
+            },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
