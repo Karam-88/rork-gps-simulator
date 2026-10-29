@@ -213,8 +213,10 @@ fun MapScreen(
     val reducedMotion = rememberReducedMotion()
     var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
     var hopSequence by remember { mutableStateOf(0L) }
+    var tapHopOrigin by remember { mutableStateOf<LatLng?>(null) }
     fun requestManualHop(point: LatLng) {
-        val prior = selected?.point ?: activePoint ?: realSample?.point ?: camera.center
+        val prior = tapHopOrigin ?: activePoint ?: realSample?.point ?: selected?.point ?: camera.center
+        tapHopOrigin = null
         if (prior != point && !isMotionSession) {
             hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
@@ -350,6 +352,7 @@ fun MapScreen(
                 if (routeEditing && routePreview == null && !routeCalculating) {
                     routeStops.add(point)
                 } else if (!routeEditing && settings.directTapSelection && !isMockActive) {
+                    if (tapHopOrigin == null) tapHopOrigin = activePoint ?: realSample?.point ?: selected?.point ?: camera.center
                     viewModel.selectPoint(point)
                 }
             },
