@@ -30,9 +30,11 @@ class AppRepository(context: Context) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
-        // Unset lastMockLat/lastMockLng use NaN; appearance must save before the first simulation.
-        allowSpecialFloatingPointValues = true
     }
+
+    // Settings have NaN coordinates before the first simulation. Keep the session,
+    // routes and other stores on their existing codec; only settings need this option.
+    private val settingsJson = Json(json) { allowSpecialFloatingPointValues = true }
 
     // A stored manual selection takes precedence. Automatic mode follows the
     // current Android language each time the repository is created.
@@ -249,7 +251,7 @@ class AppRepository(context: Context) {
     private inline fun <reified T> load(key: String, fallback: T): T {
         val raw = prefs.getString(key, null) ?: return fallback
         return try {
-            json.decodeFromString<T>(raw)
+            (if (key == KEY_SETTINGS) settingsJson else json).decodeFromString<T>(raw)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to decode $key, using default")
             fallback
@@ -268,7 +270,8 @@ class AppRepository(context: Context) {
 
     private inline fun <reified T> store(key: String, value: T) {
         try {
-            prefs.edit().putString(key, json.encodeToString(value)).apply()
+            val codec = if (key == KEY_SETTINGS) settingsJson else json
+            prefs.edit().putString(key, codec.encodeToString(value)).apply()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to persist $key")
         }

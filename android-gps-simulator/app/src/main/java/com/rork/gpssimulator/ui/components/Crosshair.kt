@@ -37,7 +37,7 @@ fun Crosshair(
         val center = Offset(size.width / 2f, size.height / 2f)
         val stroke = geometry.thickness.dp.toPx()
         val outer = geometry.outer.dp.toPx()
-        val inner = geometry.armInner.dp.toPx()
+        val inner = (if (shape == CrosshairShape.MINIMAL) geometry.minimalArmInner else geometry.armInner).dp.toPx()
         fun arm(dx: Float, dy: Float) {
             drawLine(color, center + Offset(dx * inner, dy * inner),
                 center + Offset(dx * outer, dy * outer), stroke, StrokeCap.Round)

@@ -23,6 +23,7 @@ internal data class CrosshairGeometry(val size: Float, val thickness: Float) {
     val ringRadius = outer * 0.70f
     val dotRadius = (size * 0.045f).coerceIn(0.9f, ringRadius - thickness / 2f - 0.5f)
     val armInner = maxOf(outer * 0.50f, dotRadius + thickness / 2f + 0.5f)
+    val minimalArmInner = maxOf(outer * 0.36f, dotRadius + thickness / 2f + 0.5f)
     val corner = outer * 0.84f
     val cornerInner = corner * 0.50f
 }

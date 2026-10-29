@@ -33,7 +33,10 @@ class MapAppearanceTest {
                     crosshairOpacity = 0.2f, mockMarkerColor = mockColor)
                 val restored = json.decodeFromString<AppSettings>(json.encodeToString(settings))
                 assertEquals(settings, restored)
-                assertEquals(settings, restored.copy(theme = ThemeMode.DARK).copy(theme = settings.theme))
+                ThemeMode.entries.forEach { theme ->
+                    val themed = restored.copy(theme = theme)
+                    assertEquals(themed, json.decodeFromString<AppSettings>(json.encodeToString(themed)))
+                }
             }
     }
 
@@ -48,6 +51,8 @@ class MapAppearanceTest {
             assertTrue(g.dotRadius < g.ringRadius - g.thickness / 2f)
             assertTrue(g.armInner - g.thickness / 2f > g.dotRadius)
             assertTrue(g.armInner < g.outer)
+            assertTrue(g.minimalArmInner - g.thickness / 2f > g.dotRadius)
+            assertTrue(g.minimalArmInner < g.outer)
         }
     }
 

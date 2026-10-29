@@ -26,7 +26,9 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - name: Compile and run JVM regression tests (no APK)
-        run: bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug
+        run: bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest
+      - name: Android lint
+        run: bash ./gradlew :app:lintDebug
       - name: Upload checks (no installable artifacts)
         if: always()
         uses: actions/upload-artifact@v4
