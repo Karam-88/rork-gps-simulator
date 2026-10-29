@@ -20,7 +20,7 @@ data class AppSettings(
 
     // Appearance only: never used by the mock-location engine.
     val crosshairShape: CrosshairShape = CrosshairShape.PRECISION,
-    val crosshairColor: CrosshairColor = CrosshairColor.WHITE,
+    val crosshairColor: CrosshairColor = CrosshairColor.GREEN,
     val crosshairSizeDp: Float = 40f,
     val crosshairThicknessDp: Float = 3f,
     val crosshairOpacity: Float = 0.9f,
