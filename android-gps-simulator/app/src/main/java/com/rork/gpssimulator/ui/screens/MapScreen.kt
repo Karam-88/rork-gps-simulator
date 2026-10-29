@@ -408,23 +408,18 @@ fun MapScreen(
                     }
                 }
             }
-            // Keep problem reporting permanently accessible. Show a separate update
-            // action directly below it only when Google Play confirms availability.
+            // Put the menu in the former report-button position.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .background(MaterialTheme.colorScheme.surface, CircleShape)
-                        .clickable(role = Role.Button) {
-                            showMenuPanel = false
-                            showProblemDialog = true
-                        },
+                        .clickable(role = Role.Button) { showMenuPanel = !showMenuPanel },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.HelpOutline,
-                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
-                            "الإبلاغ عن مشكلة" else "Report a problem",
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "القائمة" else "Menu",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(21.dp),
                     )
@@ -471,8 +466,12 @@ fun MapScreen(
                 .padding(end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MapControlButton(Icons.Default.Menu, "Menu") {
-                showMenuPanel = !showMenuPanel
+            MapControlButton(
+                Icons.Default.HelpOutline,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الإبلاغ عن مشكلة" else "Report a problem",
+            ) {
+                showMenuPanel = false
+                showProblemDialog = true
             }
             MapControlButton(Icons.Default.Search, strings[K.search_places]) {
                 showMenuPanel = false
