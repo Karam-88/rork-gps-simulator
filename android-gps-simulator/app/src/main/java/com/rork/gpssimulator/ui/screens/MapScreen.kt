@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.FileDownload
@@ -60,6 +64,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,6 +86,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rork.gpssimulator.data.model.LatLng
+import com.rork.gpssimulator.data.model.SimRoute
+import com.rork.gpssimulator.data.model.SpeedProfile
+import com.rork.gpssimulator.location.RoadRoutingService
+import kotlinx.coroutines.launch
 import com.rork.gpssimulator.data.model.MapType
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.data.model.SavedKind
@@ -177,6 +187,13 @@ fun MapScreen(
         initialZoom = initialZoom,
     )
     var showMenuPanel by remember { mutableStateOf(false) }
+    var routeEditing by remember { mutableStateOf(false) }
+    var routePreview by remember { mutableStateOf<SimRoute?>(null) }
+    var routeCalculating by remember { mutableStateOf(false) }
+    var routeProfile by remember { mutableStateOf(SpeedProfile.WALKING) }
+    val routeStops = remember { mutableStateListOf<LatLng>() }
+    val routeScope = rememberCoroutineScope()
+    val routeOrigin = if (mockState == MockState.MOCK_ACTIVE) activePoint else realSample?.point
     var showProblemDialog by remember { mutableStateOf(false) }
     var showFavoriteNameDialog by remember { mutableStateOf(false) }
     var favoriteName by remember { mutableStateOf("") }
@@ -303,11 +320,18 @@ fun MapScreen(
             )
         }
     }
-    val mapMarkers = markers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+    val draftMarkers = routeStops.map { stop ->
+        MapMarker(point = stop, color = Color(0xFF222222), style = MarkerStyle.DESTINATION)
+    }
+    val mapMarkers = markers + draftMarkers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
         listOf(MapMarker(point = destination, color = Color(0xFFE53935),
             style = MarkerStyle.DESTINATION))
     } ?: emptyList())
-    val polylines = routeProgress?.let {
+    val polylines = if (routePreview != null) {
+        listOf(MapPolyline(routePreview!!.points, Color(0xFF222222)))
+    } else if (routeEditing && routeStops.size > 1) {
+        listOf(MapPolyline(routeStops.toList(), Color(0xFF222222)))
+    } else routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
 
@@ -323,14 +347,17 @@ fun MapScreen(
             // Tapping the map only interacts with the map. The bottom select
             // button is the sole action that commits the crosshair position.
             onMapTap = { point ->
-                if (settings.directTapSelection && !isMockActive) {
+                if (routeEditing && routePreview == null && !routeCalculating) {
+                    routeStops.add(point)
+                } else if (!routeEditing && settings.directTapSelection && !isMockActive) {
                     viewModel.selectPoint(point)
                     viewModel.startMock()
                 }
             },
             onMapLongPress = { point ->
                 // Long press only selects a point; it never starts mock GPS.
-                viewModel.selectPoint(point)
+                if (routeEditing && routePreview == null && !routeCalculating) routeStops.add(point)
+                else if (!routeEditing) viewModel.selectPoint(point)
             },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
@@ -452,7 +479,9 @@ fun MapScreen(
             }
             MapControlButton(Icons.Default.Route, strings[K.tab_routes]) {
                 showMenuPanel = false
-                onOpenRoutes()
+                routeEditing = !routeEditing
+                routePreview = null
+                routeStops.clear()
             }
             MapControlButton(
                 Icons.Default.Layers,
@@ -465,8 +494,80 @@ fun MapScreen(
             }
         }
 
+        if (routeEditing) {
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 58.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
+                    Row(modifier = Modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
+                            Triple(SpeedProfile.CYCLING, Icons.Default.DirectionsBike, strings[K.cycling]),
+                            Triple(SpeedProfile.DRIVING, Icons.Default.DirectionsCar, strings[K.driving]),
+                        ).forEach { (profile, icon, label) ->
+                            Surface(
+                                shape = CircleShape,
+                                color = if (routeProfile == profile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(46.dp).clickable {
+                                    routeProfile = profile
+                                    routePreview = null
+                                },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(icon, contentDescription = label,
+                                        tint = if (routeProfile == profile) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (routePreview == null) {
+                    Button(
+                        enabled = routeStops.isNotEmpty() && !routeCalculating,
+                        onClick = {
+                            val origin = routeOrigin
+                            if (origin == null) {
+                                viewModel.postMessage(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                    "الموقع الحالي غير متاح" else "Current location unavailable", isError = true)
+                            } else {
+                                routeCalculating = true
+                                val stops = routeStops.toList()
+                                val draft = SimRoute(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    name = "Map route",
+                                    points = listOf(origin) + stops,
+                                    profile = routeProfile,
+                                )
+                                routeScope.launch {
+                                    val result = RoadRoutingService().resolve(draft)
+                                    routeCalculating = false
+                                    result.onSuccess { routePreview = it }
+                                    result.onFailure { error ->
+                                        viewModel.postMessage(error.message ?: "Road routing unavailable", isError = true)
+                                    }
+                                }
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (routeCalculating) "…" else if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "انتهيت من إضافة نقاط المسار" else "Finish adding route stops")
+                    }
+                } else {
+                    Button(onClick = {
+                        routePreview = null
+                    }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تعديل النقاط" else "Edit stops")
+                    }
+                }
+            }
+        }
+
         // Independent from the right-side toolbar, so its width cannot shift the black buttons.
-        if (!isMockActive) {
+        if (!isMockActive || routeEditing) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -474,11 +575,21 @@ fun MapScreen(
                     .padding(bottom = 28.dp)
                     .size(72.dp)
                     .shadow(12.dp, CircleShape)
-                    .clickable(role = Role.Button) {
+.clickable(enabled = !routeEditing || routePreview != null, role = Role.Button) {
                         showMenuPanel = false
-                        requestManualHop(camera.center)
-                        viewModel.selectPoint(camera.center)
-                        viewModel.startMock()
+                        if (routeEditing) {
+                            routePreview?.let { preview ->
+                                viewModel.startRoute(preview, onStarted = {
+                                    routeEditing = false
+                                    routePreview = null
+                                    routeStops.clear()
+                                })
+                            }
+                        } else {
+                            requestManualHop(camera.center)
+                            viewModel.selectPoint(camera.center)
+                            viewModel.startMock()
+                        }
                     },
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary,
