@@ -347,15 +347,9 @@ fun MapScreen(
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 if (isMockActive) {
-                    MockActiveBanner(
-                        lat = activePoint?.lat ?: 0.0,
-                        lng = activePoint?.lng ?: 0.0,
-                        accuracy = settings.accuracyM,
-                        altitude = settings.altitudeM,
-                        speedKmh = currentSpeed,
-                        elapsedMs = elapsedMs,
-                        isPaused = isPaused,
-                        units = settings.units,
+                    StatusPill(
+                        text = if (isPaused) "Mock GPS paused" else "Mock GPS active",
+                        dotColor = Color(settings.mockMarkerColor.argb),
                     )
                 } else {
                     Row(
