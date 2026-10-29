@@ -253,7 +253,7 @@ private class VectorMapHolder(
             if (line.points.size < 2) return@forEach
             map.addPolyline(
                 PolylineOptions()
-                    .add(line.points.map { MlLatLng(it.lat, it.lng) }.toTypedArray())
+                    .addAll(line.points.map { MlLatLng(it.lat, it.lng) })
                     .color(line.color.toArgb())
                     .width(line.widthPx),
             )
@@ -313,7 +313,7 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             paint.style = Paint.Style.FILL
             canvas.drawCircle(center, center, px * 0.07f, paint)
         }
-        MarkerStyle.REAL -> {
+        MarkerStyle.REAL, MarkerStyle.DESTINATION -> {
             paint.style = Paint.Style.FILL
             paint.color = android.graphics.Color.WHITE
             canvas.drawCircle(center, center, px * 0.28f, paint)
