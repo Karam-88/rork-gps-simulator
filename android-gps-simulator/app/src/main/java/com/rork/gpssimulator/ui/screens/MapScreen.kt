@@ -308,9 +308,10 @@ fun MapScreen(
                 add(
                     MapMarker(
                         point = it.point,
-                        color = Color(0xFF2583FA),
-                        radiusMeters = it.accuracy.toDouble(),
-                        style = MarkerStyle.REAL,
+                        // In direct-tap mode show a clear red map pin instead of the blue GPS ring.
+                        // This is visual only; real GPS coordinates and mock-provider logic are unchanged.
+                        color = Color(0xFFE7302D),
+                        style = MarkerStyle.CANDIDATE,
                         renderInOverlay = true,
                     ),
                 )
