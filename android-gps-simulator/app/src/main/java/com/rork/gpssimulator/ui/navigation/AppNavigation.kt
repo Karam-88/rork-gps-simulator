@@ -254,7 +254,9 @@ private fun AppScaffold(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { _ ->
+    ) { scaffoldPadding ->
+        @Suppress("UNUSED_VARIABLE")
+        val appliedScaffoldPadding = scaffoldPadding
         val bottomInset = 0.dp
 
         NavHost(
