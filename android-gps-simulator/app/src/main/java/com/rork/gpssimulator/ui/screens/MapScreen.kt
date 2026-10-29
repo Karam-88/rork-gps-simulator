@@ -450,6 +450,10 @@ fun MapScreen(
                 showMenuPanel = false
                 onOpenFavorites()
             }
+            MapControlButton(Icons.Default.Route, strings[K.tab_routes]) {
+                showMenuPanel = false
+                onOpenRoutes()
+            }
             MapControlButton(
                 Icons.Default.Layers,
                 if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تبديل وضع الخريطة" else "Toggle map theme",
