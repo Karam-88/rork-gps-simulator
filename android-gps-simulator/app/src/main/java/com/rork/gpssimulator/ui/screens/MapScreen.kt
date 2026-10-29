@@ -831,9 +831,6 @@ private fun FloatingMapMenu(
         tonalElevation = 10.dp,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            FloatingMenuEntry(Icons.Default.Map, mapLabel, true, onMap)
-            FloatingMenuEntry(Icons.Default.Route, routesLabel, false, onRoutes)
-            FloatingMenuEntry(Icons.Default.Star, favoritesLabel, false, onFavorites)
             FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
             FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
             FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
