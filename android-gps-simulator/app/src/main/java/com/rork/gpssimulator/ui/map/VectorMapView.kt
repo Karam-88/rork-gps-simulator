@@ -293,14 +293,14 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
     val center = px / 2f
 
     when (marker.style) {
-        MarkerStyle.ACTIVE -> {
+        MarkerStyle.ACTIVE, MarkerStyle.REAL -> {
+            // Mock and real locations share precisely the same dot geometry.
+            // Only the marker colour differs (red mock / blue real).
             paint.style = Paint.Style.FILL
             paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.40f, paint)
+            canvas.drawCircle(center, center, px * 0.28f, paint)
             paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.31f, paint)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.09f, paint)
+            canvas.drawCircle(center, center, px * 0.21f, paint)
         }
         MarkerStyle.CANDIDATE -> {
             paint.style = Paint.Style.STROKE
@@ -312,13 +312,6 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             canvas.drawCircle(center, center, px * 0.31f, paint)
             paint.style = Paint.Style.FILL
             canvas.drawCircle(center, center, px * 0.07f, paint)
-        }
-        MarkerStyle.REAL -> {
-            paint.style = Paint.Style.FILL
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.28f, paint)
-            paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.21f, paint)
         }
         MarkerStyle.DESTINATION -> {
             // A distinct target marker avoids confusing a route destination
