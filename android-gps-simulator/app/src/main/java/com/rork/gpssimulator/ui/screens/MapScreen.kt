@@ -351,7 +351,6 @@ fun MapScreen(
                     routeStops.add(point)
                 } else if (!routeEditing && settings.directTapSelection && !isMockActive) {
                     viewModel.selectPoint(point)
-                    viewModel.startMock()
                 }
             },
             onMapLongPress = { point ->
