@@ -29,6 +29,23 @@ jobs:
         run: bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest
       - name: Android lint
         run: bash ./gradlew :app:lintDebug
+      - name: Print all lint errors for actionable diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          path = "app/build/reports/lint-results-debug.xml"
+          if os.path.exists(path):
+              root = ET.parse(path).getroot()
+              issues = [x for x in root.findall("issue") if x.get("severity") in ("Error", "Fatal")]
+              for x in issues:
+                  loc = x.find("location")
+                  print("LINT_ERROR", x.get("id"), x.get("message"), (loc.attrib if loc is not None else {}))
+              print("TOTAL_LINT_ERRORS", len(issues))
+          else:
+              print("Lint XML report unavailable")
+          PY
       - name: Upload checks (no installable artifacts)
         if: always()
         uses: actions/upload-artifact@v4
