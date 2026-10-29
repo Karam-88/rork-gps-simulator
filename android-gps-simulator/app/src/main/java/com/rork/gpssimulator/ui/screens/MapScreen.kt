@@ -178,7 +178,7 @@ fun MapScreen(
     var showMenuPanel by remember { mutableStateOf(false) }
     var showProblemDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
-    val ratingSafe = !showLayerSheet && !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
+    val ratingSafe = !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
         !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
     androidx.compose.runtime.DisposableEffect(ratingSafe) {
         onRatingPromptSafeChanged(ratingSafe)
