@@ -533,7 +533,7 @@ fun MapScreen(
                 showMenuPanel = false
                 showFavoritesPopup = true
             }
-            MapControlButton(Icons.Default.Route, strings[K.tab_routes]) {
+            MapControlButton(Icons.Default.Route, strings[K.tab_routes], active = routeEditing) {
                 showMenuPanel = false
                 routeEditing = !routeEditing
                 routePreview = null
@@ -635,12 +635,51 @@ fun MapScreen(
 .clickable(enabled = !routeEditing || routePreview != null, role = Role.Button) {
                         showMenuPanel = false
                         if (routeEditing) {
-                            routePreview?.let { preview ->
+                            val startResolvedRoute: (SimRoute) -> Unit = { preview ->
                                 viewModel.startRoute(preview, onStarted = {
                                     routeEditing = false
                                     routePreview = null
                                     routeStops.clear()
                                 })
+                            }
+                            val ready = routePreview
+                            if (ready != null) {
+                                startResolvedRoute(ready)
+                            } else if (routeStops.isEmpty()) {
+                                viewModel.postMessage(
+                                    if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                        "حدد وجهة واحدة على الأقل" else "Select at least one destination",
+                                    isError = true,
+                                )
+                            } else {
+                                val origin = routeOrigin
+                                if (origin == null) {
+                                    viewModel.postMessage(
+                                        if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                            "الموقع الحالي غير متاح" else "Current location unavailable",
+                                        isError = true,
+                                    )
+                                } else {
+                                    routeCalculating = true
+                                    val draft = SimRoute(
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        name = "Map route",
+                                        points = listOf(origin) + routeStops.toList(),
+                                        profile = routeProfile,
+                                    )
+                                    routeScope.launch {
+                                        val result = RoadRoutingService().resolve(draft)
+                                        routeCalculating = false
+                                        result.onSuccess { resolved ->
+                                            routePreview = resolved
+                                            startResolvedRoute(resolved)
+                                        }
+                                        result.onFailure { error ->
+                                            viewModel.postMessage(
+                                                error.message ?: "Road routing unavailable", isError = true)
+                                        }
+                                    }
+                                }
                             }
                         } else {
                             val point = if (settings.directTapSelection) selected?.point ?: camera.center else camera.center
@@ -1180,6 +1219,7 @@ private fun CoordinateLine(label: String, value: String) {
 private fun MapControlButton(
     icon: ImageVector,
     contentDescription: String,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -1188,13 +1228,13 @@ private fun MapControlButton(
             .shadow(8.dp, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(23.dp),
             )
         }
