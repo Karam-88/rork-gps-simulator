@@ -121,6 +121,10 @@ private class VectorMapHolder(
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
+    private var drawnLines: List<MapPolyline>? = null
+    private val lineIds = mutableListOf<org.maplibre.android.annotations.Polyline>()
+    private val markerIds = mutableListOf<org.maplibre.android.annotations.Marker>()
+    private val polygonIds = mutableListOf<org.maplibre.android.annotations.Polygon>()
     private var started = false
     private var updatingFromCompose = false
 
@@ -246,42 +250,51 @@ private class VectorMapHolder(
         val map = map ?: return
         if (map.style == null) return
 
-        map.removeAnnotations()
+        markerIds.forEach { map.removeMarker(it) }
+        markerIds.clear()
+        polygonIds.forEach { map.removePolygon(it) }
+        polygonIds.clear()
+        // Do not remove/re-add the route line during unrelated marker updates.
+        if (drawnLines != pendingPolylines) {
+            lineIds.forEach { map.removePolyline(it) }
+            lineIds.clear()
+            drawnLines = pendingPolylines.toList()
+            pendingPolylines.forEach { line ->
+                if (line.points.size >= 2) {
+                    lineIds.add(map.addPolyline(
+                        PolylineOptions()
+                            .addAll(line.points.map { MlLatLng(it.lat, it.lng) })
+                            .color(line.color.toArgb())
+                            .width(line.widthPx),
+                    ))
+                }
+            }
+        }
 
         pendingCircles.forEach { circle ->
-            map.addPolygon(
+            polygonIds.add(map.addPolygon(
                 PolygonOptions()
                     .addAll(circlePoints(circle.center, circle.radiusMeters))
                     .fillColor(circle.fillColor.toArgb())
                     .strokeColor(circle.strokeColor.toArgb()),
-            )
-        }
-
-        pendingPolylines.forEach { line ->
-            if (line.points.size < 2) return@forEach
-            map.addPolyline(
-                PolylineOptions()
-                    .addAll(line.points.map { MlLatLng(it.lat, it.lng) })
-                    .color(line.color.toArgb())
-                    .width(line.widthPx),
-            )
+            ))
         }
 
         pendingMarkers.forEach { marker ->
             if (marker.radiusMeters > 0.0) {
                 val haloColor = marker.color.copy(alpha = 0.14f).toArgb()
-                map.addPolygon(
+                polygonIds.add(map.addPolygon(
                     PolygonOptions()
                         .addAll(circlePoints(marker.point, marker.radiusMeters))
                         .fillColor(haloColor)
                         .strokeColor(marker.color.copy(alpha = 0.30f).toArgb()),
-                )
+                ))
             }
-            map.addMarker(
+            markerIds.add(map.addMarker(
                 MarkerOptions()
                     .position(MlLatLng(marker.point.lat, marker.point.lng))
                     .icon(markerIcon(mapView.context, marker)),
-            )
+            ))
         }
     }
 
