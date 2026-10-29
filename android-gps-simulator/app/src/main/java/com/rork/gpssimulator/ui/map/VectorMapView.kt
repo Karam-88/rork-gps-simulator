@@ -54,12 +54,13 @@ internal fun VectorMapView(
     polylines: List<MapPolyline> = emptyList(),
     circles: List<MapCircle> = emptyList(),
     onMapTap: ((LatLng) -> Unit)? = null,
+    onMapLongPress: ((LatLng) -> Unit)? = null,
     onCameraIdle: ((LatLng, Float) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val holder = remember {
         MapLibre.getInstance(context.applicationContext)
-        VectorMapHolder(context, camera, onMapTap, onCameraIdle)
+        VectorMapHolder(context, camera, onMapTap, onMapLongPress, onCameraIdle)
     }
 
     DisposableEffect(holder) {
@@ -67,8 +68,9 @@ internal fun VectorMapView(
         onDispose { holder.destroy() }
     }
 
-    LaunchedEffect(onMapTap, onCameraIdle) {
+    LaunchedEffect(onMapTap, onMapLongPress, onCameraIdle) {
         holder.onMapTap = onMapTap
+        holder.onMapLongPress = onMapLongPress
         holder.onCameraIdle = onCameraIdle
     }
 
@@ -106,10 +108,12 @@ private class VectorMapHolder(
     context: Context,
     private val cameraState: MapCameraState,
     onMapTap: ((LatLng) -> Unit)?,
+    onMapLongPress: ((LatLng) -> Unit)?,
     onCameraIdle: ((LatLng, Float) -> Unit)?,
 ) {
     val mapView = NativeMapView(context)
     var onMapTap = onMapTap
+    var onMapLongPress = onMapLongPress
     var onCameraIdle = onCameraIdle
 
     private var map: MapLibreMap? = null
@@ -164,6 +168,10 @@ private class VectorMapHolder(
                 cameraState.centerLng = point.lng
                 cameraState.zoom = position.zoom.toFloat().coerceIn(MIN_ZOOM, MAX_ZOOM)
                 onCameraIdle?.invoke(point, cameraState.zoom)
+            }
+            readyMap.addOnMapLongClickListener { point ->
+                onMapLongPress?.invoke(LatLng(point.latitude, point.longitude))
+                true
             }
             readyMap.addOnMapClickListener { point ->
                 onMapTap?.invoke(LatLng(point.latitude, point.longitude))
