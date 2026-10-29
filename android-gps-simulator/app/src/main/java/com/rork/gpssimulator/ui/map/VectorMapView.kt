@@ -313,12 +313,25 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             paint.style = Paint.Style.FILL
             canvas.drawCircle(center, center, px * 0.07f, paint)
         }
-        MarkerStyle.REAL, MarkerStyle.DESTINATION -> {
+        MarkerStyle.REAL -> {
             paint.style = Paint.Style.FILL
             paint.color = android.graphics.Color.WHITE
             canvas.drawCircle(center, center, px * 0.28f, paint)
             paint.color = marker.color.toArgb()
             canvas.drawCircle(center, center, px * 0.21f, paint)
+        }
+        MarkerStyle.DESTINATION -> {
+            // A distinct target marker avoids confusing a route destination
+            // with the device's real location dot.
+            paint.style = Paint.Style.FILL
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, center, px * 0.38f, paint)
+            paint.color = marker.color.toArgb()
+            canvas.drawCircle(center, center, px * 0.30f, paint)
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, center, px * 0.15f, paint)
+            paint.color = marker.color.toArgb()
+            canvas.drawCircle(center, center, px * 0.07f, paint)
         }
     }
 
