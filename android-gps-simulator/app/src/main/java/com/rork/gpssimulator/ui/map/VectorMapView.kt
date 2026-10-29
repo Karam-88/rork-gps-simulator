@@ -308,7 +308,11 @@ private class VectorMapHolder(
 private fun markerIcon(context: Context, marker: MapMarker): Icon {
     val density = context.resources.displayMetrics.density
     val locationDot = marker.style == MarkerStyle.ACTIVE || marker.style == MarkerStyle.REAL
-    val px = ((if (locationDot) LocationDot.DIAMETER_DP else 34f) * density).roundToInt().coerceAtLeast(24)
+    val px = ((when {
+        locationDot -> LocationDot.DIAMETER_DP
+        marker.style == MarkerStyle.CANDIDATE -> 52f
+        else -> 34f
+    }) * density).roundToInt().coerceAtLeast(24)
     val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -319,15 +323,38 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             LocationDot.draw(canvas, center, center, density, marker.color.toArgb(), paint)
         }
         MarkerStyle.CANDIDATE -> {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = (2.2f * density).coerceAtLeast(2f)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.31f, paint)
-            paint.strokeWidth = (1.4f * density).coerceAtLeast(1.5f)
-            paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.31f, paint)
+            // Tap-selected point: red pin with a subtle halo; tip is anchored to coordinate.
+            val red = android.graphics.Color.rgb(231, 48, 45)
+            val tipY = center
+            val headY = px * 0.24f
+            val headRadius = px * 0.165f
             paint.style = Paint.Style.FILL
-            canvas.drawCircle(center, center, px * 0.07f, paint)
+            paint.color = android.graphics.Color.argb(28, 231, 48, 45)
+            canvas.drawCircle(center, tipY, px * 0.29f, paint)
+            paint.color = android.graphics.Color.argb(60, 231, 48, 45)
+            canvas.drawCircle(center, tipY, px * 0.21f, paint)
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, tipY, px * 0.115f, paint)
+            val pin = android.graphics.Path().apply {
+                moveTo(center - headRadius, headY)
+                cubicTo(center - headRadius, headY - headRadius,
+                    center + headRadius, headY - headRadius,
+                    center + headRadius, headY)
+                cubicTo(center + headRadius, headY + headRadius * 0.66f,
+                    center + headRadius * 0.32f, tipY - headRadius * 0.32f,
+                    center, tipY)
+                cubicTo(center - headRadius * 0.32f, tipY - headRadius * 0.32f,
+                    center - headRadius, headY + headRadius * 0.66f,
+                    center - headRadius, headY)
+                close()
+            }
+            paint.setShadowLayer(2.5f * density, 0f, 1.5f * density,
+                android.graphics.Color.argb(95, 0, 0, 0))
+            paint.color = red
+            canvas.drawPath(pin, paint)
+            paint.clearShadowLayer()
+            paint.color = android.graphics.Color.rgb(158, 20, 22)
+            canvas.drawCircle(center, headY, headRadius * 0.39f, paint)
         }
         MarkerStyle.DESTINATION -> {
             if (marker.label != null) {
