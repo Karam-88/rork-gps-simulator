@@ -113,7 +113,7 @@ fun GpsReadinessChecklist(
 ) {
     val context = LocalContext.current
     // Read the app's live Android configuration, not the static system Resources singleton.
-    val systemLanguage = context.resources.configuration.locales[0].language
+    val systemLanguage = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
     val language = if (followSystemLanguage) systemLanguage else selectedLanguage.languageCode
     var languageMenuExpanded by remember { mutableStateOf(false) }
     fun t(ar: String, de: String, en: String) = when (language) {
