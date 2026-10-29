@@ -369,7 +369,7 @@ fun MapScreen(
                 viewModel.persistCamera(center, zoom)
                 // In crosshair mode the center is the selected location. Resolve its
                 // street after camera movement stops, without starting mock GPS.
-                if (movedByUser && !settings.directTapSelection && !routeEditing && !isMockActive &&
+                if (movedByUser && !settings.directTapSelection && !routeEditing &&
                     selected?.point != center) {
                     viewModel.selectPoint(center)
                 }
