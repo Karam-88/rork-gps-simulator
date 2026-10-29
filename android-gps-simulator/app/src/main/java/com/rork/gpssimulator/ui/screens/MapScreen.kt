@@ -362,14 +362,17 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Crosshair(
-            color = Color(settings.crosshairColor.argb),
-            crosshairSize = settings.crosshairSizeDp.dp,
-            thickness = settings.crosshairThicknessDp.dp,
-            opacity = settings.crosshairOpacity,
-            shape = settings.crosshairShape,
-            modifier = Modifier.align(Alignment.Center),
-        )
+        // Direct-tap mode uses the touched map coordinate, not the center reticle.
+        if (!settings.directTapSelection) {
+            Crosshair(
+                color = Color(settings.crosshairColor.argb),
+                crosshairSize = settings.crosshairSizeDp.dp,
+                thickness = settings.crosshairThicknessDp.dp,
+                opacity = settings.crosshairOpacity,
+                shape = settings.crosshairShape,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -585,8 +588,9 @@ fun MapScreen(
                                 })
                             }
                         } else {
-                            requestManualHop(camera.center)
-                            viewModel.selectPoint(camera.center)
+                            val point = if (settings.directTapSelection) selected ?: camera.center else camera.center
+                            requestManualHop(point)
+                            viewModel.selectPoint(point)
                             viewModel.startMock()
                         }
                     },
