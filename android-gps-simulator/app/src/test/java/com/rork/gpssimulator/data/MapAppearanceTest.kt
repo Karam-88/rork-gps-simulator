@@ -20,7 +20,7 @@ class MapAppearanceTest {
         assertEquals(CrosshairShape.PRECISION, saved.crosshairShape)
         assertEquals(CrosshairColor.GREEN, saved.crosshairColor)
         assertEquals(MockMarkerColor.RED, saved.mockMarkerColor)
-        assertEquals(40f, saved.crosshairSizeDp, 0f)
+        assertEquals(60f, saved.crosshairSizeDp, 0f)
         assertEquals(3f, saved.crosshairThicknessDp, 0f)
         assertEquals(0.9f, saved.crosshairOpacity, 0f)
     }
