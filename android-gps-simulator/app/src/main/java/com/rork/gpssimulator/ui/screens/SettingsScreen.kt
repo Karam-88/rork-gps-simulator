@@ -154,6 +154,8 @@ fun SettingsScreen(
     onOpenPresets: () -> Unit,
     onOpenRoutes: () -> Unit,
     onTestRatingDialog: () -> Unit,
+    onOpenCrosshair: () -> Unit,
+    onOpenMockMarker: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalStrings.current
@@ -287,6 +289,25 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = bottomInset + 24.dp),
         ) {
+            if (filter.matches(strings[K.map_customization], strings[K.crosshair_appearance],
+                    strings[K.mock_marker_color], "crosshair", "marker")) {
+                SectionHeader(strings[K.map_customization])
+                GroupCard {
+                    SettingRow(
+                        icon = Icons.Default.MyLocation,
+                        title = strings[K.crosshair_appearance],
+                        onClick = onOpenCrosshair,
+                        showChevron = true,
+                    )
+                    RowDivider()
+                    SettingRow(
+                        icon = Icons.Default.LocationOn,
+                        title = strings[K.mock_marker_color],
+                        onClick = onOpenMockMarker,
+                        showChevron = true,
+                    )
+                }
+            }
             // ================= GENERAL =================
             val generalTerms = arrayOf(
                 strings[K.theme], strings[K.language], strings[K.map_type], "map appearance", "map theme", "خريطة",
@@ -1286,3 +1307,4 @@ private fun sendFeedback(context: android.content.Context) {
         // No email application installed.
     }
 }
+

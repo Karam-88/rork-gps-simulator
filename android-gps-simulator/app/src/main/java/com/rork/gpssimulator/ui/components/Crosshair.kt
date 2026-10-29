@@ -1,80 +1,67 @@
 package com.rork.gpssimulator.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.rork.gpssimulator.data.CrosshairGeometry
+import com.rork.gpssimulator.data.CrosshairShape
 
-/**
- * Compact blue target reticle matching the location-select action icon.
- * Always pinned to the exact map centre; map taps never move the reticle.
- */
+/** Shared by Settings and the screen-space map overlay. No camera-dependent scaling. */
 @Composable
 fun Crosshair(
-    color: Color,
-    isActive: Boolean,
+    color: Color = Color.White,
     modifier: Modifier = Modifier,
     crosshairSize: Dp = 40.dp,
-    opacity: Float = 1f,
-    style: Int = 4,
+    thickness: Dp = 3.dp,
+    opacity: Float = 0.9f,
+    shape: CrosshairShape = CrosshairShape.PRECISION,
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isActive) 1.08f else 1f,
-        animationSpec = tween(220),
-        label = "crosshairScale",
-    )
-
-    Canvas(modifier = modifier.size(crosshairSize)) {
+    val dimension = crosshairSize.value.coerceIn(20f, 80f)
+    val geometry = CrosshairGeometry(dimension, thickness.value.coerceIn(1f, 6f))
+    Canvas(modifier.size(dimension.dp).graphicsLayer {
+        // Composite the whole symbol once, so overlapping ring/arms have equal opacity.
+        alpha = opacity.coerceIn(0.2f, 1f)
+        compositingStrategy = CompositingStrategy.Offscreen
+    }) {
         val center = Offset(size.width / 2f, size.height / 2f)
-        val unit = size.minDimension / 2f
-        val ringRadius = unit * 0.54f * scale
-        val tickInner = unit * 0.46f * scale
-        val tickOuter = unit * 0.77f * scale
-        val visibleColor = color.copy(alpha = opacity.coerceIn(0f, 1f))
-        val halo = Color.White.copy(alpha = 0.9f * opacity.coerceIn(0f, 1f))
-        val ringWidth = 5.dp.toPx()
-        val haloWidth = 7.dp.toPx()
-
-        // Short cardinal ticks overlap the ring, like the blue target in the reference.
-        fun tick(dx: Float, dy: Float) {
-            val start = Offset(center.x + dx * tickInner, center.y + dy * tickInner)
-            val end = Offset(center.x + dx * tickOuter, center.y + dy * tickOuter)
-            drawLine(halo, start, end, strokeWidth = haloWidth, cap = StrokeCap.Square)
-            drawLine(visibleColor, start, end, strokeWidth = ringWidth, cap = StrokeCap.Square)
+        val stroke = geometry.thickness.dp.toPx()
+        val outer = geometry.outer.dp.toPx()
+        val inner = geometry.armInner.dp.toPx()
+        fun arm(dx: Float, dy: Float) {
+            drawLine(color, center + Offset(dx * inner, dy * inner),
+                center + Offset(dx * outer, dy * outer), stroke, StrokeCap.Round)
         }
-
-        when (style) {
-            1 -> {
-                // Minimal crosshair: four short strokes and a small centre dot.
-                tick(1f, 0f)
-                tick(-1f, 0f)
-                tick(0f, 1f)
-                tick(0f, -1f)
+        when (shape) {
+            CrosshairShape.MINIMAL, CrosshairShape.PRECISION -> {
+                if (shape == CrosshairShape.PRECISION) {
+                    drawCircle(color, geometry.ringRadius.dp.toPx(), center, style = Stroke(stroke))
+                }
+                arm(1f, 0f); arm(-1f, 0f); arm(0f, 1f); arm(0f, -1f)
             }
-            2 -> {
-                // Small circular target without external arms.
-                drawCircle(halo, radius = ringRadius, center = center, style = Stroke(width = haloWidth))
-                drawCircle(visibleColor, radius = ringRadius, center = center, style = Stroke(width = ringWidth))
-            }
-            else -> {
-                // Four-arm reticle (style 4), compact and fixed to the map centre.
-                tick(1f, 0f)
-                tick(-1f, 0f)
-                tick(0f, 1f)
-                tick(0f, -1f)
+            CrosshairShape.CORNERS -> {
+                val corner = geometry.corner.dp.toPx()
+                val end = geometry.cornerInner.dp.toPx()
+                for (x in listOf(-1f, 1f)) for (y in listOf(-1f, 1f)) {
+                    val bracket = Path().apply {
+                        moveTo(center.x + x * end, center.y + y * corner)
+                        lineTo(center.x + x * corner, center.y + y * corner)
+                        lineTo(center.x + x * corner, center.y + y * end)
+                    }
+                    drawPath(bracket, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Miter))
+                }
             }
         }
-
-        drawCircle(halo, radius = unit * 0.18f * scale, center = center)
-        drawCircle(visibleColor, radius = unit * 0.12f * scale, center = center)
+        drawCircle(color, geometry.dotRadius.dp.toPx(), center)
     }
 }

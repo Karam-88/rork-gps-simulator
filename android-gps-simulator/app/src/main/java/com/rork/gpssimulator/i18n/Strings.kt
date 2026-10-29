@@ -6,6 +6,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 enum class K {
     app_name, tab_map, tab_routes, tab_presets, tab_history, tab_settings,
 
+    // Map appearance
+    map_customization, crosshair_appearance, mock_marker_color, crosshair_shape, crosshair_minimal, crosshair_precision, crosshair_corners, appearance_color, crosshair_size, crosshair_thickness, crosshair_opacity, appearance_preview, color_white, color_light_blue, color_green, color_orange, color_purple, color_red, color_pink, color_yellow,
+
     // Map screen
     real_gps, location_selected, mock_active, set_mock_location, start_mock_location,
     stop, pause, resume, lat, lng, search_hint, my_location, map_layers, favorites,
@@ -788,7 +791,7 @@ class Strings(val language: AppLanguage) {
     }
     private val fallback: Map<K, String> = EN
 
-    operator fun get(key: K): String = table[key] ?: fallback[key] ?: key.name
+    operator fun get(key: K): String = mapAppearanceTranslations[language]?.get(key) ?: table[key] ?: fallback[key] ?: key.name
 }
 
 enum class AppLanguage(val nativeName: String, val languageCode: String) {
@@ -829,3 +832,4 @@ enum class AppLanguage(val nativeName: String, val languageCode: String) {
 }
 
 val LocalStrings = staticCompositionLocalOf { Strings(AppLanguage.ENGLISH) }
+

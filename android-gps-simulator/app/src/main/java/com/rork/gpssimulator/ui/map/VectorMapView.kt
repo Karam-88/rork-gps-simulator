@@ -286,7 +286,8 @@ private class VectorMapHolder(
 
 private fun markerIcon(context: Context, marker: MapMarker): Icon {
     val density = context.resources.displayMetrics.density
-    val px = (34f * density).roundToInt().coerceAtLeast(24)
+    val locationDot = marker.style == MarkerStyle.ACTIVE || marker.style == MarkerStyle.REAL
+    val px = ((if (locationDot) LocationDot.DIAMETER_DP else 34f) * density).roundToInt().coerceAtLeast(24)
     val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -294,13 +295,7 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
 
     when (marker.style) {
         MarkerStyle.ACTIVE, MarkerStyle.REAL -> {
-            // Mock and real locations share precisely the same dot geometry.
-            // Only the marker colour differs (red mock / blue real).
-            paint.style = Paint.Style.FILL
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.28f, paint)
-            paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.21f, paint)
+            LocationDot.draw(canvas, center, center, density, marker.color.toArgb(), paint)
         }
         MarkerStyle.CANDIDATE -> {
             paint.style = Paint.Style.STROKE
@@ -350,3 +345,4 @@ private fun circlePoints(center: LatLng, radiusMeters: Double): List<MlLatLng> {
         MlLatLng(Math.toDegrees(lat2), Math.toDegrees(lon2))
     }
 }
+

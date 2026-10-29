@@ -270,6 +270,7 @@ fun MapScreen(
                         color = Color(0xFF2583FA),
                         radiusMeters = it.accuracy.toDouble(),
                         style = MarkerStyle.REAL,
+                        renderInOverlay = true,
                     ),
                 )
             }
@@ -284,13 +285,13 @@ fun MapScreen(
                 ),
             )
         }
-        // The active (blue) marker represents an actual mock session only.
+        // The active marker represents an actual mock session only.
         // Selecting a point before starting must not render a fake current-location dot.
         if (isMockActive) activePoint?.let {
             add(
                 MapMarker(
                     point = it,
-                    color = Color(0xFFF04444),
+                    color = Color(settings.mockMarkerColor.argb),
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
@@ -324,8 +325,11 @@ fun MapScreen(
         )
 
         Crosshair(
-            color = MaterialTheme.colorScheme.primary,
-            isActive = camera.isUserInteracting,
+            color = Color(settings.crosshairColor.argb),
+            crosshairSize = settings.crosshairSizeDp.dp,
+            thickness = settings.crosshairThicknessDp.dp,
+            opacity = settings.crosshairOpacity,
+            shape = settings.crosshairShape,
             modifier = Modifier.align(Alignment.Center),
         )
 
@@ -931,3 +935,4 @@ private fun MapControlButton(
         }
     }
 }
+

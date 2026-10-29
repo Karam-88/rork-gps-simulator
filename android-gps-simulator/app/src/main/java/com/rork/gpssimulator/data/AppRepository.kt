@@ -30,6 +30,8 @@ class AppRepository(context: Context) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        // Unset lastMockLat/lastMockLng use NaN; appearance must save before the first simulation.
+        allowSpecialFloatingPointValues = true
     }
 
     // A stored manual selection takes precedence. Automatic mode follows the
@@ -301,3 +303,4 @@ class AppRepository(context: Context) {
             }
     }
 }
+

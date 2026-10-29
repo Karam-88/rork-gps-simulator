@@ -1,0 +1,35 @@
+name: Map appearance compile and regression checks
+on:
+  push:
+    branches: [feature/map-ui-route-customization-20261028]
+    paths:
+      - 'android-gps-simulator/**'
+      - '.github/workflows/map-appearance-checks.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: android-gps-simulator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+      - name: Compile and run JVM regression tests (no APK)
+        run: bash ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug
+      - name: Upload checks (no installable artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-appearance-check-results
+          path: |
+            android-gps-simulator/app/build/reports/tests/
+            android-gps-simulator/app/build/test-results/
+            android-gps-simulator/app/build/reports/lint-results-debug.*
