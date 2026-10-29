@@ -7,7 +7,7 @@ enum class CrosshairShape { MINIMAL, PRECISION, CORNERS }
 
 @Serializable
 enum class CrosshairColor(val argb: Long) {
-    WHITE(0xFFFFFFFF), LIGHT_BLUE(0xFF5DB8EE), GREEN(0xFF57BE65),
+    WHITE(0xFF111827), LIGHT_BLUE(0xFF5DB8EE), GREEN(0xFF57BE65),
     ORANGE(0xFFEBA434), PURPLE(0xFF9E52EB), RED(0xFFDD4E49),
 }
 
