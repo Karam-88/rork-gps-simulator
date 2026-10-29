@@ -84,9 +84,9 @@ private fun readSetup(context: Context): SetupStatus {
 
 private fun openSetting(context: Context, intent: Intent, fallback: Intent = Intent(Settings.ACTION_SETTINGS)) {
     try {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(intent)
     } catch (_: Exception) {
-        try { context.startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        try { context.startActivity(fallback) }
         catch (_: Exception) { /* OEM has no matching settings activity */ }
     }
 }
@@ -315,7 +315,7 @@ fun GpsReadinessChecklist(
     val requestLocation = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { refresh() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh() }
+    // Re-read Android settings as soon as the user returns from a system settings screen.\n    LifecycleEventEffect(Lifecycle.Event.ON_START) { refresh() }\n    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh() }
 
     val completed = listOf(
         status.developer, status.mockSelected, status.locationGranted, status.locationEnabled,
