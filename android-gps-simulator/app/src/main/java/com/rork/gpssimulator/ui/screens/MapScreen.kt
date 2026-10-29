@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBike
@@ -188,7 +190,6 @@ fun MapScreen(
         initialZoom = initialZoom,
     )
     var showMenuPanel by remember { mutableStateOf(false) }
-    var showMapOptions by remember { mutableStateOf(false) }
     var routeEditing by remember { mutableStateOf(false) }
     var routePreview by remember { mutableStateOf<SimRoute?>(null) }
     var routeCalculating by remember { mutableStateOf(false) }
@@ -527,56 +528,15 @@ fun MapScreen(
                 routeStops.clear()
             }
             MapControlButton(
-                Icons.Default.Layers,
-                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الطبقات والمظهر" else "Layers and appearance",
+                if (darkMap) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                    (if (darkMap) "تفعيل الوضع النهاري" else "تفعيل الوضع الليلي")
+                else (if (darkMap) "Switch to day mode" else "Switch to night mode"),
             ) {
                 showMenuPanel = false
-                showMapOptions = true
+                val next = if (darkMap) ThemeMode.LIGHT else ThemeMode.DARK
+                viewModel.updateSettings { it.copy(theme = next, mapTheme = next) }
             }
-        }
-
-        if (showMapOptions) {
-            AlertDialog(
-                onDismissRequest = { showMapOptions = false },
-                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الطبقات والمظهر" else "Layers and appearance") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "نوع الخريطة" else "Map type",
-                            style = MaterialTheme.typography.titleSmall)
-                        listOf(
-                            MapType.STANDARD to strings[K.standard],
-                            MapType.SATELLITE to strings[K.satellite],
-                            MapType.TERRAIN to strings[K.terrain],
-                        ).forEach { (type, label) ->
-                            Text(
-                                text = (if (settings.mapType == type) "✓  " else "○  ") + label,
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    viewModel.updateSettings { it.copy(mapType = type) }
-                                }.padding(8.dp),
-                            )
-                        }
-                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "مظهر التطبيق والخريطة" else "App and map appearance",
-                            style = MaterialTheme.typography.titleSmall)
-                        listOf(
-                            ThemeMode.SYSTEM to strings[K.theme_system],
-                            ThemeMode.LIGHT to strings[K.theme_light],
-                            ThemeMode.DARK to strings[K.theme_dark],
-                        ).forEach { (mode, label) ->
-                            Text(
-                                text = (if (settings.theme == mode) "✓  " else "○  ") + label,
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    viewModel.updateSettings { it.copy(theme = mode, mapTheme = mode) }
-                                }.padding(8.dp),
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showMapOptions = false }) {
-                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إغلاق" else "Close")
-                    }
-                },
-            )
         }
 
         if (routeEditing) {
