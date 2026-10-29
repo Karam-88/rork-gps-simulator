@@ -381,7 +381,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Brightness6,
                             title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
-                            value = when (settings.mapTheme) {
+                            value = when (settings.theme) {
                                 ThemeMode.SYSTEM -> strings[K.theme_system]
                                 ThemeMode.LIGHT -> strings[K.theme_light]
                                 ThemeMode.DARK -> strings[K.theme_dark]
@@ -1031,7 +1031,7 @@ fun SettingsScreen(
                 SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
             ),
             selected = settings.theme,
-            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value) } },
+            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value, mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.LANGUAGE -> SelectionSheet(
@@ -1050,8 +1050,8 @@ fun SettingsScreen(
                 SelectionOption(ThemeMode.LIGHT, strings[K.theme_light]),
                 SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
             ),
-            selected = settings.mapTheme,
-            onSelect = { value -> viewModel.updateSettings { it.copy(mapTheme = value) } },
+            selected = settings.theme,
+            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value, mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.MAP_TYPE -> SelectionSheet(
