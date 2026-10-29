@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.WbSunny
@@ -639,7 +640,6 @@ fun MapScreen(
                             Icon(Icons.Default.Edit, contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تعديل النقاط" else "Edit stops")
                         }
                     }
-                }
                 }
             }
             MapControlButton(Icons.Default.Route, strings[K.tab_routes], active = routeEditing) {
