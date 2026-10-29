@@ -365,8 +365,8 @@ fun MapScreen(
 
         // Selected-point address: compact capsule below the GPS status, never a full-width panel.
         selected?.let { location ->
-            val street = location.address.substringBefore(",").takeIf { it.isNotBlank() }
-                ?: location.name.takeIf { it.isNotBlank() }
+            val street = location.name.takeIf { it.isNotBlank() }
+                ?: location.address.substringBefore(",").takeIf { it.isNotBlank() }
                 ?: if (location.isResolving) {
                     if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
                 } else "${location.point.lat}, ${location.point.lng}"
