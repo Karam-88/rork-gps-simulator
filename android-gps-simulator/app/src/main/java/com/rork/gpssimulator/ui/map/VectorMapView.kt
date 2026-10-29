@@ -317,6 +317,21 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             canvas.drawCircle(center, center, px * 0.07f, paint)
         }
         MarkerStyle.DESTINATION -> {
+            if (marker.label != null) {
+                // Route stops: numbered white disks with a crisp black border.
+                paint.style = Paint.Style.FILL
+                paint.color = android.graphics.Color.BLACK
+                canvas.drawCircle(center, center, px * 0.43f, paint)
+                paint.color = android.graphics.Color.WHITE
+                canvas.drawCircle(center, center, px * 0.35f, paint)
+                paint.color = android.graphics.Color.BLACK
+                paint.textAlign = Paint.Align.CENTER
+                paint.typeface = android.graphics.Typeface.create(
+                    android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                paint.textSize = px * (if (marker.label.length > 2) 0.30f else 0.40f)
+                canvas.drawText(marker.label, center,
+                    center - (paint.ascent() + paint.descent()) / 2f, paint)
+            } else {
             // A distinct target marker avoids confusing a route destination
             // with the device's real location dot.
             paint.style = Paint.Style.FILL
@@ -328,6 +343,7 @@ private fun markerIcon(context: Context, marker: MapMarker): Icon {
             canvas.drawCircle(center, center, px * 0.15f, paint)
             paint.color = marker.color.toArgb()
             canvas.drawCircle(center, center, px * 0.07f, paint)
+            }
         }
     }
 
