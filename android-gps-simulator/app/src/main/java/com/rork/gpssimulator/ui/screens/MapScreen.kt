@@ -208,6 +208,7 @@ fun MapScreen(
     var routeCalculating by remember { mutableStateOf(false) }
     var routeProfile by remember { mutableStateOf(SpeedProfile.WALKING) }
     val routeStops = remember { mutableStateListOf<LatLng>() }
+    var routeCrosshairDestination by remember { mutableStateOf<LatLng?>(null) }
     val routeScope = rememberCoroutineScope()
     val routeOrigin = if (mockState == MockState.MOCK_ACTIVE) activePoint else realSample?.point
     var showProblemDialog by remember { mutableStateOf(false) }
@@ -380,6 +381,9 @@ fun MapScreen(
                 viewModel.persistCamera(center, zoom)
                 // In crosshair mode the center is the selected location. Resolve its
                 // street after camera movement stops, without starting mock GPS.
+                if (movedByUser && routeEditing && !settings.directTapSelection && routePreview == null) {
+                    routeCrosshairDestination = center
+                }
                 if (movedByUser && !settings.directTapSelection && !routeEditing) {
                     crosshairPreviewPoint = center
                 }
@@ -598,11 +602,11 @@ fun MapScreen(
                 if (routePreview == null) {
                     Surface(
                         shape = CircleShape,
-                        color = if (routeStops.isNotEmpty() && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(46.dp),
                     ) {
                     IconButton(
-                        enabled = routeStops.isNotEmpty() && !routeCalculating,
+                        enabled = (routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating,
                         onClick = {
                             val origin = routeOrigin
                             if (origin == null) {
@@ -610,7 +614,7 @@ fun MapScreen(
                                     "الموقع الحالي غير متاح" else "Current location unavailable", isError = true)
                             } else {
                                 routeCalculating = true
-                                val stops = routeStops.toList()
+                                val stops = routeStops.toList().ifEmpty { listOfNotNull(routeCrosshairDestination) }
                                 val draft = SimRoute(
                                     id = java.util.UUID.randomUUID().toString(),
                                     name = "Map route",
@@ -630,7 +634,7 @@ fun MapScreen(
                     ) {
                         Icon(Icons.Default.Check,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "انتهيت من إضافة نقاط المسار" else "Finish adding route stops",
-                            tint = if (routeStops.isNotEmpty() && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
                     }
                 } else {
@@ -647,6 +651,7 @@ fun MapScreen(
                 routeEditing = !routeEditing
                 routePreview = null
                 routeStops.clear()
+                routeCrosshairDestination = null
             }
         }
 
@@ -672,7 +677,7 @@ fun MapScreen(
                             val ready = routePreview
                             if (ready != null) {
                                 startResolvedRoute(ready)
-                            } else if (routeStops.isEmpty()) {
+                            } else if (routeStops.isEmpty() && routeCrosshairDestination == null) {
                                 viewModel.postMessage(
                                     if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                                         "حدد وجهة واحدة على الأقل" else "Select at least one destination",
@@ -691,7 +696,7 @@ fun MapScreen(
                                     val draft = SimRoute(
                                         id = java.util.UUID.randomUUID().toString(),
                                         name = "Map route",
-                                        points = listOf(origin) + routeStops.toList(),
+                                        points = listOf(origin) + routeStops.toList().ifEmpty { listOfNotNull(routeCrosshairDestination) },
                                         profile = routeProfile,
                                     )
                                     routeScope.launch {
