@@ -440,6 +440,10 @@ fun MapScreen(
                 showMenuPanel = false
                 viewModel.centerOnCurrentLocation()
             }
+            MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
+                showMenuPanel = false
+                onOpenFavorites()
+            }
             MapControlButton(
                 Icons.Default.Layers,
                 if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تبديل وضع الخريطة" else "Toggle map theme",
