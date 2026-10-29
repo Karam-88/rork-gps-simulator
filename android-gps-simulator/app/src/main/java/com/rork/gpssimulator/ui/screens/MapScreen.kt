@@ -372,7 +372,7 @@ fun MapScreen(
             onMapTap = { point ->
                 if (routeEditing && routePreview == null && !routeCalculating) {
                     routeStops.add(point)
-                } else if (!routeEditing && settings.directTapSelection && !isMockActive) {
+                } else if (!routeEditing && settings.directTapSelection) {
                     if (tapHopOrigin == null) tapHopOrigin = activePoint ?: realSample?.point ?: selected?.point ?: camera.center
                     viewModel.selectPoint(point)
                 }
@@ -380,7 +380,10 @@ fun MapScreen(
             onMapLongPress = { point ->
                 // Long press only selects a point; it never starts mock GPS.
                 if (routeEditing && routePreview == null && !routeCalculating) routeStops.add(point)
-                else if (!routeEditing) viewModel.selectPoint(point)
+                else if (!routeEditing) {
+                    if (settings.directTapSelection && tapHopOrigin == null) tapHopOrigin = activePoint ?: realSample?.point ?: selected?.point ?: camera.center
+                    viewModel.selectPoint(point)
+                }
             },
             onCameraIdle = { center, zoom, movedByUser ->
                 viewModel.persistCamera(center, zoom)
@@ -959,10 +962,12 @@ fun MapScreen(
                     dangerColor = appColors.danger,
                     onStop = { viewModel.stopMock() },
                     onSelect = {
-                        val point = camera.center
-                        requestManualHop(point)
-                        viewModel.selectPoint(point)
-                        viewModel.moveMockTo(point)
+                        val point = if (settings.directTapSelection) selected?.point ?: activePoint ?: camera.center else camera.center
+                        if (point != activePoint) {
+                            requestManualHop(point)
+                            viewModel.selectPoint(point)
+                            viewModel.moveMockTo(point)
+                        }
                     },
                     onFavorite = {
                         favoriteName = activePlace?.name.orEmpty()
