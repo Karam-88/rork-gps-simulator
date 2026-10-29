@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
 fun CrosshairAppearanceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val settings by viewModel.settings.collectAsState()
     val strings = LocalStrings.current
-    AppearancePage(strings[K.crosshair_appearance], onBack) {
+    AppearancePage(strings[K.crosshair_appearance], onBack, compact = true) {
         MapPreview {
             Crosshair(
                 color = Color(settings.crosshairColor.argb),
@@ -76,12 +76,12 @@ fun CrosshairAppearanceScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                     border = BorderStroke(if (selected) 2.dp else 1.dp,
                         if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
                 ) {
-                    Column(Modifier.padding(horizontal = 4.dp, vertical = 14.dp),
+                    Column(Modifier.padding(horizontal = 4.dp, vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Crosshair(color = MaterialTheme.colorScheme.onSurface, shape = shape, opacity = 1f)
                         Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
-                        Box(Modifier.size(18.dp)) {
+                        Box(Modifier.size(14.dp)) {
                             if (selected) Icon(Icons.Default.Check, contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary)
                         }
@@ -123,7 +123,7 @@ fun MockMarkerColorScreen(viewModel: AppViewModel, onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppearancePage(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+private fun AppearancePage(title: String, onBack: () -> Unit, compact: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val strings = LocalStrings.current
     CompositionLocalProvider(LocalLayoutDirection provides
         if (strings.language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
@@ -138,9 +138,10 @@ private fun AppearancePage(title: String, onBack: () -> Unit, content: @Composab
                     }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
             },
         ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+            Column(Modifier.fillMaxSize().padding(padding)
+                .then(if (compact) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                .padding(horizontal = 16.dp, vertical = if (compact) 4.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 16.dp), content = content)
         }
     }
 }
@@ -149,7 +150,7 @@ private fun AppearancePage(title: String, onBack: () -> Unit, content: @Composab
 private fun MapPreview(content: @Composable BoxScope.() -> Unit) {
     val strings = LocalStrings.current
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color(0xFF182435))) {
-        Box(Modifier.fillMaxWidth().height(156.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.matchParentSize()) {
                 val road = Color(0xFF3A526B)
                 fun street(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(road,
@@ -161,14 +162,14 @@ private fun MapPreview(content: @Composable BoxScope.() -> Unit) {
         }
         Text(strings[K.appearance_preview], color = Color(0xFFB9C5D6),
             style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp))
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp))
     }
 }
 
 @Composable
 private fun ColorChoices(colors: List<Pair<String, Color>>, selected: String, onSelect: (String) -> Unit) {
     val strings = LocalStrings.current
-    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         colors.chunked(3).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { (name, color) ->
@@ -184,9 +185,9 @@ private fun ColorChoices(colors: List<Pair<String, Color>>, selected: String, on
                     }]
                     Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                         .selectable(selected == name, role = Role.RadioButton, onClick = { onSelect(name) })
-                        .padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(Modifier.size(40.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
+                        .padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Box(Modifier.size(26.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
                             if (selected == name) Icon(Icons.Default.Check, contentDescription = null,
                                 tint = Color(0xFF152031), modifier = Modifier.size(22.dp))
                         }
