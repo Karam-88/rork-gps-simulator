@@ -927,7 +927,7 @@ fun MapScreen(
                 )
             }
 
-            if (isMockActive) {
+            if (isMockActive && !routeEditing) {
                 if (isMotionSession) {
                     Button(
                         onClick = { viewModel.togglePause() },
