@@ -115,8 +115,8 @@ fun MockMarkerColorScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     AppearancePage(strings[K.mock_marker_color], onBack) {
         MapPreview { LocationDotPreview(Color(settings.mockMarkerColor.argb)) }
         Text(strings[K.appearance_color], style = MaterialTheme.typography.titleMedium)
-        ColorChoices(MockMarkerColor.entries.map { it.name to Color(it.argb) }, settings.mockMarkerColor.name) { name ->
-            viewModel.updateSettings { it.copy(mockMarkerColor = MockMarkerColor.valueOf(name)) }
+        MockMarkerColorStrip(settings.mockMarkerColor) { color ->
+            viewModel.updateSettings { it.copy(mockMarkerColor = color) }
         }
     }
 }
@@ -193,6 +193,32 @@ private fun CrosshairColorStrip(selected: CrosshairColor, onSelect: (CrosshairCo
                     Icon(Icons.Default.Check, contentDescription = null,
                         tint = if (color == CrosshairColor.WHITE || color == CrosshairColor.YELLOW ||
                             color == CrosshairColor.LIME || color == CrosshairColor.CYAN)
+                            Color(0xFF14202B) else Color.White,
+                        modifier = Modifier.fillMaxSize(0.65f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockMarkerColorStrip(selected: MockMarkerColor, onSelect: (MockMarkerColor) -> Unit) {
+    Row(Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        MockMarkerColor.entries.forEach { color ->
+            Box(
+                Modifier.weight(1f).aspectRatio(1f).clip(CircleShape)
+                    .background(Color(color.argb), CircleShape)
+                    .selectable(selected == color, role = Role.RadioButton,
+                        onClick = { onSelect(color) })
+                    .semantics { contentDescription = color.name },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected == color) {
+                    Icon(Icons.Default.Check, contentDescription = null,
+                        tint = if (color == MockMarkerColor.YELLOW || color == MockMarkerColor.LIME ||
+                            color == MockMarkerColor.CYAN || color == MockMarkerColor.LIGHT_BLUE)
                             Color(0xFF14202B) else Color.White,
                         modifier = Modifier.fillMaxSize(0.65f))
                 }
