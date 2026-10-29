@@ -791,6 +791,11 @@ fun MapScreen(
             status = if (isMockActive) null else recoveryStatus,
             onRetry = viewModel::retryRealRecovery,
             onDismiss = viewModel::dismissRealRecovery,
+            onOpenMockSettings = {
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                runCatching { context.startActivity(intent) }
+                    .onFailure { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
         )
