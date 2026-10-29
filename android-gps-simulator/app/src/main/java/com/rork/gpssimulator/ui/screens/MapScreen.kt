@@ -468,6 +468,15 @@ fun MapScreen(
                     }
                 }
             }
+            Box(
+                modifier = Modifier.size(42.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                    .clickable(role = Role.Button) { showMenuPanel = false; onOpenSearch() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Search, contentDescription = strings[K.search_places],
+                    tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(21.dp))
+            }
             // Put the menu in the former report-button position.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
@@ -533,10 +542,6 @@ fun MapScreen(
                 showMenuPanel = false
                 showProblemDialog = true
             }
-            MapControlButton(Icons.Default.Search, strings[K.search_places]) {
-                showMenuPanel = false
-                onOpenSearch()
-            }
             MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
                 showMenuPanel = false
                 viewModel.centerOnCurrentLocation()
@@ -544,12 +549,6 @@ fun MapScreen(
             MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
                 showMenuPanel = false
                 showFavoritesPopup = true
-            }
-            MapControlButton(Icons.Default.Route, strings[K.tab_routes], active = routeEditing) {
-                showMenuPanel = false
-                routeEditing = !routeEditing
-                routePreview = null
-                routeStops.clear()
             }
             MapControlButton(
                 if (darkMap) Icons.Default.WbSunny else Icons.Default.DarkMode,
@@ -563,15 +562,17 @@ fun MapScreen(
             }
         }
 
-        if (routeEditing) {
-            Column(
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding()
-                    .padding(start = 12.dp, top = 112.dp, end = 12.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
-                    Row(modifier = Modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
+                .padding(start = 12.dp, bottom = 188.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (routeEditing) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
                         listOf(
                             Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
                             Triple(SpeedProfile.CYCLING, Icons.Default.DirectionsBike, strings[K.cycling]),
@@ -594,7 +595,12 @@ fun MapScreen(
                     }
                 }
                 if (routePreview == null) {
-                    Button(
+                    Surface(
+                        shape = CircleShape,
+                        color = if (routeStops.isNotEmpty() && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.size(46.dp),
+                    ) {
+                    IconButton(
                         enabled = routeStops.isNotEmpty() && !routeCalculating,
                         onClick = {
                             val origin = routeOrigin
@@ -621,18 +627,26 @@ fun MapScreen(
                             }
                         },
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (routeCalculating) "…" else if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
-                            "انتهيت من إضافة نقاط المسار" else "Finish adding route stops")
+                        Icon(Icons.Default.Check,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "انتهيت من إضافة نقاط المسار" else "Finish adding route stops",
+                            tint = if (routeStops.isNotEmpty() && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                    }
                     }
                 } else {
-                    Button(onClick = {
-                        routePreview = null
-                    }) {
-                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تعديل النقاط" else "Edit stops")
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(46.dp)) {
+                        IconButton(onClick = { routePreview = null }) {
+                            Icon(Icons.Default.Edit, contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تعديل النقاط" else "Edit stops")
+                        }
                     }
                 }
+                }
+            }
+            MapControlButton(Icons.Default.Route, strings[K.tab_routes], active = routeEditing) {
+                showMenuPanel = false
+                routeEditing = !routeEditing
+                routePreview = null
+                routeStops.clear()
             }
         }
 
