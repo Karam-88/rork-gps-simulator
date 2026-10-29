@@ -632,7 +632,7 @@ fun MapScreen(
                     .padding(bottom = 28.dp)
                     .size(72.dp)
                     .shadow(12.dp, CircleShape)
-.clickable(enabled = !routeEditing || routePreview != null, role = Role.Button) {
+.clickable(enabled = !routeCalculating, role = Role.Button) {
                         showMenuPanel = false
                         if (routeEditing) {
                             val startResolvedRoute: (SimRoute) -> Unit = { preview ->
