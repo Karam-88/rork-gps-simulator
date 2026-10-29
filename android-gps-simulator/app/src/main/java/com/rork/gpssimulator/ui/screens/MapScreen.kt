@@ -159,6 +159,16 @@ fun MapScreen(
     val settings by viewModel.settings.collectAsState()
     val mockState by viewModel.mockState.collectAsState()
     val selected by viewModel.selected.collectAsState()
+    var crosshairPreviewPoint by remember { mutableStateOf<LatLng?>(null) }
+    var crosshairStreet by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(crosshairPreviewPoint, settings.directTapSelection) {
+        val point = crosshairPreviewPoint ?: return@LaunchedEffect
+        if (settings.directTapSelection) return@LaunchedEffect
+        crosshairStreet = null
+        kotlinx.coroutines.delay(450)
+        crosshairStreet = com.rork.gpssimulator.location.GeocodingService().reverse(point)?.name
+            ?: "${point.lat}, ${point.lng}"
+    }
     val activePoint by viewModel.activePoint.collectAsState()
     val activePlace by viewModel.activePlace.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
@@ -369,21 +379,23 @@ fun MapScreen(
                 viewModel.persistCamera(center, zoom)
                 // In crosshair mode the center is the selected location. Resolve its
                 // street after camera movement stops, without starting mock GPS.
-                if (movedByUser && !settings.directTapSelection && !routeEditing &&
-                    selected?.point != center) {
-                    viewModel.selectPoint(center)
+                if (movedByUser && !settings.directTapSelection && !routeEditing) {
+                    crosshairPreviewPoint = center
                 }
             },
             modifier = Modifier.fillMaxSize(),
         )
 
         // Selected-point address: compact capsule below the GPS status, never a full-width panel.
-        selected?.let { location ->
-            val street = location.name.takeIf { it.isNotBlank() }
-                ?: location.address.substringBefore(",").takeIf { it.isNotBlank() }
-                ?: if (location.isResolving) {
+        if (!settings.directTapSelection && crosshairPreviewPoint != null || selected != null) {
+            val location = selected
+            val street = (if (!settings.directTapSelection && crosshairPreviewPoint != null)
+                crosshairStreet ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
+                else null) ?: location?.name?.takeIf { it.isNotBlank() }
+                ?: location?.address?.substringBefore(",")?.takeIf { it.isNotBlank() }
+                ?: if (location?.isResolving == true) {
                     if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
-                } else "${location.point.lat}, ${location.point.lng}"
+                } else location?.point?.let { "${it.lat}, ${it.lng}" } ?: ""
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -404,7 +416,7 @@ fun MapScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.widthIn(max = 220.dp))
-                    IconButton(onClick = { viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
+                    IconButton(onClick = { crosshairPreviewPoint = null; crosshairStreet = null; viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
                         Icon(Icons.Default.Close,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء التحديد" else "Clear selection",
                             modifier = Modifier.size(16.dp))
