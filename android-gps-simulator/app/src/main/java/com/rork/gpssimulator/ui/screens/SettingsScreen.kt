@@ -296,9 +296,7 @@ fun SettingsScreen(
                     SettingRow(
                         icon = Icons.Default.MyLocation,
                         title = if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بالنقر المباشر" else "Direct map tap selection",
-                        value = if (settings.directTapSelection)
-                            (if (settings.language == AppLanguage.ARABIC) "مفعّل" else "On")
-                        else (if (settings.language == AppLanguage.ARABIC) "علامة التصويب" else "Crosshair"),
+                        value = if (settings.directTapSelection) "👆" else "🎯",
                         onClick = { viewModel.updateSettings { it.copy(directTapSelection = !it.directTapSelection) } },
                         showChevron = false,
                     )
