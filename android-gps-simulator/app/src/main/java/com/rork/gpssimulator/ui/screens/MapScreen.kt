@@ -168,7 +168,7 @@ fun MapScreen(
         crosshairStreet = null
         kotlinx.coroutines.delay(450)
         crosshairStreet = com.rork.gpssimulator.location.GeocodingService().reverse(point)?.name
-            ?: "${point.lat}, ${point.lng}"
+            ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الشارع غير متاح" else "Street name unavailable"
     }
     val activePoint by viewModel.activePoint.collectAsState()
     val activePlace by viewModel.activePlace.collectAsState()
@@ -392,11 +392,11 @@ fun MapScreen(
             val location = selected
             val street = (if (!settings.directTapSelection && crosshairPreviewPoint != null)
                 crosshairStreet ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
-                else null) ?: location?.name?.takeIf { it.isNotBlank() }
-                ?: location?.address?.substringBefore(",")?.takeIf { it.isNotBlank() }
+                else null) ?: location?.name?.takeIf { it.isNotBlank() && !it.matches(Regex("""\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*""")) }
+                ?: location?.address?.substringBefore(",")?.takeIf { it.isNotBlank() && !it.trim().matches(Regex("""-?\\d+(?:\\.\\d+)?""")) }
                 ?: if (location?.isResolving == true) {
                     if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
-                } else location?.point?.let { "${it.lat}, ${it.lng}" } ?: ""
+                } else if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الشارع غير متاح" else "Street name unavailable"
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopStart)
