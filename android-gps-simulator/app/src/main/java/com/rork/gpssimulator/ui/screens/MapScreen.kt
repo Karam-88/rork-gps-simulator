@@ -32,6 +32,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.WbSunny
@@ -791,6 +795,7 @@ fun MapScreen(
         }
 
         if (showFavoritesPopup) {
+            CompositionLocalProvider(LocalLayoutDirection provides if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
             AlertDialog(
                 onDismissRequest = { showFavoritesPopup = false },
                 title = {
@@ -800,7 +805,7 @@ fun MapScreen(
                 text = {
                     val favorites = savedLocations.filter { it.kind == SavedKind.FAVORITE }
                     if (favorites.isEmpty()) {
-                        Text(strings[K.no_favorites])
+                        Text(strings[K.no_favorites], modifier = Modifier.fillMaxWidth(), textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left)
                     } else {
                         Column(
                             modifier = Modifier.heightIn(max = 300.dp),
@@ -819,6 +824,7 @@ fun MapScreen(
                                             showFavoritesPopup = false
                                         }.padding(vertical = 10.dp),
                                         maxLines = 1,
+                                        textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left,
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     IconButton(onClick = { viewModel.deleteSaved(location.id) }) {
@@ -838,6 +844,7 @@ fun MapScreen(
                     }
                 },
             )
+            }
         }
 
         if (showFavoriteNameDialog) {
@@ -856,7 +863,7 @@ fun MapScreen(
                     TextButton(
                         enabled = favoriteName.isNotBlank(),
                         onClick = {
-                            activePoint?.let { point ->
+                            (selected?.point ?: activePoint ?: realSample?.point ?: camera.center).let { point ->
                                 viewModel.saveLocation(
                                     name = favoriteName.trim(),
                                     address = activePlace?.address.orEmpty(),
