@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Check
@@ -200,6 +201,8 @@ fun MapScreen(
     var showProblemDialog by remember { mutableStateOf(false) }
     var showFavoriteNameDialog by remember { mutableStateOf(false) }
     var favoriteName by remember { mutableStateOf("") }
+    var showFavoritesPopup by remember { mutableStateOf(false) }
+    val savedLocations by viewModel.savedLocations.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
     val ratingSafe = !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
         !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
@@ -519,7 +522,7 @@ fun MapScreen(
             }
             MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
                 showMenuPanel = false
-                onOpenFavorites()
+                showFavoritesPopup = true
             }
             MapControlButton(Icons.Default.Route, strings[K.tab_routes]) {
                 showMenuPanel = false
@@ -681,7 +684,7 @@ fun MapScreen(
                     ratingConfirmed = userConfirmedRating,
                     onMap = { showMenuPanel = false },
                     onRoutes = { showMenuPanel = false; onOpenRoutes() },
-                    onFavorites = { showMenuPanel = false; onOpenFavorites() },
+                    onFavorites = { showMenuPanel = false; showFavoritesPopup = true },
                     onHistory = { showMenuPanel = false; onOpenHistory() },
                     onSettings = { showMenuPanel = false; onOpenSettings() },
                     onShare = {
@@ -705,6 +708,56 @@ fun MapScreen(
                     },
                 )
             }
+        }
+
+        if (showFavoritesPopup) {
+            AlertDialog(
+                onDismissRequest = { showFavoritesPopup = false },
+                title = {
+                    Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                        "المفضلة" else "Favorites")
+                },
+                text = {
+                    val favorites = savedLocations.filter { it.kind == SavedKind.FAVORITE }
+                    if (favorites.isEmpty()) {
+                        Text(strings[K.no_favorites])
+                    } else {
+                        Column(
+                            modifier = Modifier.heightIn(max = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            favorites.forEach { location ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = location.name,
+                                        modifier = Modifier.weight(1f).clickable {
+                                            viewModel.selectSaved(location)
+                                            viewModel.moveCamera(location.point, 16f)
+                                            showFavoritesPopup = false
+                                        }.padding(vertical = 10.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    IconButton(onClick = { viewModel.deleteSaved(location.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription =
+                                            if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                                "حذف" else "Delete")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFavoritesPopup = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "إغلاق" else "Close")
+                    }
+                },
+            )
         }
 
         if (showFavoriteNameDialog) {
