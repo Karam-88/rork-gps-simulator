@@ -188,6 +188,7 @@ fun MapScreen(
         initialZoom = initialZoom,
     )
     var showMenuPanel by remember { mutableStateOf(false) }
+    var showMapOptions by remember { mutableStateOf(false) }
     var routeEditing by remember { mutableStateOf(false) }
     var routePreview by remember { mutableStateOf<SimRoute?>(null) }
     var routeCalculating by remember { mutableStateOf(false) }
@@ -275,14 +276,10 @@ fun MapScreen(
         }
     }
 
-    val darkMap = when (settings.mapTheme) {
+    val darkMap = when (settings.theme) {
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> when (settings.theme) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        }
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val markers = buildList {
         if (!isMockActive) {
@@ -530,13 +527,55 @@ fun MapScreen(
             }
             MapControlButton(
                 Icons.Default.Layers,
-                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تبديل وضع الخريطة" else "Toggle map theme",
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الطبقات والمظهر" else "Layers and appearance",
             ) {
                 showMenuPanel = false
-                viewModel.updateSettings {
-                    it.copy(mapTheme = if (darkMap) ThemeMode.LIGHT else ThemeMode.DARK)
-                }
+                showMapOptions = true
             }
+        }
+
+        if (showMapOptions) {
+            AlertDialog(
+                onDismissRequest = { showMapOptions = false },
+                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الطبقات والمظهر" else "Layers and appearance") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "نوع الخريطة" else "Map type",
+                            style = MaterialTheme.typography.titleSmall)
+                        listOf(
+                            MapType.STANDARD to strings[K.standard],
+                            MapType.SATELLITE to strings[K.satellite],
+                            MapType.TERRAIN to strings[K.terrain],
+                        ).forEach { (type, label) ->
+                            Text(
+                                text = (if (settings.mapType == type) "✓  " else "○  ") + label,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    viewModel.updateSettings { it.copy(mapType = type) }
+                                }.padding(8.dp),
+                            )
+                        }
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "مظهر التطبيق والخريطة" else "App and map appearance",
+                            style = MaterialTheme.typography.titleSmall)
+                        listOf(
+                            ThemeMode.SYSTEM to strings[K.theme_system],
+                            ThemeMode.LIGHT to strings[K.theme_light],
+                            ThemeMode.DARK to strings[K.theme_dark],
+                        ).forEach { (mode, label) ->
+                            Text(
+                                text = (if (settings.theme == mode) "✓  " else "○  ") + label,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    viewModel.updateSettings { it.copy(theme = mode, mapTheme = mode) }
+                                }.padding(8.dp),
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showMapOptions = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إغلاق" else "Close")
+                    }
+                },
+            )
         }
 
         if (routeEditing) {
