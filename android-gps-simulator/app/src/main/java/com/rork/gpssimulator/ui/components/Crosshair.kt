@@ -23,7 +23,7 @@ fun Crosshair(
     color: Color,
     isActive: Boolean,
     modifier: Modifier = Modifier,
-    crosshairSize: Dp = 56.dp,
+    crosshairSize: Dp = 40.dp,
     opacity: Float = 1f,
     style: Int = 4,
 ) {
@@ -52,17 +52,29 @@ fun Crosshair(
             drawLine(visibleColor, start, end, strokeWidth = ringWidth, cap = StrokeCap.Square)
         }
 
-        if (style != 4) {
-            drawCircle(halo, radius = ringRadius, center = center, style = Stroke(width = haloWidth))
-            drawCircle(visibleColor, radius = ringRadius, center = center, style = Stroke(width = ringWidth))
+        when (style) {
+            1 -> {
+                // Minimal crosshair: four short strokes and a small centre dot.
+                tick(1f, 0f)
+                tick(-1f, 0f)
+                tick(0f, 1f)
+                tick(0f, -1f)
+            }
+            2 -> {
+                // Small circular target without external arms.
+                drawCircle(halo, radius = ringRadius, center = center, style = Stroke(width = haloWidth))
+                drawCircle(visibleColor, radius = ringRadius, center = center, style = Stroke(width = ringWidth))
+            }
+            else -> {
+                // Four-arm reticle (style 4), compact and fixed to the map centre.
+                tick(1f, 0f)
+                tick(-1f, 0f)
+                tick(0f, 1f)
+                tick(0f, -1f)
+            }
         }
-        tick(1f, 0f)
-        tick(-1f, 0f)
-        tick(0f, 1f)
-        tick(0f, -1f)
 
-        // Filled centre point, with a narrow light gap before the ring.
-        drawCircle(halo, radius = unit * 0.27f * scale, center = center)
-        drawCircle(visibleColor, radius = unit * 0.21f * scale, center = center)
+        drawCircle(halo, radius = unit * 0.18f * scale, center = center)
+        drawCircle(visibleColor, radius = unit * 0.12f * scale, center = center)
     }
 }
