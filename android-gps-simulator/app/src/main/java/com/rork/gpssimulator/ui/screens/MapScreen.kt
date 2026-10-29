@@ -320,17 +320,18 @@ fun MapScreen(
             )
         }
     }
-    val draftMarkers = routeStops.map { stop ->
-        MapMarker(point = stop, color = Color(0xFF222222), style = MarkerStyle.DESTINATION)
+    val draftMarkers = routeStops.mapIndexed { index, stop ->
+        MapMarker(point = stop, color = Color(0xFF222222),
+            label = (index + 1).toString(), style = MarkerStyle.DESTINATION)
     }
     val mapMarkers = markers + draftMarkers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
         listOf(MapMarker(point = destination, color = Color(0xFFE53935),
             style = MarkerStyle.DESTINATION))
     } ?: emptyList())
     val polylines = if (routePreview != null) {
-        listOf(MapPolyline(routePreview!!.points, Color(0xFF222222)))
+        listOf(MapPolyline(routePreview!!.points, Color(0xFF222222), widthPx = 3f))
     } else if (routeEditing && routeStops.size > 1) {
-        listOf(MapPolyline(routeStops.toList(), Color(0xFF222222)))
+        listOf(MapPolyline(routeStops.toList(), Color(0xFF222222), widthPx = 3f))
     } else routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
