@@ -23,7 +23,7 @@ fun Crosshair(
     color: Color,
     isActive: Boolean,
     modifier: Modifier = Modifier,
-    size: Dp = 56.dp,
+    crosshairSize: Dp = 56.dp,
     opacity: Float = 1f,
     style: Int = 4,
 ) {
@@ -33,7 +33,7 @@ fun Crosshair(
         label = "crosshairScale",
     )
 
-    Canvas(modifier = modifier.size(size)) {
+    Canvas(modifier = modifier.size(crosshairSize)) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val unit = size.minDimension / 2f
         val ringRadius = unit * 0.54f * scale
