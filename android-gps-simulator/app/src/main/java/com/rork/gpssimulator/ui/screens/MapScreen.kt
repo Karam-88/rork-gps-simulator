@@ -322,7 +322,12 @@ fun MapScreen(
             hopRequest = hopRequest,
             // Tapping the map only interacts with the map. The bottom select
             // button is the sole action that commits the crosshair position.
-            onMapTap = { _ -> },
+            onMapTap = { point ->
+                if (settings.directTapSelection && !isMockActive) {
+                    viewModel.selectPoint(point)
+                    viewModel.startMock()
+                }
+            },
             onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
             modifier = Modifier.fillMaxSize(),
         )
