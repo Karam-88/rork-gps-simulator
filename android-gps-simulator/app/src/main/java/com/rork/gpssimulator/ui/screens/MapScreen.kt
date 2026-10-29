@@ -400,7 +400,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
-                    .padding(start = 12.dp, top = if (routeEditing) 228.dp else 59.dp, end = 76.dp)
+                    .padding(start = 12.dp, top = 59.dp, end = 76.dp)
                     .shadow(6.dp, RoundedCornerShape(50)),
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surface,
