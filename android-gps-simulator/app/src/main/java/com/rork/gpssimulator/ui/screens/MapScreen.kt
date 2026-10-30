@@ -164,6 +164,8 @@ fun MapScreen(
     val settings by viewModel.settings.collectAsState()
     val mockState by viewModel.mockState.collectAsState()
     val selected by viewModel.selected.collectAsState()
+    // startMock may clear the pending selection; retain its address until explicit dismissal.
+    var startedMockSelection by remember { mutableStateOf(selected) }
     var crosshairPreviewPoint by remember { mutableStateOf<LatLng?>(null) }
     var crosshairStreet by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(crosshairPreviewPoint, settings.directTapSelection) {
@@ -420,8 +422,8 @@ fun MapScreen(
         )
 
         // Selected-point address: compact capsule below the GPS status, never a full-width panel.
-        if (!settings.directTapSelection && crosshairPreviewPoint != null || selected != null) {
-            val location = selected
+        if ((!settings.directTapSelection && crosshairPreviewPoint != null) || selected != null || startedMockSelection != null) {
+            val location = selected ?: startedMockSelection
             val street = (if (!settings.directTapSelection && crosshairPreviewPoint != null)
                 crosshairStreet ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
                 else null) ?: location?.name?.takeIf { it.isNotBlank() && !it.matches(Regex("""\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*""")) }
@@ -449,7 +451,7 @@ fun MapScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.widthIn(max = 220.dp))
-                    IconButton(onClick = { crosshairPreviewPoint = null; crosshairStreet = null; viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
+                    IconButton(onClick = { crosshairPreviewPoint = null; crosshairStreet = null; startedMockSelection = null; viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
                         Icon(Icons.Default.Close,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء التحديد" else "Clear selection",
                             modifier = Modifier.size(16.dp))
@@ -745,6 +747,8 @@ fun MapScreen(
                         } else {
                             val point = if (settings.directTapSelection) selected?.point ?: camera.center else camera.center
                             requestManualHop(point)
+                            // Preserve the chosen street in the capsule while mock GPS starts.
+                            startedMockSelection = selected
                             viewModel.selectPoint(point)
                             viewModel.startMock()
                         }
