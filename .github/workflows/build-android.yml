@@ -14,6 +14,7 @@ on:
       - fix/mock-gps-provider-consistency
       - integration/gps-stable-plus-map-ui-20261027
       - feature/map-ui-route-customization-20261028
+      - feature/responsive-animated-onboarding-20261030
   pull_request:
     branches:
       - main
@@ -202,4 +203,5 @@ jobs:
       - name: Clean signing files
         if: always() && github.event_name != 'pull_request'
         run: rm -f release-keystore.jks key.properties
+
 
