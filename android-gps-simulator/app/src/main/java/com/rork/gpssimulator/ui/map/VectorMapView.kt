@@ -127,6 +127,10 @@ private class VectorMapHolder(
     private var map: MapLibreMap? = null
     private var userGestureMovedCamera = false
     private var currentStyle: String? = null
+    // Theme updates can arrive before getMapAsync completes. Remember the latest
+    // requested style so initialization never resets night mode to a bright map.
+    private var requestedMapType: MapType = MapType.STANDARD
+    private var requestedDarkMap: Boolean = false
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
@@ -193,7 +197,7 @@ private class VectorMapHolder(
                 true
             }
 
-            setStyle(MapType.STANDARD)
+            setStyle(requestedMapType, requestedDarkMap)
         }
     }
 
@@ -216,6 +220,10 @@ private class VectorMapHolder(
     }
 
     fun setStyle(type: MapType, darkMap: Boolean = false) {
+        requestedMapType = type
+        requestedDarkMap = darkMap
+        // Do not cache a style that the map has not actually received yet.
+        val readyMap = map ?: return
         val style = when {
             type == MapType.SATELLITE -> SATELLITE_STYLE
             darkMap -> NIGHT_STREET_STYLE
@@ -225,9 +233,9 @@ private class VectorMapHolder(
         if (currentStyle == style) return
         currentStyle = style
         if (type == MapType.SATELLITE) {
-            map?.setStyle(Style.Builder().fromJson(style)) { redrawOverlays() }
+            readyMap.setStyle(Style.Builder().fromJson(style)) { redrawOverlays() }
         } else {
-            map?.setStyle(style) { loadedStyle ->
+            readyMap.setStyle(style) { loadedStyle ->
                 if (darkMap) enhanceNightContrast(loadedStyle)
                 redrawOverlays()
             }
