@@ -329,7 +329,8 @@ fun MapScreen(
             add(
                 MapMarker(
                     point = it.point,
-                    color = MaterialTheme.colorScheme.primary,
+                    // Red is reserved for a manually selected destination, never real GPS.
+                    color = Color(0xFFE7302D),
                     style = MarkerStyle.CANDIDATE,
                     renderInOverlay = true,
                 ),
