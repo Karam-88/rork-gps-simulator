@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.StarRate
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.ZoomIn
@@ -294,13 +295,17 @@ fun SettingsScreen(
                 SectionHeader(strings[K.map_customization])
                 GroupCard {
                     SettingRow(
-                        icon = Icons.Default.MyLocation,
-                        title = if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بالنقر المباشر" else "Direct map tap selection",
+                        icon = if (settings.directTapSelection) Icons.Default.TouchApp else Icons.Default.MyLocation,
+                        title = if (settings.directTapSelection) {
+                            if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بعلامة التصويب" else "Select location with crosshair"
+                        } else {
+                            if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بالنقر المباشر" else "Direct map tap selection"
+                        },
                         trailing = {
                             Icon(
-                                imageVector = Icons.Default.MyLocation,
+                                imageVector = if (settings.directTapSelection) Icons.Default.TouchApp else Icons.Default.MyLocation,
                                 contentDescription = null,
-                                tint = if (settings.directTapSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp),
                             )
                         },
