@@ -99,15 +99,16 @@ fun FirstRunOnboardingScreen(
 @Composable
 private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pulse: Boolean) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val compact = maxHeight < 450.dp
         val viewport = with(LocalDensity.current) { maxHeight.roundToPx() }
         // At large accessibility font sizes content can scroll vertically, but the CTA stays outside
         // this scroll container. Actual text measurements determine illustration space, never ratios
         // from a reference screenshot or a guessed number of title lines.
         SubcomposeLayout(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("onboarding-content-$page")) { constraints ->
             val loose = Constraints(maxWidth = constraints.maxWidth)
-            val header = subcompose("header") { OnboardingHeader(page, copy, progress) }.single().measure(loose)
-            val footer = subcompose("features") { OnboardingFeatures(page, copy, progress) }.single().measure(loose)
-            val gap = 10.dp.roundToPx()
+            val header = subcompose("header") { OnboardingHeader(page, copy, progress, compact) }.single().measure(loose)
+            val footer = subcompose("features") { OnboardingFeatures(page, copy, progress, compact) }.single().measure(loose)
+            val gap = (if (compact) 4.dp else 10.dp).roundToPx()
             val sceneHeight = (viewport - header.height - footer.height - gap * 2)
                 .coerceIn(96.dp.roundToPx(), 340.dp.roundToPx())
             val scene = subcompose("scene") {
@@ -124,8 +125,8 @@ private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pul
 }
 
 @Composable
-private fun OnboardingHeader(page: Int, copy: OnboardingCopy, progress: Float) {
-    Column(Modifier.fillMaxWidth().testTag("onboarding-header-$page"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun OnboardingHeader(page: Int, copy: OnboardingCopy, progress: Float, compact: Boolean) {
+    Column(Modifier.fillMaxWidth().testTag("onboarding-header-$page"), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (page == 0) {
                 val appear = stage(progress, 0f, .12f)
@@ -146,8 +147,8 @@ private fun OnboardingHeader(page: Int, copy: OnboardingCopy, progress: Float) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OnboardingFeatures(page: Int, copy: OnboardingCopy, progress: Float) {
-    Column(Modifier.fillMaxWidth().testTag("onboarding-features-$page"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun OnboardingFeatures(page: Int, copy: OnboardingCopy, progress: Float, compact: Boolean) {
+    Column(Modifier.fillMaxWidth().testTag("onboarding-features-$page"), verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 6.dp)) {
         if (page == 1) {
             val modes = listOf(Icons.Default.DirectionsWalk to copy.walk, Icons.Default.DirectionsCar to copy.car,
                 Icons.Default.DirectionsBike to copy.bike, Icons.Default.DirectionsRun to copy.run)
@@ -168,9 +169,9 @@ private fun OnboardingFeatures(page: Int, copy: OnboardingCopy, progress: Float)
         labels.forEachIndexed { i, label ->
             val visible = if (page == 0) stage(progress, .67f + i * .1f, .77f + i * .1f) else stage(progress, .44f + i * .06f, .52f + i * .06f)
             // Full-width compact rows: no three-card row that squeezes Arabic or enlarged text.
-            Row(Modifier.fillMaxWidth().alpha(visible).clip(RoundedCornerShape(14.dp))
+            Row(Modifier.fillMaxWidth().testTag("onboarding-feature-$page-$i").alpha(visible).clip(RoundedCornerShape(14.dp))
                 .background(Brush.horizontalGradient(listOf(Color(0xFF0C2849), Color(0xFF08172C))))
-                .border(1.dp, Color(0xFF1B446A), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
+                .border(1.dp, Color(0xFF1B446A), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = if (compact) 3.dp else 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (page == 0) Icon(icons[i], null, tint = Cyan, modifier = Modifier.size(22.dp))
                 else Text("${i + 1}", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 14.sp,

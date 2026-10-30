@@ -33,13 +33,13 @@ class OnboardingLayoutTest {
         verifyBounds(0)
         screenshot("welcome")
         // All feature text remains reachable with large system fonts; no ellipsized raster text.
-        compose.onNodeWithText(copy.simple).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-feature-0-2").performScrollTo().assertIsDisplayed()
         screenshot("welcome-features")
         compose.onNodeWithTag("onboarding-next").performClick()
         compose.onNodeWithText(copy.routes).assertExists()
         verifyBounds(1)
         screenshot("routes")
-        compose.onNodeWithText(copy.startSimulation).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-feature-1-2").performScrollTo().assertIsDisplayed()
         screenshot("routes-setup")
         // Horizontal swipe works in both layout directions; no third page.
         compose.onNodeWithTag("onboarding-pager").performTouchInput { if (arabic) swipeLeft() else swipeRight() }
@@ -61,6 +61,12 @@ class OnboardingLayoutTest {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val cta = compose.onNodeWithTag("onboarding-next").fetchSemanticsNode().boundsInRoot
         assertTrue("CTA is inside the screen", cta.bottom <= root.bottom && cta.left >= root.left && cta.right <= root.right)
+        val fontScale = InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.fontScale
+        if (fontScale <= 1.05f) {
+            val lastCard = compose.onNodeWithTag("onboarding-feature-$page-2").getUnclippedBoundsInRoot()
+            val pager = compose.onNodeWithTag("onboarding-pager").getUnclippedBoundsInRoot()
+            assertTrue("All feature cards fit without scrolling at normal font size", lastCard.bottom.value <= pager.bottom.value + 1f)
+        }
         for (tag in listOf("onboarding-header-$page", "onboarding-scene-$page", "onboarding-features-$page")) {
             val bounds = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
             assertTrue("No horizontal overflow: $tag", bounds.left >= root.left && bounds.right <= root.right)
