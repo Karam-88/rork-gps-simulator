@@ -310,15 +310,16 @@ fun MapScreen(
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val markers = buildList {
-        if (!isMockActive && settings.directTapSelection) {
+        // The device's real GPS fix must remain visible in BOTH selection modes.
+        // Keep it distinct from the crosshair and the red tap-selected destination.
+        if (!isMockActive) {
             realSample?.let {
                 add(
                     MapMarker(
                         point = it.point,
-                        // In direct-tap mode show a clear red map pin instead of the blue GPS ring.
-                        // This is visual only; real GPS coordinates and mock-provider logic are unchanged.
-                        color = Color(0xFFE7302D),
-                        style = MarkerStyle.CANDIDATE,
+                        color = Color(0xFF1976D2),
+                        radiusMeters = settings.accuracyM.toDouble(),
+                        style = MarkerStyle.ACTIVE,
                         renderInOverlay = true,
                     ),
                 )
