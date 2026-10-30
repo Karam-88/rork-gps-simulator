@@ -614,7 +614,7 @@ fun MapScreen(
                         modifier = Modifier.size(46.dp),
                     ) {
                     IconButton(
-                        enabled = (routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating,
+                        enabled = (routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating,
                         onClick = {
                             val origin = routeOrigin
                             if (origin == null) {
@@ -642,7 +642,7 @@ fun MapScreen(
                     ) {
                         Icon(Icons.Default.Check,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "انتهيت من إضافة نقاط المسار" else "Finish adding route stops",
-                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
                     }
                 } else {
