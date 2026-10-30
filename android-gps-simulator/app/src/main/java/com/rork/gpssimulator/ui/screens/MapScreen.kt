@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -599,9 +600,16 @@ fun MapScreen(
             }
         }
 
+        // The map-mode button on the right is the last of four 50.dp buttons
+        // spaced 12.dp apart: its center is 93.dp below the screen center.
+        // Anchor the left route button to that same row. When the route editor
+        // expands, shift its taller stack up so the bottom route button stays
+        // aligned while the profile/confirm controls open above it.
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
-                .padding(start = 12.dp, bottom = 188.dp),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(y = if (routeEditing) (-15).dp else 93.dp)
+                .padding(start = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
