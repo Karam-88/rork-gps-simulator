@@ -33,7 +33,9 @@ import kotlin.math.sin
 
 private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
 private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
-private const val OPENFREEMAP_DARK = "https://tiles.openfreemap.org/styles/dark"
+// CARTO dark-matter uses a higher-contrast road/label palette than OpenFreeMap dark.
+// Keep this separate from the daylight style; no translucent black map overlay.
+private const val NIGHT_STREET_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
 /**
  * Vector-map implementation for the two street-map modes.
@@ -208,7 +210,7 @@ private class VectorMapHolder(
     }
 
     fun setStyle(type: MapType, darkMap: Boolean = false) {
-        val style = if (darkMap) OPENFREEMAP_DARK else when (type) {
+        val style = if (darkMap) NIGHT_STREET_STYLE else when (type) {
             MapType.DETAILED_STREETS -> OPENFREEMAP_LIBERTY
             else -> OPENFREEMAP_BRIGHT
         }
