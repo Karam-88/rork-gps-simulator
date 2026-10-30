@@ -11,11 +11,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppSettings(
     // General
-    val theme: ThemeMode = ThemeMode.SYSTEM,
+    val theme: ThemeMode = ThemeMode.LIGHT,
     val language: AppLanguage = AppLanguage.ENGLISH,
     val followSystemLanguage: Boolean = true,
     val mapType: MapType = MapType.STANDARD,
-    val mapTheme: ThemeMode = ThemeMode.SYSTEM,
+    val mapTheme: ThemeMode = ThemeMode.LIGHT,
     val units: UnitSystem = UnitSystem.AUTOMATIC,
 
     // Appearance only: never used by the mock-location engine.
