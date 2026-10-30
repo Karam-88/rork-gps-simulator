@@ -34,7 +34,8 @@ import kotlin.math.sin
 
 private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
 private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
-private const val OPENFREEMAP_DARK = "https://tiles.openfreemap.org/styles/dark"
+// Higher-contrast night roads and labels; retain separate satellite imagery style.
+private const val NIGHT_STREET_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 private val SATELLITE_STYLE = """{"version":8,"name":"Satellite","sources":{"imagery":{"type":"raster","tiles":["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],"tileSize":256,"attribution":"Tiles © Esri, Maxar, Earthstar Geographics, GIS User Community"}},"layers":[{"id":"satellite","type":"raster","source":"imagery"}]}"""
 
 /**
@@ -212,7 +213,7 @@ private class VectorMapHolder(
     fun setStyle(type: MapType, darkMap: Boolean = false) {
         val style = when {
             type == MapType.SATELLITE -> SATELLITE_STYLE
-            darkMap -> OPENFREEMAP_DARK
+            darkMap -> NIGHT_STREET_STYLE
             type == MapType.DETAILED_STREETS -> OPENFREEMAP_LIBERTY
             else -> OPENFREEMAP_BRIGHT
         }
