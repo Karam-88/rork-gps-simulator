@@ -209,7 +209,7 @@ fun MapScreen(
         initialZoom = initialZoom,
     )
     var showMenuPanel by remember { mutableStateOf(false) }
-    // Search stays in this screen, sharing the same MapLibre view; never create a
+    // Search stays in this screen, sharing the same native Google Maps view; never create a
     // second full-screen map or crossfade two map surfaces during navigation.
     var showSearchOverlay by remember { mutableStateOf(false) }
     var routeEditing by remember { mutableStateOf(false) }
@@ -977,11 +977,7 @@ fun MapScreen(
         }
 
         AttributionChip(
-            text = when {
-                settings.mapType == MapType.SATELLITE -> "© Esri, Maxar, Earthstar Geographics"
-                darkMap -> "© CARTO · © OpenStreetMap"
-                else -> "© OpenFreeMap · © OpenStreetMap"
-            },
+            text = "Google Maps",
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
