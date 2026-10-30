@@ -47,8 +47,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 33
-        versionName = "1.1.28-internal-test"
+        versionCode = 34
+        versionName = "1.1.29-internal-test"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
@@ -124,9 +124,8 @@ dependencies {
 
     // Google supplies map rendering and real-location recovery. Search/geocoding/routes use
     // the app's existing non-Google services, so Places/Geocoding/Routes APIs are not needed.
-    // Free map renderer for the staged Google Maps replacement (issue #19).
-    // Keep Google Maps temporarily until the Compose map screen is migrated and tested.
-    implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
+    // Signed internal/Play builds use the official Google Maps SDK only.
+    // The experimental MapLibre build is preserved on a dedicated backup branch.
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
