@@ -18,7 +18,16 @@ data class AppSettings(
     val mapTheme: ThemeMode = ThemeMode.SYSTEM,
     val units: UnitSystem = UnitSystem.AUTOMATIC,
 
+    // Appearance only: never used by the mock-location engine.
+    val crosshairShape: CrosshairShape = CrosshairShape.PRECISION,
+    val crosshairColor: CrosshairColor = CrosshairColor.GREEN,
+    val crosshairSizeDp: Float = 60f,
+    val crosshairThicknessDp: Float = 3f,
+    val crosshairOpacity: Float = 0.9f,
+    val mockMarkerColor: MockMarkerColor = MockMarkerColor.RED,
+
     // Map behavior
+    val directTapSelection: Boolean = false,
     val animateMap: Boolean = true,
     val rememberLastPosition: Boolean = true,
     val returnToRealOnStop: Boolean = true,
@@ -64,3 +73,4 @@ data class AppSettings(
     val speedKmh: Double
         get() = if (speedProfile == SpeedProfile.CUSTOM) customSpeedKmh.toDouble() else speedProfile.kmh
 }
+

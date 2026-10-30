@@ -21,14 +21,28 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.FileDownload
@@ -47,6 +61,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -59,6 +74,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -79,6 +96,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rork.gpssimulator.data.model.LatLng
+import com.rork.gpssimulator.data.model.SimRoute
+import com.rork.gpssimulator.data.model.SpeedProfile
+import com.rork.gpssimulator.location.RoadRoutingService
+import kotlinx.coroutines.launch
 import com.rork.gpssimulator.data.model.MapType
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.data.model.SavedKind
@@ -86,6 +107,7 @@ import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.data.model.ThemeMode
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.rork.gpssimulator.i18n.K
+import com.rork.gpssimulator.i18n.localizedRouteError
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.components.AppUpdateNoticeDialog
@@ -143,6 +165,16 @@ fun MapScreen(
     val settings by viewModel.settings.collectAsState()
     val mockState by viewModel.mockState.collectAsState()
     val selected by viewModel.selected.collectAsState()
+    var crosshairPreviewPoint by remember { mutableStateOf<LatLng?>(null) }
+    var crosshairStreet by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(crosshairPreviewPoint, settings.directTapSelection) {
+        val point = crosshairPreviewPoint ?: return@LaunchedEffect
+        if (settings.directTapSelection) return@LaunchedEffect
+        crosshairStreet = null
+        kotlinx.coroutines.delay(450)
+        crosshairStreet = com.rork.gpssimulator.location.GeocodingService().reverse(point)?.name
+            ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الشارع غير متاح" else "Street name unavailable"
+    }
     val activePoint by viewModel.activePoint.collectAsState()
     val activePlace by viewModel.activePlace.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
@@ -175,11 +207,29 @@ fun MapScreen(
         initialCenter = initialCenter,
         initialZoom = initialZoom,
     )
-    var showLayerSheet by remember { mutableStateOf(false) }
     var showMenuPanel by remember { mutableStateOf(false) }
+    var routeEditing by remember { mutableStateOf(false) }
+    var routePreview by remember { mutableStateOf<SimRoute?>(null) }
+    var routeCalculating by remember { mutableStateOf(false) }
+    var routeProfile by remember { mutableStateOf(SpeedProfile.WALKING) }
+    val routeStops = remember { mutableStateListOf<LatLng>() }
+    var routeCrosshairDestination by remember { mutableStateOf<LatLng?>(null) }
+    val routeScope = rememberCoroutineScope()
+    // Only a single destination uses the current location as its starting point.
+    // For two or more explicit stops, stop #1 is the route origin.
+    val routeOrigin = if (mockState == MockState.MOCK_ACTIVE) activePoint else realSample?.point
+    val explicitRouteStops = routeStops.toList().ifEmpty {
+        listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination)
+    }
+    val routeDraftPoints = if (explicitRouteStops.size >= 2) explicitRouteStops
+        else listOfNotNull(routeOrigin) + explicitRouteStops
     var showProblemDialog by remember { mutableStateOf(false) }
+    var showFavoriteNameDialog by remember { mutableStateOf(false) }
+    var favoriteName by remember { mutableStateOf("") }
+    var showFavoritesPopup by remember { mutableStateOf(false) }
+    val savedLocations by viewModel.savedLocations.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
-    val ratingSafe = !showLayerSheet && !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
+    val ratingSafe = !showMenuPanel && !showProblemDialog && !showUpdateDialog &&
         !showRatingConfirmation && selected == null && mockState != MockState.MOCK_ACTIVE
     androidx.compose.runtime.DisposableEffect(ratingSafe) {
         onRatingPromptSafeChanged(ratingSafe)
@@ -194,8 +244,10 @@ fun MapScreen(
     val reducedMotion = rememberReducedMotion()
     var hopRequest by remember { mutableStateOf<com.rork.gpssimulator.ui.map.RabbitHopRequest?>(null) }
     var hopSequence by remember { mutableStateOf(0L) }
+    var tapHopOrigin by remember { mutableStateOf<LatLng?>(null) }
     fun requestManualHop(point: LatLng) {
-        val prior = selected?.point ?: activePoint ?: realSample?.point ?: camera.center
+        val prior = tapHopOrigin ?: activePoint ?: realSample?.point ?: selected?.point ?: camera.center
+        tapHopOrigin = null
         if (prior != point && !isMotionSession) {
             hopRequest = com.rork.gpssimulator.ui.map.RabbitHopRequest(++hopSequence, prior, point)
         }
@@ -253,45 +305,46 @@ fun MapScreen(
         }
     }
 
-    val darkMap = when (settings.mapTheme) {
+    val darkMap = when (settings.theme) {
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> when (settings.theme) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        }
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val markers = buildList {
+        // The device's real GPS fix must remain visible in BOTH selection modes.
+        // Keep it distinct from the crosshair and the red tap-selected destination.
         if (!isMockActive) {
             realSample?.let {
                 add(
                     MapMarker(
                         point = it.point,
-                        color = Color(0xFF2583FA),
-                        radiusMeters = it.accuracy.toDouble(),
-                        style = MarkerStyle.REAL,
+                        color = Color(0xFF1976D2),
+                        radiusMeters = settings.accuracyM.toDouble(),
+                        style = MarkerStyle.ACTIVE,
+                        renderInOverlay = true,
                     ),
                 )
             }
         }
-        selected?.let {
+        if (settings.directTapSelection) selected?.let {
             add(
                 MapMarker(
                     point = it.point,
-                    color = MaterialTheme.colorScheme.primary,
+                    // Red is reserved for a manually selected destination, never real GPS.
+                    color = Color(0xFFE7302D),
                     style = MarkerStyle.CANDIDATE,
-                    renderInOverlay = true,
+                    // Native map renderer draws the actual red pin; overlay draws circles only.
+                    renderInOverlay = false,
                 ),
             )
         }
-        // The active (blue) marker represents an actual mock session only.
+        // The active marker represents an actual mock session only.
         // Selecting a point before starting must not render a fake current-location dot.
         if (isMockActive) activePoint?.let {
             add(
                 MapMarker(
                     point = it,
-                    color = Color(0xFFF04444),
+                    color = Color(settings.mockMarkerColor.argb),
                     pulsing = !isPaused && !reducedMotion,
                     radiusMeters = settings.accuracyM.toDouble(),
                     style = MarkerStyle.ACTIVE,
@@ -300,11 +353,19 @@ fun MapScreen(
             )
         }
     }
-    val mapMarkers = markers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
+    val draftMarkers = routeStops.mapIndexed { index, stop ->
+        MapMarker(point = stop, color = Color(0xFF222222),
+            label = (index + 1).toString(), style = MarkerStyle.DESTINATION)
+    }
+    val mapMarkers = markers + draftMarkers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
         listOf(MapMarker(point = destination, color = Color(0xFFE53935),
             style = MarkerStyle.DESTINATION))
     } ?: emptyList())
-    val polylines = routeProgress?.let {
+    val polylines = if (routePreview != null) {
+        listOf(MapPolyline(routePreview!!.points, Color(0xFF222222), widthPx = 3f))
+    } else if (routeEditing && routeStops.size > 1) {
+        listOf(MapPolyline(routeStops.toList(), Color(0xFF222222), widthPx = 3f))
+    } else routeProgress?.let {
         listOf(MapPolyline(it.route.points, MaterialTheme.colorScheme.primary))
     } ?: emptyList()
 
@@ -319,16 +380,86 @@ fun MapScreen(
             hopRequest = hopRequest,
             // Tapping the map only interacts with the map. The bottom select
             // button is the sole action that commits the crosshair position.
-            onMapTap = { _ -> },
-            onCameraIdle = { center, zoom -> viewModel.persistCamera(center, zoom) },
+            onMapTap = { point ->
+                if (routeEditing && routePreview == null && !routeCalculating) {
+                    routeStops.add(point)
+                } else if (!routeEditing && settings.directTapSelection) {
+                    if (tapHopOrigin == null) tapHopOrigin = activePoint ?: realSample?.point ?: selected?.point ?: camera.center
+                    viewModel.selectPoint(point)
+                }
+            },
+            onMapLongPress = { point ->
+                // Long press only selects a point; it never starts mock GPS.
+                if (routeEditing && routePreview == null && !routeCalculating) routeStops.add(point)
+                else if (!routeEditing) {
+                    if (settings.directTapSelection && tapHopOrigin == null) tapHopOrigin = activePoint ?: realSample?.point ?: selected?.point ?: camera.center
+                    viewModel.selectPoint(point)
+                }
+            },
+            onCameraIdle = { center, zoom, movedByUser ->
+                viewModel.persistCamera(center, zoom)
+                // In crosshair mode the center is the selected location. Resolve its
+                // street after camera movement stops, without starting mock GPS.
+                if (movedByUser && routeEditing && !settings.directTapSelection && routePreview == null) {
+                    routeCrosshairDestination = center
+                }
+                if (movedByUser && !settings.directTapSelection && !routeEditing) {
+                    crosshairPreviewPoint = center
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
-        Crosshair(
-            color = MaterialTheme.colorScheme.primary,
-            isActive = camera.isUserInteracting,
-            modifier = Modifier.align(Alignment.Center),
-        )
+        // Selected-point address: compact capsule below the GPS status, never a full-width panel.
+        if (!settings.directTapSelection && crosshairPreviewPoint != null || selected != null) {
+            val location = selected
+            val street = (if (!settings.directTapSelection && crosshairPreviewPoint != null)
+                crosshairStreet ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
+                else null) ?: location?.name?.takeIf { it.isNotBlank() && !it.matches(Regex("""\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*""")) }
+                ?: location?.address?.substringBefore(",")?.takeIf { it.isNotBlank() && !it.trim().matches(Regex("""-?\\d+(?:\\.\\d+)?""")) }
+                ?: if (location?.isResolving == true) {
+                    if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "جارٍ تحديد العنوان…" else "Finding address…"
+                } else if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الشارع غير متاح" else "Street name unavailable"
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 12.dp, top = 59.dp, end = 76.dp)
+                    .shadow(6.dp, RoundedCornerShape(50)),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null,
+                        tint = Color(0xFFE35A36), modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(street, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.widthIn(max = 220.dp))
+                    IconButton(onClick = { crosshairPreviewPoint = null; crosshairStreet = null; viewModel.clearSelection() }, modifier = Modifier.size(30.dp)) {
+                        Icon(Icons.Default.Close,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء التحديد" else "Clear selection",
+                            modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+
+        // Direct-tap mode uses the touched map coordinate, not the center reticle.
+        if (!settings.directTapSelection) {
+            Crosshair(
+                color = Color(settings.crosshairColor.argb),
+                crosshairSize = settings.crosshairSizeDp.dp,
+                thickness = settings.crosshairThicknessDp.dp,
+                opacity = settings.crosshairOpacity,
+                shape = settings.crosshairShape,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -341,15 +472,13 @@ fun MapScreen(
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 if (isMockActive) {
-                    MockActiveBanner(
-                        lat = activePoint?.lat ?: 0.0,
-                        lng = activePoint?.lng ?: 0.0,
-                        accuracy = settings.accuracyM,
-                        altitude = settings.altitudeM,
-                        speedKmh = currentSpeed,
-                        elapsedMs = elapsedMs,
-                        isPaused = isPaused,
-                        units = settings.units,
+                    StatusPill(
+                        text = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) {
+                            if (isPaused) "الموقع الوهمي متوقف مؤقتًا" else "الموقع الوهمي نشط"
+                        } else {
+                            if (isPaused) "Mock GPS paused" else "Mock GPS active"
+                        },
+                        dotColor = Color(settings.mockMarkerColor.argb),
                     )
                 } else {
                     Row(
@@ -357,36 +486,33 @@ fun MapScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         StatusPill(
-                            text = if (mockState == MockState.SELECTED) strings[K.location_selected] else strings[K.real_gps],
-                            dotColor = if (mockState == MockState.SELECTED) MaterialTheme.colorScheme.primary else appColors.success,
-                        )
-                        CoordinatePill(
-                            lat = camera.centerLat,
-                            lng = camera.centerLng,
-                            latLabel = strings[K.lat],
-                            lngLabel = strings[K.lng],
-                            modifier = Modifier.weight(1f, fill = false),
+                            text = strings[K.real_gps],
+                            dotColor = appColors.success,
                         )
                     }
                 }
             }
-            // Keep problem reporting permanently accessible. Show a separate update
-            // action directly below it only when Google Play confirms availability.
+            Box(
+                modifier = Modifier.size(42.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                    .clickable(role = Role.Button) { showMenuPanel = false; onOpenSearch() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Search, contentDescription = strings[K.search_places],
+                    tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(21.dp))
+            }
+            // Put the menu in the former report-button position.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .background(MaterialTheme.colorScheme.surface, CircleShape)
-                        .clickable(role = Role.Button) {
-                            showMenuPanel = false
-                            showProblemDialog = true
-                        },
+                        .clickable(role = Role.Button) { showMenuPanel = !showMenuPanel },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.HelpOutline,
-                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
-                            "الإبلاغ عن مشكلة" else "Report a problem",
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "القائمة" else "Menu",
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(21.dp),
                     )
@@ -433,25 +559,121 @@ fun MapScreen(
                 .padding(end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            MapControlButton(Icons.Default.Menu, "Menu") {
-                showMenuPanel = !showMenuPanel
-            }
-            MapControlButton(Icons.Default.Search, strings[K.search_places]) {
+            MapControlButton(
+                Icons.Default.HelpOutline,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الإبلاغ عن مشكلة" else "Report a problem",
+            ) {
                 showMenuPanel = false
-                onOpenSearch()
+                showProblemDialog = true
             }
             MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
                 showMenuPanel = false
                 viewModel.centerOnCurrentLocation()
             }
-            MapControlButton(Icons.Default.Layers, strings[K.map_layers]) {
+            MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
                 showMenuPanel = false
-                showLayerSheet = true
+                showFavoritesPopup = true
+            }
+            MapControlButton(
+                if (darkMap) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                    (if (darkMap) "تفعيل الوضع النهاري" else "تفعيل الوضع الليلي")
+                else (if (darkMap) "Switch to day mode" else "Switch to night mode"),
+            ) {
+                showMenuPanel = false
+                val next = if (darkMap) ThemeMode.LIGHT else ThemeMode.DARK
+                viewModel.updateSettings { it.copy(theme = next, mapTheme = next) }
+            }
+        }
+
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding()
+                .padding(start = 12.dp, bottom = 188.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (routeEditing) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        listOf(
+                            Triple(SpeedProfile.WALKING, Icons.Default.DirectionsWalk, strings[K.walking]),
+                            Triple(SpeedProfile.CYCLING, Icons.Default.DirectionsBike, strings[K.cycling]),
+                            Triple(SpeedProfile.DRIVING, Icons.Default.DirectionsCar, strings[K.driving]),
+                        ).forEach { (profile, icon, label) ->
+                            Surface(
+                                shape = CircleShape,
+                                color = if (routeProfile == profile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(46.dp).clickable {
+                                    routeProfile = profile
+                                    routePreview = null
+                                },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(icon, contentDescription = label,
+                                        tint = if (routeProfile == profile) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (routePreview == null) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.size(46.dp),
+                    ) {
+                    IconButton(
+                        enabled = (routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating,
+                        onClick = {
+                            if (routeDraftPoints.size < 2) {
+                                viewModel.postMessage(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                    "الموقع الحالي غير متاح" else "Current location unavailable", isError = true)
+                            } else {
+                                routeCalculating = true
+                                val draft = SimRoute(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    name = "Map route",
+                                    points = routeDraftPoints,
+                                    profile = routeProfile,
+                                )
+                                routeScope.launch {
+                                    val result = RoadRoutingService().resolve(draft)
+                                    routeCalculating = false
+                                    result.onSuccess { routePreview = it }
+                                    result.onFailure { error ->
+                                        viewModel.postMessage(localizedRouteError(error, com.rork.gpssimulator.i18n.AppLanguage.effective(settings.language, settings.followSystemLanguage, context.resources.configuration.locales[0])), isError = true)
+                                    }
+                                }
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Default.Check,
+                            contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "انتهيت من إضافة نقاط المسار" else "Finish adding route stops",
+                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                    }
+                    }
+                } else {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(46.dp)) {
+                        IconButton(onClick = { routePreview = null }) {
+                            Icon(Icons.Default.Edit, contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تعديل النقاط" else "Edit stops")
+                        }
+                    }
+                }
+            }
+            MapControlButton(Icons.Default.Route, strings[K.tab_routes], active = routeEditing) {
+                showMenuPanel = false
+                routeEditing = !routeEditing
+                routePreview = null
+                routeStops.clear()
+                routeCrosshairDestination = null
             }
         }
 
         // Independent from the right-side toolbar, so its width cannot shift the black buttons.
-        if (!isMockActive) {
+        if (!isMockActive || routeEditing) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -459,11 +681,60 @@ fun MapScreen(
                     .padding(bottom = 28.dp)
                     .size(72.dp)
                     .shadow(12.dp, CircleShape)
-                    .clickable(role = Role.Button) {
+.clickable(enabled = !routeCalculating, role = Role.Button) {
                         showMenuPanel = false
-                        requestManualHop(camera.center)
-                        viewModel.selectPoint(camera.center)
-                        viewModel.startMock()
+                        if (routeEditing) {
+                            val startResolvedRoute: (SimRoute) -> Unit = { preview ->
+                                viewModel.startRoute(preview, onStarted = {
+                                    routeEditing = false
+                                    routePreview = null
+                                    routeStops.clear()
+                                }, alreadyResolved = true)
+                            }
+                            val ready = routePreview
+                            if (ready != null) {
+                                startResolvedRoute(ready)
+                            } else if (routeStops.isEmpty() && routeCrosshairDestination == null && (!settings.directTapSelection || selected?.point == null)) {
+                                viewModel.postMessage(
+                                    if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                        "حدد وجهة واحدة على الأقل" else "Select at least one destination",
+                                    isError = true,
+                                )
+                            } else {
+                                if (routeDraftPoints.size < 2) {
+                                    viewModel.postMessage(
+                                        if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                            "الموقع الحالي غير متاح" else "Current location unavailable",
+                                        isError = true,
+                                    )
+                                } else {
+                                    routeCalculating = true
+                                    val draft = SimRoute(
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        name = "Map route",
+                                        points = routeDraftPoints,
+                                        profile = routeProfile,
+                                    )
+                                    routeScope.launch {
+                                        val result = RoadRoutingService().resolve(draft)
+                                        routeCalculating = false
+                                        result.onSuccess { resolved ->
+                                            routePreview = resolved
+                                            startResolvedRoute(resolved)
+                                        }
+                                        result.onFailure { error ->
+                                            viewModel.postMessage(
+                                                localizedRouteError(error, com.rork.gpssimulator.i18n.AppLanguage.effective(settings.language, settings.followSystemLanguage, context.resources.configuration.locales[0])), isError = true)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            val point = if (settings.directTapSelection) selected?.point ?: camera.center else camera.center
+                            requestManualHop(point)
+                            viewModel.selectPoint(point)
+                            viewModel.startMock()
+                        }
                     },
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary,
@@ -489,14 +760,13 @@ fun MapScreen(
                     ) { showMenuPanel = false },
             )
 
-            // Keep the four map control buttons on the physical right side,
-            // while opening the floating navigation panel on the physical left.
-            Row(
+            // Anchor below the search button, shifted left so the physical-right
+            // map controls remain unobstructed. Use absolute TopEnd regardless of RTL.
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Absolute.Left,
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 66.dp, end = 112.dp),
             ) {
                 FloatingMapMenu(
                     mapLabel = strings[K.tab_map],
@@ -509,7 +779,7 @@ fun MapScreen(
                     ratingConfirmed = userConfirmedRating,
                     onMap = { showMenuPanel = false },
                     onRoutes = { showMenuPanel = false; onOpenRoutes() },
-                    onFavorites = { showMenuPanel = false; onOpenFavorites() },
+                    onFavorites = { showMenuPanel = false; showFavoritesPopup = true },
                     onHistory = { showMenuPanel = false; onOpenHistory() },
                     onSettings = { showMenuPanel = false; onOpenSettings() },
                     onShare = {
@@ -533,6 +803,96 @@ fun MapScreen(
                     },
                 )
             }
+        }
+
+        if (showFavoritesPopup) {
+            CompositionLocalProvider(LocalLayoutDirection provides if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+            AlertDialog(
+                onDismissRequest = { showFavoritesPopup = false },
+                title = {
+                    Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                        "المفضلة" else "Favorites")
+                },
+                text = {
+                    val favorites = savedLocations.filter { it.kind == SavedKind.FAVORITE }
+                    if (favorites.isEmpty()) {
+                        Text(strings[K.no_favorites], modifier = Modifier.fillMaxWidth(), textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left)
+                    } else {
+                        Column(
+                            modifier = Modifier.heightIn(max = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            favorites.forEach { location ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = location.name,
+                                        modifier = Modifier.weight(1f).clickable {
+                                            viewModel.selectSaved(location)
+                                            viewModel.moveCamera(location.point, 16f)
+                                            showFavoritesPopup = false
+                                        }.padding(vertical = 10.dp),
+                                        maxLines = 1,
+                                        textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    IconButton(onClick = { viewModel.deleteSaved(location.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription =
+                                            if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                                "حذف" else "Delete")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFavoritesPopup = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                            "إغلاق" else "Close")
+                    }
+                },
+            )
+            }
+        }
+
+        if (showFavoriteNameDialog) {
+            AlertDialog(
+                onDismissRequest = { showFavoriteNameDialog = false },
+                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ الموقع" else "Save location") },
+                text = {
+                    OutlinedTextField(
+                        value = favoriteName,
+                        onValueChange = { favoriteName = it },
+                        label = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الموقع" else "Location name") },
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = favoriteName.isNotBlank(),
+                        onClick = {
+                            (selected?.point ?: activePoint ?: realSample?.point ?: camera.center).let { point ->
+                                viewModel.saveLocation(
+                                    name = favoriteName.trim(),
+                                    address = activePlace?.address.orEmpty(),
+                                    point = point,
+                                    kind = SavedKind.FAVORITE,
+                                )
+                                viewModel.postMessage(strings[K.saved])
+                            }
+                            showFavoriteNameDialog = false
+                        },
+                    ) { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ" else "Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFavoriteNameDialog = false }) {
+                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "إلغاء" else "Cancel")
+                    }
+                },
+            )
         }
 
         if (showRatingConfirmation) {
@@ -585,7 +945,7 @@ fun MapScreen(
                 )
             }
 
-            if (isMockActive) {
+            if (isMockActive && !routeEditing) {
                 if (isMotionSession) {
                     Button(
                         onClick = { viewModel.togglePause() },
@@ -609,21 +969,16 @@ fun MapScreen(
                     dangerColor = appColors.danger,
                     onStop = { viewModel.stopMock() },
                     onSelect = {
-                        val point = camera.center
-                        requestManualHop(point)
-                        viewModel.selectPoint(point)
-                        viewModel.moveMockTo(point)
+                        val point = if (settings.directTapSelection) selected?.point ?: activePoint ?: camera.center else camera.center
+                        if (point != activePoint) {
+                            requestManualHop(point)
+                            viewModel.selectPoint(point)
+                            viewModel.moveMockTo(point)
+                        }
                     },
                     onFavorite = {
-                        activePoint?.let { point ->
-                            viewModel.saveLocation(
-                                name = activePlace?.name.orEmpty(),
-                                address = activePlace?.address.orEmpty(),
-                                point = point,
-                                kind = SavedKind.FAVORITE,
-                            )
-                            viewModel.postMessage(strings[K.saved])
-                        }
+                        favoriteName = activePlace?.name.orEmpty()
+                        showFavoriteNameDialog = true
                     },
                 )
             }
@@ -635,24 +990,16 @@ fun MapScreen(
             status = if (isMockActive) null else recoveryStatus,
             onRetry = viewModel::retryRealRecovery,
             onDismiss = viewModel::dismissRealRecovery,
+            onOpenMockSettings = {
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                runCatching { context.startActivity(intent) }
+                    .onFailure { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
         )
     }
 
-    if (showLayerSheet) {
-        SelectionSheet(
-            title = strings[K.map_type],
-            options = listOf(
-                SelectionOption(MapType.STANDARD, strings[K.standard]),
-                SelectionOption(MapType.SATELLITE, strings[K.satellite]),
-                SelectionOption(MapType.TERRAIN, strings[K.terrain]),
-            ),
-            selected = settings.mapType,
-            onSelect = { type -> viewModel.updateSettings { it.copy(mapType = type) } },
-            onDismiss = { showLayerSheet = false },
-        )
-    }
 }
 
 @Composable
@@ -683,9 +1030,6 @@ private fun FloatingMapMenu(
         tonalElevation = 10.dp,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            FloatingMenuEntry(Icons.Default.Map, mapLabel, true, onMap)
-            FloatingMenuEntry(Icons.Default.Route, routesLabel, false, onRoutes)
-            FloatingMenuEntry(Icons.Default.Star, favoritesLabel, false, onFavorites)
             FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
             FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
             FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
@@ -927,6 +1271,7 @@ private fun CoordinateLine(label: String, value: String) {
 private fun MapControlButton(
     icon: ImageVector,
     contentDescription: String,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -935,15 +1280,16 @@ private fun MapControlButton(
             .shadow(8.dp, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(23.dp),
             )
         }
     }
 }
+

@@ -38,6 +38,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import com.rork.gpssimulator.i18n.AppLanguage
 
 /**
@@ -84,9 +86,9 @@ private fun readSetup(context: Context): SetupStatus {
 
 private fun openSetting(context: Context, intent: Intent, fallback: Intent = Intent(Settings.ACTION_SETTINGS)) {
     try {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(intent)
     } catch (_: Exception) {
-        try { context.startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        try { context.startActivity(fallback) }
         catch (_: Exception) { /* OEM has no matching settings activity */ }
     }
 }
@@ -113,7 +115,7 @@ fun GpsReadinessChecklist(
 ) {
     val context = LocalContext.current
     // Read the app's live Android configuration, not the static system Resources singleton.
-    val systemLanguage = context.resources.configuration.locales[0].language
+    val systemLanguage = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
     val language = if (followSystemLanguage) systemLanguage else selectedLanguage.languageCode
     var languageMenuExpanded by remember { mutableStateOf(false) }
     fun t(ar: String, de: String, en: String) = when (language) {
@@ -315,7 +317,16 @@ fun GpsReadinessChecklist(
     val requestLocation = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { refresh() }
+    // Refresh every checklist item independently when returning from Android Settings.
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { refresh() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        while (true) {
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) refresh()
+            delay(400)
+        }
+    }
 
     val completed = listOf(
         status.developer, status.mockSelected, status.locationGranted, status.locationEnabled,
@@ -343,22 +354,22 @@ fun GpsReadinessChecklist(
             Surface(
                 modifier = modifier
                     .fillMaxWidth(0.90f)
-                    .fillMaxHeight(0.86f),
+                    .wrapContentHeight(),
                 shape = RoundedCornerShape(30.dp),
                 color = background,
                 shadowElevation = 20.dp,
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp, vertical = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         t("إعداد GPS Simulator", "GPS Simulator einrichten", "Set up GPS Simulator"),
                         color = labelColor,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
                         t(
@@ -429,8 +440,8 @@ fun GpsReadinessChecklist(
                     )
 
                     Column(
-                        modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(9.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
                         GpsSetupStep(
                             title = t("خيارات المطوّر", "Entwickleroptionen", "Developer options"),
@@ -450,7 +461,7 @@ fun GpsReadinessChecklist(
                             requiredLabel = t("مطلوب", "Erforderlich", "Required"),
                             onClick = { openMockLocationPickerSettings(context) },
                         )
-                        if (!status.mockSelected) {
+                        if (false && !status.mockSelected) {
                             Text(
                                 t(
                                     "داخل خيارات المطوّر: انتقل إلى «الموقع» ← «اختيار تطبيق الموقع الجغرافي الوهمي» ثم اختر GPS Simulator.",
@@ -560,12 +571,12 @@ private fun GpsSetupStep(
     requiredLabel: String,
 ) {
     Surface(
-        shape = RoundedCornerShape(17.dp),
+        shape = RoundedCornerShape(13.dp),
         color = background,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {

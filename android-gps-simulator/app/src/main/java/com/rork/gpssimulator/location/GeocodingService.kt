@@ -82,13 +82,23 @@ class GeocodingService {
                 parameter("lon", point.lng)
                 parameter("format", "jsonv2")
                 parameter("zoom", 18)
+                parameter("addressdetails", 1)
                 header("User-Agent", USER_AGENT)
             }.bodyAsText()
 
             val obj = json.parseToJsonElement(body).jsonObject
             val display = obj["display_name"]?.jsonPrimitive?.content ?: return@withContext null
-            val name = obj["name"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-                ?: display.substringBefore(",")
+            val addressParts = obj["address"] as? JsonObject
+            fun field(key: String): String? = addressParts?.get(key)?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+            val street = listOf("road", "pedestrian", "residential", "footway", "street", "path")
+                .firstNotNullOfOrNull { field(it) }
+            val house = field("house_number")
+            val name = when {
+                street != null && house != null -> "$street $house"
+                street != null -> street
+                else -> obj["name"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                    ?: display.substringBefore(",")
+            }
             PlaceResult(name = name, address = display, point = point)
         } catch (e: Exception) {
             Log.w(TAG, "Reverse geocoding failed: ${e.javaClass.simpleName}")

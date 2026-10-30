@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.StarRate
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.ZoomIn
@@ -154,6 +155,8 @@ fun SettingsScreen(
     onOpenPresets: () -> Unit,
     onOpenRoutes: () -> Unit,
     onTestRatingDialog: () -> Unit,
+    onOpenCrosshair: () -> Unit,
+    onOpenMockMarker: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalStrings.current
@@ -287,6 +290,44 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = bottomInset + 24.dp),
         ) {
+            if (filter.matches(strings[K.map_customization], strings[K.crosshair_appearance],
+                    strings[K.mock_marker_color], "crosshair", "marker")) {
+                SectionHeader(strings[K.map_customization])
+                GroupCard {
+                    SettingRow(
+                        icon = if (settings.directTapSelection) Icons.Default.TouchApp else Icons.Default.MyLocation,
+                        title = if (settings.directTapSelection) {
+                            if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بعلامة التصويب" else "Select location with crosshair"
+                        } else {
+                            if (settings.language == AppLanguage.ARABIC) "اختيار الموقع بالنقر المباشر" else "Direct map tap selection"
+                        },
+                        trailing = {
+                            Icon(
+                                imageVector = if (settings.directTapSelection) Icons.Default.TouchApp else Icons.Default.MyLocation,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        },
+                        onClick = { viewModel.updateSettings { it.copy(directTapSelection = !it.directTapSelection) } },
+                        showChevron = false,
+                    )
+                    RowDivider()
+                    SettingRow(
+                        icon = Icons.Default.MyLocation,
+                        title = strings[K.crosshair_appearance],
+                        onClick = onOpenCrosshair,
+                        showChevron = true,
+                    )
+                    RowDivider()
+                    SettingRow(
+                        icon = Icons.Default.LocationOn,
+                        title = strings[K.mock_marker_color],
+                        onClick = onOpenMockMarker,
+                        showChevron = true,
+                    )
+                }
+            }
             // ================= GENERAL =================
             val generalTerms = arrayOf(
                 strings[K.theme], strings[K.language], strings[K.map_type], "map appearance", "map theme", "خريطة",
@@ -352,7 +393,7 @@ fun SettingsScreen(
                         SettingRow(
                             icon = Icons.Default.Brightness6,
                             title = if (settings.language == AppLanguage.ARABIC) "مظهر الخريطة" else "Map appearance",
-                            value = when (settings.mapTheme) {
+                            value = when (settings.theme) {
                                 ThemeMode.SYSTEM -> strings[K.theme_system]
                                 ThemeMode.LIGHT -> strings[K.theme_light]
                                 ThemeMode.DARK -> strings[K.theme_dark]
@@ -1002,7 +1043,7 @@ fun SettingsScreen(
                 SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
             ),
             selected = settings.theme,
-            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value) } },
+            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value, mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.LANGUAGE -> SelectionSheet(
@@ -1021,8 +1062,8 @@ fun SettingsScreen(
                 SelectionOption(ThemeMode.LIGHT, strings[K.theme_light]),
                 SelectionOption(ThemeMode.DARK, strings[K.theme_dark]),
             ),
-            selected = settings.mapTheme,
-            onSelect = { value -> viewModel.updateSettings { it.copy(mapTheme = value) } },
+            selected = settings.theme,
+            onSelect = { value -> viewModel.updateSettings { it.copy(theme = value, mapTheme = value) } },
             onDismiss = { openSheet = OpenSheet.NONE },
         )
         OpenSheet.MAP_TYPE -> SelectionSheet(
@@ -1286,3 +1327,4 @@ private fun sendFeedback(context: android.content.Context) {
         // No email application installed.
     }
 }
+
