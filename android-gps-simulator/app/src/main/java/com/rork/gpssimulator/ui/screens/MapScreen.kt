@@ -559,21 +559,6 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MapControlButton(
-                Icons.Default.HelpOutline,
-                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الإبلاغ عن مشكلة" else "Report a problem",
-            ) {
-                showMenuPanel = false
-                showProblemDialog = true
-            }
-            MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
-                showMenuPanel = false
-                viewModel.centerOnCurrentLocation()
-            }
-            MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
-                showMenuPanel = false
-                showFavoritesPopup = true
-            }
-            MapControlButton(
                 if (darkMap) Icons.Default.WbSunny else Icons.Default.DarkMode,
                 if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                     (if (darkMap) "تفعيل الوضع النهاري" else "تفعيل الوضع الليلي")
@@ -582,6 +567,14 @@ fun MapScreen(
                 showMenuPanel = false
                 val next = if (darkMap) ThemeMode.LIGHT else ThemeMode.DARK
                 viewModel.updateSettings { it.copy(theme = next, mapTheme = next) }
+            }
+            MapControlButton(Icons.Default.StarBorder, strings[K.favorites]) {
+                showMenuPanel = false
+                showFavoritesPopup = true
+            }
+            MapControlButton(Icons.Default.MyLocation, strings[K.my_location]) {
+                showMenuPanel = false
+                viewModel.centerOnCurrentLocation()
             }
         }
 
@@ -765,7 +758,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 66.dp, end = 112.dp),
+                    .padding(top = 66.dp, end = 72.dp),
             ) {
                 FloatingMapMenu(
                     mapLabel = strings[K.tab_map],
@@ -773,6 +766,7 @@ fun MapScreen(
                     favoritesLabel = strings[K.favorites],
                     historyLabel = strings[K.tab_history],
                     settingsLabel = strings[K.tab_settings],
+                    reportLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "الإبلاغ عن مشكلة" else "Report a problem",
                     shareLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "مشاركة التطبيق" else "Share app",
                     rateLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تقييم التطبيق" else "Rate app",
                     ratingConfirmed = userConfirmedRating,
@@ -781,6 +775,7 @@ fun MapScreen(
                     onFavorites = { showMenuPanel = false; showFavoritesPopup = true },
                     onHistory = { showMenuPanel = false; onOpenHistory() },
                     onSettings = { showMenuPanel = false; onOpenSettings() },
+                    onReport = { showMenuPanel = false; showProblemDialog = true },
                     onShare = {
                         showMenuPanel = false
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -1009,6 +1004,7 @@ private fun FloatingMapMenu(
     favoritesLabel: String,
     historyLabel: String,
     settingsLabel: String,
+    reportLabel: String,
     shareLabel: String,
     rateLabel: String,
     ratingConfirmed: Boolean,
@@ -1019,6 +1015,7 @@ private fun FloatingMapMenu(
     onFavorites: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onReport: () -> Unit,
 ) {
     Surface(
         modifier = modifier
@@ -1031,6 +1028,7 @@ private fun FloatingMapMenu(
         Column(modifier = Modifier.padding(12.dp)) {
             FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
             FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
+            FloatingMenuEntry(Icons.Default.HelpOutline, reportLabel, false, onReport)
             FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
             FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate, iconTint = Color(0xFFFFC107))
         }
