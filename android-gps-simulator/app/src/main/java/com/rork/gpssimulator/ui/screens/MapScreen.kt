@@ -332,7 +332,8 @@ fun MapScreen(
                     // Red is reserved for a manually selected destination, never real GPS.
                     color = Color(0xFFE7302D),
                     style = MarkerStyle.CANDIDATE,
-                    renderInOverlay = true,
+                    // Native map renderer draws the actual red pin; overlay draws circles only.
+                    renderInOverlay = false,
                 ),
             )
         }
