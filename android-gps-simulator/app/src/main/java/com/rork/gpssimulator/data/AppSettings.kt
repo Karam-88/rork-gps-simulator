@@ -74,3 +74,15 @@ data class AppSettings(
         get() = if (speedProfile == SpeedProfile.CUSTOM) customSpeedKmh.toDouble() else speedProfile.kmh
 }
 
+
+/**
+ * Previous releases followed the device's appearance by default. Convert that
+ * legacy automatic default to daylight once when upgrading, without overwriting
+ * explicitly selected light/dark themes. Future selections of SYSTEM persist.
+ */
+internal fun AppSettings.withDaylightStartupDefault(alreadyApplied: Boolean): AppSettings =
+    if (alreadyApplied || theme != ThemeMode.SYSTEM) this
+    else copy(
+        theme = ThemeMode.LIGHT,
+        mapTheme = if (mapTheme == ThemeMode.SYSTEM) ThemeMode.LIGHT else mapTheme,
+    )
