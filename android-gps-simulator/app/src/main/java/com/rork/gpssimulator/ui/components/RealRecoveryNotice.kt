@@ -35,6 +35,7 @@ internal fun RealRecoveryNotice(
     status: RealRecoveryStatus?,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
+    onOpenMockSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalStrings.current
@@ -75,8 +76,13 @@ internal fun RealRecoveryNotice(
                     fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 if (loading || success) Text(if (loading) labels.waiting else labels.restored,
                     color = Color(0xFFB9C8D7), fontSize = 12.sp)
-                else TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                    Text(labels.retry, color = accent)
+                else {
+                    TextButton(onClick = if (shown == RealRecoveryStatus.CLEANUP_ERROR) onOpenMockSettings else onRetry,
+                        contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        Text(if (shown == RealRecoveryStatus.CLEANUP_ERROR) {
+                            if (strings.language == AppLanguage.ARABIC) "فتح إعدادات الموقع الوهمي" else "Open mock location settings"
+                        } else labels.retry, color = accent)
+                    }
                 }
             }
             if (!loading) IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {

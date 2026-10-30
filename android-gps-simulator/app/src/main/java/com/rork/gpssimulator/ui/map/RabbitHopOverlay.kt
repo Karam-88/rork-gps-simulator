@@ -1,5 +1,9 @@
 package com.rork.gpssimulator.ui.map
 
+import android.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -45,6 +49,7 @@ internal fun RabbitHopOverlay(camera: MapCameraState, markers: List<MapMarker>, 
         }
         frame = null
     }
+    val dotPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
     Canvas(Modifier.fillMaxSize().clipToBounds()) {
         val animatedMarker = markers.firstOrNull { it.style == MarkerStyle.CANDIDATE && it.point == request?.to }
             ?: markers.firstOrNull { it.style == MarkerStyle.ACTIVE }
@@ -53,7 +58,13 @@ internal fun RabbitHopOverlay(camera: MapCameraState, markers: List<MapMarker>, 
             val ground = camera.project(current?.point ?: marker.point) ?: return@forEach
             val lift = (current?.liftDp ?: 0f).dp.toPx()
             val center = ground - Offset(0f, lift)
-            val radius = if (marker.style == MarkerStyle.ACTIVE) 13.dp.toPx() else 11.dp.toPx()
+            if (marker.style == MarkerStyle.ACTIVE || marker.style == MarkerStyle.REAL) {
+                drawIntoCanvas {
+                    LocationDot.draw(it.nativeCanvas, center.x, center.y, density, marker.color.toArgb(), dotPaint)
+                }
+                return@forEach
+            }
+            val radius = 11.dp.toPx()
             drawOval(Color.Black.copy(alpha = if (lift > 0f) 0.16f else 0.10f),
                 topLeft = ground + Offset(-radius, radius * 0.65f), size = Size(radius * 2, radius * 0.55f))
             scale(current?.scaleX ?: 1f, current?.scaleY ?: 1f, pivot = center) {
@@ -64,3 +75,4 @@ internal fun RabbitHopOverlay(camera: MapCameraState, markers: List<MapMarker>, 
         }
     }
 }
+

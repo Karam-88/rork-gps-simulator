@@ -11,14 +11,23 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppSettings(
     // General
-    val theme: ThemeMode = ThemeMode.SYSTEM,
+    val theme: ThemeMode = ThemeMode.LIGHT,
     val language: AppLanguage = AppLanguage.ENGLISH,
     val followSystemLanguage: Boolean = true,
     val mapType: MapType = MapType.STANDARD,
-    val mapTheme: ThemeMode = ThemeMode.SYSTEM,
+    val mapTheme: ThemeMode = ThemeMode.LIGHT,
     val units: UnitSystem = UnitSystem.AUTOMATIC,
 
+    // Appearance only: never used by the mock-location engine.
+    val crosshairShape: CrosshairShape = CrosshairShape.PRECISION,
+    val crosshairColor: CrosshairColor = CrosshairColor.GREEN,
+    val crosshairSizeDp: Float = 60f,
+    val crosshairThicknessDp: Float = 3f,
+    val crosshairOpacity: Float = 0.9f,
+    val mockMarkerColor: MockMarkerColor = MockMarkerColor.RED,
+
     // Map behavior
+    val directTapSelection: Boolean = false,
     val animateMap: Boolean = true,
     val rememberLastPosition: Boolean = true,
     val returnToRealOnStop: Boolean = true,
@@ -64,3 +73,16 @@ data class AppSettings(
     val speedKmh: Double
         get() = if (speedProfile == SpeedProfile.CUSTOM) customSpeedKmh.toDouble() else speedProfile.kmh
 }
+
+
+/**
+ * Previous releases followed the device's appearance by default. Convert that
+ * legacy automatic default to daylight once when upgrading, without overwriting
+ * explicitly selected light/dark themes. Future selections of SYSTEM persist.
+ */
+internal fun AppSettings.withDaylightStartupDefault(alreadyApplied: Boolean): AppSettings =
+    if (alreadyApplied || theme != ThemeMode.SYSTEM) this
+    else copy(
+        theme = ThemeMode.LIGHT,
+        mapTheme = if (mapTheme == ThemeMode.SYSTEM) ThemeMode.LIGHT else mapTheme,
+    )

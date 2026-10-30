@@ -122,9 +122,9 @@ data class MapCircle(
 )
 
 /**
- * Main map surface. The previous hand-written raster renderer is replaced by
- * MapLibre Native, which provides robust vector rendering, built-in double-tap,
- * pinch/fling gestures and disk/network resource caching.
+ * Shared map surface with native Google Maps on the signed release branch.
+ * The free-map renderer is preserved unchanged on the experimental backup.
+ * Overlay and GPS simulation contracts remain identical.
  */
 @Composable
 fun MapView(
@@ -137,7 +137,8 @@ fun MapView(
     circles: List<MapCircle> = emptyList(),
     pulseFraction: () -> Float = { 0f },
     onMapTap: ((LatLng) -> Unit)? = null,
-    onCameraIdle: ((LatLng, Float) -> Unit)? = null,
+    onMapLongPress: ((LatLng) -> Unit)? = null,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)? = null,
     hopRequest: RabbitHopRequest? = null,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -155,6 +156,7 @@ fun MapView(
                 MapCircle(it.point, it.radiusMeters, it.color.copy(alpha = 0.30f), it.color.copy(alpha = 0.14f))
             },
             onMapTap = onMapTap,
+            onMapLongPress = onMapLongPress,
             onCameraIdle = onCameraIdle,
             modifier = Modifier.fillMaxSize(),
         )

@@ -1,6 +1,9 @@
 package com.rork.gpssimulator.location
 
 import android.annotation.SuppressLint
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.content.Context
 import android.location.Location
 import android.location.LocationManager
@@ -77,14 +80,30 @@ class MockLocationController(
     private var sessionGeneration = 0L
     private val fusedPump = MockFusedPump<Location>(
         setMode = { enabled, done ->
-            fusedClient.setMockMode(enabled).addOnCompleteListener { task ->
-                diagnostic("fused_mode=$enabled success=${task.isSuccessful}")
-                done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused mode cancelled"))
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                done(SecurityException("Fine location permission not granted"))
+            } else {
+                try {
+                    fusedClient.setMockMode(enabled).addOnCompleteListener { task ->
+                        diagnostic("fused_mode=$enabled success=${task.isSuccessful}")
+                        done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused mode cancelled"))
+                    }
+                } catch (error: SecurityException) {
+                    done(error)
+                }
             }
         },
         send = { location, done ->
-            fusedClient.setMockLocation(location).addOnCompleteListener { task ->
-                done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused update cancelled"))
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                done(SecurityException("Fine location permission not granted"))
+            } else {
+                try {
+                    fusedClient.setMockLocation(location).addOnCompleteListener { task ->
+                        done(if (task.isSuccessful) null else task.exception ?: IllegalStateException("Fused update cancelled"))
+                    }
+                } catch (error: SecurityException) {
+                    done(error)
+                }
             }
         },
         onFailure = { error ->
@@ -312,8 +331,8 @@ class MockLocationController(
                 true,
                 true,
                 true,
-                1, // POWER_REQUIREMENT_LOW
-                1, // ACCURACY_FINE
+                ProviderProperties.POWER_USAGE_LOW,
+                ProviderProperties.ACCURACY_FINE
             )
         }
     }

@@ -13,6 +13,14 @@ on:
       - integration/gps-rating-internal-v28
       - fix/mock-gps-provider-consistency
       - integration/gps-stable-plus-map-ui-20261027
+      - feature/map-ui-route-customization-20261028
+      - feature/responsive-animated-onboarding-20261030
+      - integration/all-fixes-onboarding-maps-20261030
+      - release/google-maps-internal-20261030
+      - fix/readable-night-map-20261030
+      - fix/daylight-default-first-launch-20261030
+      - fix/arabic-menu-rating-rtl-20261030
+      - fix/search-overlay-no-ghosting-20261030
   pull_request:
     branches:
       - main
@@ -62,6 +70,15 @@ jobs:
       # On branch pushes the signed release APK is the preferred QA artifact;
       # a Play-signed internal-track install may still be required if the upload
       # certificate differs from the Play App Signing certificate.
+      - name: Verify native Google Maps renderer in Play release
+        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'main'
+        run: |
+          grep -q 'import com.google.android.gms.maps.GoogleMap' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
+          ! grep -q 'org.maplibre' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
+          ! grep -q 'org.maplibre' app/build.gradle.kts
+          grep -q 'versionCode = 34' app/build.gradle.kts
+          echo 'Google Maps renderer verified for Play internal build.'
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
@@ -201,4 +218,5 @@ jobs:
       - name: Clean signing files
         if: always() && github.event_name != 'pull_request'
         run: rm -f release-keystore.jks key.properties
+
 

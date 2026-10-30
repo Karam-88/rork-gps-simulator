@@ -1,6 +1,9 @@
 package com.rork.gpssimulator.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
@@ -69,6 +73,7 @@ fun SearchScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showMap: Boolean = true,
 ) {
     val strings = LocalStrings.current
     val appColors = LocalAppColors.current
@@ -78,6 +83,13 @@ fun SearchScreen(
     val recents by viewModel.recentSearches.collectAsState()
     val selected by viewModel.selected.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    // Keep the standalone search destination consistent with the main map.
+    // Embedded search reuses MapScreen's already-themed map surface.
+    val darkMap = when (settings.theme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -92,11 +104,25 @@ fun SearchScreen(
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
-
-    Box(modifier = modifier.fillMaxSize()) {
+    // In embedded mode the main MapScreen already owns the live map. Back
+    // closes the search overlay without triggering NavHost's fade transition.
+    BackHandler(enabled = !showMap) {
+        keyboard?.hide()
+        onBack()
+    }
+    val overlayTouch = remember { MutableInteractionSource() }
+    Box(
+        modifier = if (showMap) modifier.fillMaxSize()
+        else modifier.fillMaxSize().clickable(
+            interactionSource = overlayTouch,
+            indication = null,
+        ) { keyboard?.hide() },
+    ) {
+        if (showMap) {
         MapView(
             camera = camera,
             mapType = settings.mapType,
+            darkMap = darkMap,
             markers = buildList {
                 realSample?.let {
                     add(
@@ -120,6 +146,7 @@ fun SearchScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        }
 
         Column(
             modifier = Modifier

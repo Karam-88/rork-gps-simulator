@@ -47,11 +47,12 @@ internal fun VectorMapView(
     polylines: List<MapPolyline> = emptyList(),
     circles: List<MapCircle> = emptyList(),
     onMapTap: ((LatLng) -> Unit)? = null,
-    onCameraIdle: ((LatLng, Float) -> Unit)? = null,
+    onMapLongPress: ((LatLng) -> Unit)? = null,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val holder = remember {
-        GoogleMapHolder(context, camera, onMapTap, onCameraIdle)
+        GoogleMapHolder(context, camera, onMapTap, onMapLongPress, onCameraIdle)
     }
 
     DisposableEffect(holder) {
@@ -59,8 +60,9 @@ internal fun VectorMapView(
         onDispose { holder.destroy() }
     }
 
-    LaunchedEffect(onMapTap, onCameraIdle) {
+    LaunchedEffect(onMapTap, onMapLongPress, onCameraIdle) {
         holder.onMapTap = onMapTap
+        holder.onMapLongPress = onMapLongPress
         holder.onCameraIdle = onCameraIdle
     }
 
@@ -105,10 +107,12 @@ private class GoogleMapHolder(
     context: Context,
     private val cameraState: MapCameraState,
     onMapTap: ((LatLng) -> Unit)?,
-    onCameraIdle: ((LatLng, Float) -> Unit)?,
+    onMapLongPress: ((LatLng) -> Unit)?,
+    onCameraIdle: ((LatLng, Float, Boolean) -> Unit)?,
 ) {
     val mapView = NativeMapView(context)
     var onMapTap = onMapTap
+    var onMapLongPress = onMapLongPress
     var onCameraIdle = onCameraIdle
 
     private var map: GoogleMap? = null
@@ -119,6 +123,7 @@ private class GoogleMapHolder(
     private var pendingCircles: List<MapCircle> = emptyList()
     private var started = false
     private var updatingFromCompose = false
+    private var userGestureMovedCamera = false
 
     init {
         mapView.onCreate(null)
@@ -154,8 +159,9 @@ private class GoogleMapHolder(
 
             readyMap.setOnCameraMoveStartedListener { reason ->
                 if (!updatingFromCompose) {
-                    cameraState.isUserInteracting =
-                        reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE
+                    val userGesture = reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE
+                    if (userGesture) userGestureMovedCamera = true
+                    cameraState.isUserInteracting = userGesture
                 }
             }
             readyMap.setOnCameraMoveListener {
@@ -173,7 +179,11 @@ private class GoogleMapHolder(
                 cameraState.centerLat = point.lat
                 cameraState.centerLng = point.lng
                 cameraState.zoom = position.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
-                onCameraIdle?.invoke(point, cameraState.zoom)
+                onCameraIdle?.invoke(point, cameraState.zoom, userGestureMovedCamera)
+                userGestureMovedCamera = false
+            }
+            readyMap.setOnMapLongClickListener { point ->
+                onMapLongPress?.invoke(LatLng(point.latitude, point.longitude))
             }
             readyMap.setOnMapClickListener { point ->
                 onMapTap?.invoke(LatLng(point.latitude, point.longitude))

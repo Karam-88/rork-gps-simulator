@@ -163,6 +163,11 @@ class RealLocationSource(context: Context) {
             // Register even if temporarily disabled; this subscription resumes when the
             // underlying real provider becomes enabled after test-provider removal.
             if (provider !in manager.allProviders) return@forEach
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                onIssue(Issue.PERMISSION)
+                return@forEach
+            }
             try {
                 manager.requestLocationUpdates(provider, intervalMs, 0f, newListener, Looper.getMainLooper())
                 registered++
@@ -183,6 +188,11 @@ class RealLocationSource(context: Context) {
                 .setMaxUpdateAgeMillis(0L)
                 .setWaitForAccurateLocation(false)
                 .build()
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                onIssue(Issue.PERMISSION)
+                return
+            }
             try {
                 fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
                     .addOnSuccessListener {

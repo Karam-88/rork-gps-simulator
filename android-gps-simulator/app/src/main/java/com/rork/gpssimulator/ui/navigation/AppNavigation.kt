@@ -54,6 +54,8 @@ import com.rork.gpssimulator.ui.screens.MockSetupScreen
 import com.rork.gpssimulator.ui.screens.PresetsScreen
 import com.rork.gpssimulator.ui.screens.RoutesScreen
 import com.rork.gpssimulator.ui.screens.SearchScreen
+import com.rork.gpssimulator.ui.screens.CrosshairAppearanceScreen
+import com.rork.gpssimulator.ui.screens.MockMarkerColorScreen
 import com.rork.gpssimulator.ui.screens.SettingsScreen
 import com.rork.gpssimulator.ui.theme.AppTheme
 
@@ -63,6 +65,8 @@ object Routes {
     const val PRESETS = "presets"
     const val HISTORY = "history"
     const val SETTINGS = "settings"
+    const val CROSSHAIR = "settings/crosshair"
+    const val MOCK_MARKER = "settings/mock_marker"
     const val SEARCH = "search"
     const val DIAGNOSTICS = "diagnostics"
     const val GEOFENCE = "geofence"
@@ -250,7 +254,9 @@ private fun AppScaffold(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { _ ->
+    ) { scaffoldPadding ->
+        @Suppress("UNUSED_VARIABLE")
+        val appliedScaffoldPadding = scaffoldPadding
         val bottomInset = 0.dp
 
         NavHost(
@@ -304,7 +310,15 @@ private fun AppScaffold(
                     onOpenPresets = { navController.navigateToTopLevel(Routes.PRESETS) },
                     onOpenRoutes = { navController.navigateToTopLevel(Routes.ROUTES) },
                     onTestRatingDialog = { showRatingPreview = true },
+                    onOpenCrosshair = { navController.navigate(Routes.CROSSHAIR) },
+                    onOpenMockMarker = { navController.navigate(Routes.MOCK_MARKER) },
                 )
+            }
+            composable(Routes.CROSSHAIR) {
+                CrosshairAppearanceScreen(viewModel, onBack = { navController.popBackStack() })
+            }
+            composable(Routes.MOCK_MARKER) {
+                MockMarkerColorScreen(viewModel, onBack = { navController.popBackStack() })
             }
             composable(Routes.SEARCH) {
                 SearchScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
@@ -359,3 +373,4 @@ private fun NavHostController.navigateToTopLevel(route: String) {
         restoreState = true
     }
 }
+
