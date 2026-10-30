@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.SystemClock
+import com.rork.gpssimulator.i18n.localizedRouteError
 import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.RealRecoveryStatus
 import com.rork.gpssimulator.i18n.realRecoveryMessage
@@ -600,7 +601,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 },
                 onFailure = { error ->
                     postMessage(
-                        routeMessage(error.message ?: "Road routing unavailable. No simulation started."),
+                        localizedRouteError(error, AppLanguage.effective(settings.value.language, settings.value.followSystemLanguage, getApplication<Application>().resources.configuration.locales[0])),
                         isError = true,
                     )
                 },
