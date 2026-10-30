@@ -1,9 +1,6 @@
 package com.rork.gpssimulator.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -17,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -25,7 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -113,7 +108,7 @@ private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pul
             val footer = subcompose("features") { OnboardingFeatures(page, copy, progress) }.single().measure(loose)
             val gap = 10.dp.roundToPx()
             val sceneHeight = (viewport - header.height - footer.height - gap * 2)
-                .coerceIn(112.dp.roundToPx(), 340.dp.roundToPx())
+                .coerceIn(96.dp.roundToPx(), 340.dp.roundToPx())
             val scene = subcompose("scene") {
                 OnboardingScene(page, progress, pulse, copy, Modifier.fillMaxSize().testTag("onboarding-scene-$page"))
             }.single().measure(Constraints.fixed(constraints.maxWidth, sceneHeight))
@@ -130,17 +125,19 @@ private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pul
 @Composable
 private fun OnboardingHeader(page: Int, copy: OnboardingCopy, progress: Float) {
     Column(Modifier.fillMaxWidth().testTag("onboarding-header-$page"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (page == 0) {
-            val appear = stage(progress, 0f, .12f)
-            Box(Modifier.size(44.dp).graphicsLayer { alpha = appear; scaleX = .8f + .2f * appear; scaleY = scaleX }
-                .clip(RoundedCornerShape(14.dp)).background(Brush.radialGradient(listOf(Blue.copy(alpha = .5f), Navy)))
-                .border(1.dp, Blue, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.MyLocation, null, tint = Cyan, modifier = Modifier.size(28.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (page == 0) {
+                val appear = stage(progress, 0f, .12f)
+                Box(Modifier.size(36.dp).graphicsLayer { alpha = appear; scaleX = .8f + .2f * appear; scaleY = scaleX }
+                    .clip(RoundedCornerShape(12.dp)).background(Brush.radialGradient(listOf(Blue.copy(alpha = .5f), Navy)))
+                    .border(1.dp, Blue, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.MyLocation, null, tint = Cyan, modifier = Modifier.size(25.dp))
+                }
             }
+            Text(if (page == 0) copy.welcome else copy.routes, color = Color.White, fontSize = 24.sp,
+                lineHeight = 33.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f).alpha(stage(progress, .03f, .16f)))
         }
-        Text(if (page == 0) copy.welcome else copy.routes, color = Color.White, fontSize = 24.sp,
-            lineHeight = 33.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth().alpha(stage(progress, .03f, .16f)))
         Text(if (page == 0) copy.subtitle else copy.routeSubtitle, color = Muted, fontSize = 15.sp,
             lineHeight = 23.sp, modifier = Modifier.fillMaxWidth().alpha(stage(progress, .08f, .2f)))
     }
@@ -172,7 +169,7 @@ private fun OnboardingFeatures(page: Int, copy: OnboardingCopy, progress: Float)
             // Full-width compact rows: no three-card row that squeezes Arabic or enlarged text.
             Row(Modifier.fillMaxWidth().alpha(visible).clip(RoundedCornerShape(14.dp))
                 .background(Brush.horizontalGradient(listOf(Color(0xFF0C2849), Color(0xFF08172C))))
-                .border(1.dp, Color(0xFF1B446A), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+                .border(1.dp, Color(0xFF1B446A), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (page == 0) Icon(icons[i], null, tint = Cyan, modifier = Modifier.size(22.dp))
                 else Text("${i + 1}", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 14.sp,
