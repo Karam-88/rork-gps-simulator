@@ -102,14 +102,14 @@ fun OnboardingScene(page: Int, progress: Float, pulse: Boolean, copy: Onboarding
                 .padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.LocationOn, null, tint = Red, modifier = Modifier.size(20.dp))
-                Text(copy.selected, color = Color(0xFFC4DCFA), fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text("Central Park", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(copy.selected, color = Color(0xFFC4DCFA), fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.weight(1f))
+                Text("Central Park", color = Color.White, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             }
         } else {
             Row(Modifier.alpha(stage(progress, .94f, 1f)), horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF40E8BA), modifier = Modifier.size(18.dp))
-                Text(copy.complete, color = Color(0xFF93F5DA), fontSize = 12.sp)
+                Text(copy.complete, color = Color(0xFF93F5DA), fontSize = 12.sp, lineHeight = 16.sp)
             }
         }
     }

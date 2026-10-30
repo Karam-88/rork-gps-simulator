@@ -55,7 +55,8 @@ fun FirstRunOnboardingScreen(
     // Scope RTL to onboarding: do not change the established map coordinate/navigation conventions.
     CompositionLocalProvider(LocalLayoutDirection provides if (language == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         BackHandler(pager.currentPage > 0) { scope.launch { pager.animateScrollToPage(0) } }
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF071A34), Navy, Color(0xFF06162D))))) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF071A34), Navy, Color(0xFF06162D))))) {
+            val shortScreen = maxHeight < 680.dp
             Column(Modifier.safeDrawingPadding().widthIn(max = 600.dp).fillMaxSize().align(Alignment.Center).padding(horizontal = 20.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = finish, modifier = Modifier.testTag("onboarding-skip")) {
@@ -71,8 +72,8 @@ fun FirstRunOnboardingScreen(
                     val progress = rememberOnboardingProgress(page, pager.currentPage == page && resumed, reduced)
                     OnboardingPage(page, copy, progress, pager.currentPage == page && resumed && !reduced)
                 }
-                Column(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.padding(bottom = 12.dp)
+                Column(Modifier.fillMaxWidth().padding(top = if (shortScreen) 6.dp else 10.dp, bottom = if (shortScreen) 6.dp else 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.padding(bottom = if (shortScreen) 6.dp else 12.dp)
                         .semantics { contentDescription = "${pager.currentPage + 1} / 2" }) {
                         repeat(2) { index ->
                             Box(Modifier.size(if (pager.currentPage == index) 10.dp else 8.dp).clip(CircleShape)
@@ -100,6 +101,7 @@ fun FirstRunOnboardingScreen(
 private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pulse: Boolean) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val compact = maxHeight < 450.dp
+        val largeFont = LocalDensity.current.fontScale > 1.2f
         val viewport = with(LocalDensity.current) { maxHeight.roundToPx() }
         // At large accessibility font sizes content can scroll vertically, but the CTA stays outside
         // this scroll container. Actual text measurements determine illustration space, never ratios
@@ -110,7 +112,7 @@ private fun OnboardingPage(page: Int, copy: OnboardingCopy, progress: Float, pul
             val footer = subcompose("features") { OnboardingFeatures(page, copy, progress, compact) }.single().measure(loose)
             val gap = (if (compact) 4.dp else 10.dp).roundToPx()
             val sceneHeight = (viewport - header.height - footer.height - gap * 2)
-                .coerceIn(96.dp.roundToPx(), 340.dp.roundToPx())
+                .coerceIn((if (largeFont) 112.dp else 48.dp).roundToPx(), 340.dp.roundToPx())
             val scene = subcompose("scene") {
                 OnboardingScene(page, progress, pulse, copy, Modifier.fillMaxSize().testTag("onboarding-scene-$page"))
             }.single().measure(Constraints.fixed(constraints.maxWidth, sceneHeight))
@@ -159,7 +161,7 @@ private fun OnboardingFeatures(page: Int, copy: OnboardingCopy, progress: Float,
                         .border(1.dp, if (index == 0) Cyan else Color(0xFF203D60), RoundedCornerShape(12.dp)).padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(icon, null, tint = if (index == 0) Cyan else Muted, modifier = Modifier.size(20.dp))
-                        Text(label, fontSize = 12.sp, color = Color.White)
+                        Text(label, fontSize = 12.sp, lineHeight = 16.sp, color = Color.White)
                     }
                 }
             }
