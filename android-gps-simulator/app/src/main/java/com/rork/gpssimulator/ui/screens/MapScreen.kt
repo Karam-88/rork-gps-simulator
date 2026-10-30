@@ -680,7 +680,7 @@ fun MapScreen(
                                     routeEditing = false
                                     routePreview = null
                                     routeStops.clear()
-                                })
+                                }, alreadyResolved = true)
                             }
                             val ready = routePreview
                             if (ready != null) {
