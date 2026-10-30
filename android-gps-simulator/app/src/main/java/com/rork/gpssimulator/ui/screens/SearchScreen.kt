@@ -1,6 +1,7 @@
 package com.rork.gpssimulator.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
@@ -81,6 +83,13 @@ fun SearchScreen(
     val recents by viewModel.recentSearches.collectAsState()
     val selected by viewModel.selected.collectAsState()
     val realSample by viewModel.realSample.collectAsState()
+    // Keep the standalone search destination consistent with the main map.
+    // Embedded search reuses MapScreen's already-themed map surface.
+    val darkMap = when (settings.theme) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 
     var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -113,6 +122,7 @@ fun SearchScreen(
         MapView(
             camera = camera,
             mapType = settings.mapType,
+            darkMap = darkMap,
             markers = buildList {
                 realSample?.let {
                     add(
