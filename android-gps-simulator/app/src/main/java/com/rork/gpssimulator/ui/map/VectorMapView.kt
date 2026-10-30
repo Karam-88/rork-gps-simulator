@@ -26,6 +26,11 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng as MlLatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.BackgroundLayer
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.maps.MapView as NativeMapView
 import kotlin.math.PI
 import kotlin.math.cos
@@ -34,7 +39,7 @@ import kotlin.math.sin
 
 private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
 private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
-// Higher-contrast night roads and labels; retain separate satellite imagery style.
+// Night colors are brightened after loading while preserving the satellite imagery style.
 private const val NIGHT_STREET_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 private val SATELLITE_STYLE = """{"version":8,"name":"Satellite","sources":{"imagery":{"type":"raster","tiles":["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],"tileSize":256,"attribution":"Tiles © Esri, Maxar, Earthstar Geographics, GIS User Community"}},"layers":[{"id":"satellite","type":"raster","source":"imagery"}]}"""
 
@@ -222,8 +227,65 @@ private class VectorMapHolder(
         if (type == MapType.SATELLITE) {
             map?.setStyle(Style.Builder().fromJson(style)) { redrawOverlays() }
         } else {
-            map?.setStyle(style) { redrawOverlays() }
+            map?.setStyle(style) { loadedStyle ->
+                if (darkMap) enhanceNightContrast(loadedStyle)
+                redrawOverlays()
+            }
         }
+    }
+
+    /**
+     * CARTO Dark Matter uses an almost black land/background palette and low-contrast
+     * local streets. Keep its geographic data and layer visibility, but lift the
+     * land, buildings, road fills and road labels for legibility on real devices.
+     * Missing layer IDs are intentionally ignored if the provider updates its style.
+     */
+    private fun enhanceNightContrast(style: Style) {
+        (style.getLayer("background") as? BackgroundLayer)
+            ?.setProperties(PropertyFactory.backgroundColor("#232B36"))
+
+        fun recolorFill(id: String, color: String) {
+            (style.getLayer(id) as? FillLayer)?.setProperties(PropertyFactory.fillColor(color))
+        }
+        fun recolorLine(id: String, color: String) {
+            (style.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineColor(color))
+        }
+        fun brightenLabel(id: String, color: String) {
+            (style.getLayer(id) as? SymbolLayer)?.setProperties(
+                PropertyFactory.textColor(color),
+                PropertyFactory.textHaloColor("#212B37"),
+                PropertyFactory.textHaloWidth(1.0f),
+            )
+        }
+
+        recolorFill("landcover", "#273831")
+        recolorFill("landuse_residential", "#303946")
+        recolorFill("park_national_park", "#294236")
+        recolorFill("park_nature_reserve", "#294236")
+        recolorFill("water", "#1E3B50")
+        recolorFill("building", "#424C59")
+        recolorFill("building-top", "#424C59")
+
+        listOf("road_service_fill", "road_minor_fill", "road_path",
+            "bridge_service_fill", "bridge_minor_fill", "bridge_path",
+            "tunnel_service_fill", "tunnel_minor_fill", "tunnel_path")
+            .forEach { recolorLine(it, "#697F94") }
+        listOf("road_sec_fill_noramp", "bridge_sec_fill", "tunnel_sec_fill")
+            .forEach { recolorLine(it, "#8AA2B5") }
+        listOf("road_pri_fill_noramp", "road_pri_fill_ramp",
+            "bridge_pri_fill", "tunnel_pri_fill")
+            .forEach { recolorLine(it, "#A0B5C7") }
+        listOf("road_trunk_fill_noramp", "road_trunk_fill_ramp",
+            "road_mot_fill_noramp", "road_mot_fill_ramp",
+            "bridge_trunk_fill", "bridge_mot_fill",
+            "tunnel_trunk_fill", "tunnel_mot_fill")
+            .forEach { recolorLine(it, "#B4C8D6") }
+        listOf("roadname_minor", "roadname_sec", "roadname_pri",
+            "roadname_major", "housenumber")
+            .forEach { brightenLabel(it, "#E1E9F2") }
+        listOf("place_hamlet", "place_suburbs", "place_villages",
+            "place_town", "place_city_r6", "place_city_r5")
+            .forEach { brightenLabel(it, "#E0E8EF") }
     }
 
     fun syncCameraFromCompose(camera: MapCameraState) {
