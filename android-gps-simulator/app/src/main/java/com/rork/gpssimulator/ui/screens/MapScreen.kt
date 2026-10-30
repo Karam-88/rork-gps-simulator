@@ -214,7 +214,14 @@ fun MapScreen(
     val routeStops = remember { mutableStateListOf<LatLng>() }
     var routeCrosshairDestination by remember { mutableStateOf<LatLng?>(null) }
     val routeScope = rememberCoroutineScope()
+    // Only a single destination uses the current location as its starting point.
+    // For two or more explicit stops, stop #1 is the route origin.
     val routeOrigin = if (mockState == MockState.MOCK_ACTIVE) activePoint else realSample?.point
+    val explicitRouteStops = routeStops.toList().ifEmpty {
+        listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination)
+    }
+    val routeDraftPoints = if (explicitRouteStops.size >= 2) explicitRouteStops
+        else listOfNotNull(routeOrigin) + explicitRouteStops
     var showProblemDialog by remember { mutableStateOf(false) }
     var showFavoriteNameDialog by remember { mutableStateOf(false) }
     var favoriteName by remember { mutableStateOf("") }
@@ -616,17 +623,15 @@ fun MapScreen(
                     IconButton(
                         enabled = (routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating,
                         onClick = {
-                            val origin = routeOrigin
-                            if (origin == null) {
+                            if (routeDraftPoints.size < 2) {
                                 viewModel.postMessage(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                                     "الموقع الحالي غير متاح" else "Current location unavailable", isError = true)
                             } else {
                                 routeCalculating = true
-                                val stops = routeStops.toList().ifEmpty { listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination) }
                                 val draft = SimRoute(
                                     id = java.util.UUID.randomUUID().toString(),
                                     name = "Map route",
-                                    points = listOf(origin) + stops,
+                                    points = routeDraftPoints,
                                     profile = routeProfile,
                                 )
                                 routeScope.launch {
@@ -692,8 +697,7 @@ fun MapScreen(
                                     isError = true,
                                 )
                             } else {
-                                val origin = routeOrigin
-                                if (origin == null) {
+                                if (routeDraftPoints.size < 2) {
                                     viewModel.postMessage(
                                         if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                                             "الموقع الحالي غير متاح" else "Current location unavailable",
@@ -704,7 +708,7 @@ fun MapScreen(
                                     val draft = SimRoute(
                                         id = java.util.UUID.randomUUID().toString(),
                                         name = "Map route",
-                                        points = listOf(origin) + routeStops.toList().ifEmpty { listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination) },
+                                        points = routeDraftPoints,
                                         profile = routeProfile,
                                     )
                                     routeScope.launch {
