@@ -167,12 +167,22 @@ fun MapScreen(
     val selected by viewModel.selected.collectAsState()
     var crosshairPreviewPoint by remember { mutableStateOf<LatLng?>(null) }
     var crosshairStreet by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(crosshairPreviewPoint, settings.directTapSelection) {
+    // All reticle shapes share the same geographic selection and reverse-geocoding path.
+    // Re-resolve after changing shapes too: Compose may retain the previous camera center
+    // without emitting another user-moved camera-idle event.
+    LaunchedEffect(crosshairPreviewPoint, settings.directTapSelection, settings.crosshairShape) {
         val point = crosshairPreviewPoint ?: return@LaunchedEffect
         if (settings.directTapSelection) return@LaunchedEffect
         crosshairStreet = null
-        kotlinx.coroutines.delay(450)
-        crosshairStreet = com.rork.gpssimulator.location.GeocodingService().reverse(point)?.name
+        kotlinx.coroutines.delay(600)
+        val geocoder = com.rork.gpssimulator.location.GeocodingService()
+        var resolved = geocoder.reverse(point)?.name?.takeIf { it.isNotBlank() }
+        // A temporary reverse-geocoding failure must not depend on the chosen icon.
+        if (resolved == null) {
+            kotlinx.coroutines.delay(1200)
+            resolved = geocoder.reverse(point)?.name?.takeIf { it.isNotBlank() }
+        }
+        crosshairStreet = resolved
             ?: if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الشارع غير متاح" else "Street name unavailable"
     }
     val activePoint by viewModel.activePoint.collectAsState()
