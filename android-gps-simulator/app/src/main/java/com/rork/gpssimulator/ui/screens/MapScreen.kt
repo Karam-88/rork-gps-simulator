@@ -752,14 +752,13 @@ fun MapScreen(
                     ) { showMenuPanel = false },
             )
 
-            // Keep the four map control buttons on the physical right side,
-            // while opening the floating navigation panel on the physical left.
-            Row(
+            // Anchor below the search button, shifted left so the physical-right
+            // map controls remain unobstructed. Use absolute TopEnd regardless of RTL.
+            Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.Absolute.Left,
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 66.dp, end = 112.dp),
             ) {
                 FloatingMapMenu(
                     mapLabel = strings[K.tab_map],
