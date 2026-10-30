@@ -576,6 +576,16 @@ fun MapScreen(
                 showMenuPanel = false
                 viewModel.centerOnCurrentLocation()
             }
+            MapControlButton(
+                Icons.Default.Layers,
+                if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                    (if (settings.mapType == MapType.SATELLITE) "الخريطة العادية" else "صور الأقمار الصناعية")
+                else (if (settings.mapType == MapType.SATELLITE) "Standard map" else "Satellite map"),
+            ) {
+                showMenuPanel = false
+                val next = if (settings.mapType == MapType.SATELLITE) MapType.STANDARD else MapType.SATELLITE
+                viewModel.updateSettings { it.copy(mapType = next) }
+            }
         }
 
         Column(
