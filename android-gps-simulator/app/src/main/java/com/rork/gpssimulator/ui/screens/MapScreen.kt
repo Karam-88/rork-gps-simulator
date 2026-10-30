@@ -802,6 +802,7 @@ fun MapScreen(
                     shareLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "مشاركة التطبيق" else "Share app",
                     rateLabel = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تقييم التطبيق" else "Rate app",
                     ratingConfirmed = userConfirmedRating,
+                    arabic = settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC,
                     onMap = { showMenuPanel = false },
                     onRoutes = { showMenuPanel = false; onOpenRoutes() },
                     onFavorites = { showMenuPanel = false; showFavoritesPopup = true },
@@ -926,23 +927,44 @@ fun MapScreen(
         }
 
         if (showRatingConfirmation) {
-            AlertDialog(
-                onDismissRequest = { showRatingConfirmation = false },
-                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "تقييم التطبيق" else "Rate GPS Simulator") },
-                text = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "هل قمت بتقييم التطبيق بالفعل على Google Play؟" else "Have you submitted a rating on Google Play?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        userConfirmedRating = true
-                        ratingPrefs.edit().putBoolean("confirmed_rating", true).apply()
-                        showRatingConfirmation = false
-                    }) { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "نعم، قيّمته" else "Yes, I rated it") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRatingConfirmation = false }) {
-                        Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "ليس بعد" else "Not yet")
-                    }
-                },
-            )
+            val arabicRating = settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC
+            // AppNavigation keeps the full-screen map LTR for physical controls.
+            // Restore RTL locally so the Arabic dialog text and actions read naturally.
+            CompositionLocalProvider(
+                LocalLayoutDirection provides if (arabicRating) LayoutDirection.Rtl else LayoutDirection.Ltr,
+            ) {
+                AlertDialog(
+                    onDismissRequest = { showRatingConfirmation = false },
+                    title = {
+                        Text(
+                            text = if (arabicRating) "تقييم التطبيق" else "Rate GPS Simulator",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = if (arabicRating) TextAlign.Right else TextAlign.Left,
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = if (arabicRating)
+                                "هل قمت بتقييم التطبيق بالفعل على Google Play؟"
+                            else "Have you submitted a rating on Google Play?",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = if (arabicRating) TextAlign.Right else TextAlign.Left,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            userConfirmedRating = true
+                            ratingPrefs.edit().putBoolean("confirmed_rating", true).apply()
+                            showRatingConfirmation = false
+                        }) { Text(if (arabicRating) "نعم، قيّمته" else "Yes, I rated it") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showRatingConfirmation = false }) {
+                            Text(if (arabicRating) "ليس بعد" else "Not yet")
+                        }
+                    },
+                )
+            }
         }
 
         AttributionChip(
@@ -1056,6 +1078,7 @@ private fun FloatingMapMenu(
     shareLabel: String,
     rateLabel: String,
     ratingConfirmed: Boolean,
+    arabic: Boolean,
     onShare: () -> Unit,
     onRate: () -> Unit,
     onMap: () -> Unit,
@@ -1073,12 +1096,18 @@ private fun FloatingMapMenu(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
         tonalElevation = 10.dp,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
-            FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
-            FloatingMenuEntry(Icons.Default.HelpOutline, reportLabel, false, onReport)
-            FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
-            FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate, iconTint = Color(0xFFFFC107))
+        // The map stays physically LTR. Only menu entries switch to RTL in Arabic:
+        // icons at the right edge, followed immediately by right-aligned labels.
+        CompositionLocalProvider(
+            LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr,
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                FloatingMenuEntry(Icons.Default.History, historyLabel, false, onHistory)
+                FloatingMenuEntry(Icons.Default.Settings, settingsLabel, false, onSettings)
+                FloatingMenuEntry(Icons.Default.HelpOutline, reportLabel, false, onReport)
+                FloatingMenuEntry(Icons.Default.Share, shareLabel, false, onShare)
+                FloatingMenuEntry(if (ratingConfirmed) Icons.Default.Star else Icons.Default.StarBorder, rateLabel, false, onRate, iconTint = Color(0xFFFFC107))
+            }
         }
     }
 }
@@ -1100,7 +1129,7 @@ private fun FloatingMenuEntry(
         color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -1109,9 +1138,13 @@ private fun FloatingMenuEntry(
                 tint = iconTint ?: if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
                 modifier = Modifier.size(25.dp),
             )
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 text = label,
+                modifier = Modifier.weight(1f),
+                textAlign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.onSurface else LocalAppColors.current.muted,
