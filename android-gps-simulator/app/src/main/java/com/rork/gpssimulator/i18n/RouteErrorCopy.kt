@@ -20,6 +20,7 @@ fun localizedRouteError(error: Throwable, language: AppLanguage): String {
         AppLanguage.TURKISH -> "İnternet bağlantısı yok. Bağlantınızı kontrol edip rotayı tekrar hesaplayın."
         AppLanguage.RUSSIAN -> "Нет подключения к интернету. Проверьте соединение и повторите расчёт маршрута."
         AppLanguage.HINDI -> "इंटरनेट कनेक्शन नहीं है। कनेक्शन जाँचें और मार्ग फिर से बनाएँ।"
+        AppLanguage.INDONESIAN -> "Tidak ada koneksi internet. Periksa koneksi dan coba hitung rute lagi."
         AppLanguage.JAPANESE -> "インターネットに接続されていません。接続を確認してルートを再計算してください。"
         AppLanguage.CHINESE_SIMPLIFIED -> "没有网络连接。请检查连接并重新计算路线。"
         AppLanguage.ENGLISH -> "No internet connection. Check your connection and try calculating the route again."
