@@ -43,6 +43,7 @@ fun FirstRunOnboardingScreen(
     @Suppress("UNUSED_PARAMETER") isArabic: Boolean,
     onFinished: () -> Unit,
 ) {
+    OnboardingSystemBars()
     val language = LocalStrings.current.language
     val copy = onboardingCopy(language)
     val pager = rememberPagerState { 2 }

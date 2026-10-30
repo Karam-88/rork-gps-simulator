@@ -1,5 +1,8 @@
 package com.rork.gpssimulator.ui.onboarding
 
+import android.app.Activity
+import android.content.ContextWrapper
+import androidx.core.view.WindowCompat
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -56,4 +59,26 @@ fun rememberOnboardingProgress(page: Int, active: Boolean, reduced: Boolean): Fl
         }
     }
     return progress.value
+}
+
+/** The introduction is navy even in light mode. Restore the host's icon style on exit. */
+@Composable
+fun OnboardingSystemBars() {
+    val context = LocalContext.current
+    val activity = remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>().firstOrNull()
+    }
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        val lightStatus = controller?.isAppearanceLightStatusBars
+        val lightNavigation = controller?.isAppearanceLightNavigationBars
+        controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightNavigationBars = false
+        onDispose {
+            if (lightStatus != null) controller?.isAppearanceLightStatusBars = lightStatus
+            if (lightNavigation != null) controller?.isAppearanceLightNavigationBars = lightNavigation
+        }
+    }
 }
