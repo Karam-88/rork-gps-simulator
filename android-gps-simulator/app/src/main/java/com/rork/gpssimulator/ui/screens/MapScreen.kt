@@ -210,7 +210,17 @@ fun MapScreen(
     var routeEditing by remember { mutableStateOf(false) }
     var routePreview by remember { mutableStateOf<SimRoute?>(null) }
     var routeCalculating by remember { mutableStateOf(false) }
-    var routeProfile by remember { mutableStateOf(SpeedProfile.WALKING) }
+    // Keep the user's last route transport choice across app restarts.
+    val routePrefs = remember(context) {
+        context.getSharedPreferences("gps_simulator_route", android.content.Context.MODE_PRIVATE)
+    }
+    var routeProfile by remember(routePrefs) {
+        mutableStateOf(
+            SpeedProfile.values().firstOrNull {
+                it.name == routePrefs.getString("last_speed_profile", SpeedProfile.WALKING.name)
+            } ?: SpeedProfile.WALKING
+        )
+    }
     val routeStops = remember { mutableStateListOf<LatLng>() }
     var routeCrosshairDestination by remember { mutableStateOf<LatLng?>(null) }
     val routeScope = rememberCoroutineScope()
@@ -609,6 +619,7 @@ fun MapScreen(
                                 color = if (routeProfile == profile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.size(46.dp).clickable {
                                     routeProfile = profile
+                                    routePrefs.edit().putString("last_speed_profile", profile.name).apply()
                                     routePreview = null
                                 },
                             ) {
