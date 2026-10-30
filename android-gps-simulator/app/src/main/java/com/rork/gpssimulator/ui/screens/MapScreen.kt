@@ -209,6 +209,9 @@ fun MapScreen(
         initialZoom = initialZoom,
     )
     var showMenuPanel by remember { mutableStateOf(false) }
+    // Search stays in this screen, sharing the same MapLibre view; never create a
+    // second full-screen map or crossfade two map surfaces during navigation.
+    var showSearchOverlay by remember { mutableStateOf(false) }
     var routeEditing by remember { mutableStateOf(false) }
     var routePreview by remember { mutableStateOf<SimRoute?>(null) }
     var routeCalculating by remember { mutableStateOf(false) }
@@ -421,6 +424,9 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
+        // Search is a lightweight overlay over the *existing* map view. Hide
+        // normal map controls while searching; the live map remains mounted.
+        if (!showSearchOverlay) {
         // Selected-point address: compact capsule below the GPS status, never a full-width panel.
         if ((!settings.directTapSelection && crosshairPreviewPoint != null) || selected != null || startedMockSelection != null) {
             val location = selected ?: startedMockSelection
@@ -506,7 +512,10 @@ fun MapScreen(
             Box(
                 modifier = Modifier.size(42.dp)
                     .background(MaterialTheme.colorScheme.surface, CircleShape)
-                    .clickable(role = Role.Button) { showMenuPanel = false; onOpenSearch() },
+                    .clickable(role = Role.Button) {
+                        showMenuPanel = false
+                        showSearchOverlay = true
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Default.Search, contentDescription = strings[K.search_places],
@@ -1062,6 +1071,19 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, bottom = 112.dp + bottomInset),
         )
+        } // Normal map controls
+
+        if (showSearchOverlay) {
+            SearchScreen(
+                viewModel = viewModel,
+                onBack = {
+                    showSearchOverlay = false
+                    viewModel.clearSearchResults()
+                },
+                showMap = false,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
 }
