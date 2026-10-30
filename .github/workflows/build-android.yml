@@ -19,6 +19,7 @@ on:
       - fix/readable-night-map-20261030
       - fix/daylight-default-first-launch-20261030
       - fix/arabic-menu-rating-rtl-20261030
+      - fix/search-overlay-no-ghosting-20261030
   pull_request:
     branches:
       - main
