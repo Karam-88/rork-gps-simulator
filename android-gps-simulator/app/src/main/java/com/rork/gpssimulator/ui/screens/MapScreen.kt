@@ -863,15 +863,18 @@ fun MapScreen(
         }
 
         if (showFavoriteNameDialog) {
+            CompositionLocalProvider(LocalLayoutDirection provides if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr) {
             AlertDialog(
                 onDismissRequest = { showFavoriteNameDialog = false },
-                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ الموقع" else "Save location") },
+                title = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "حفظ الموقع" else "Save location", modifier = Modifier.fillMaxWidth(), textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left) },
                 text = {
                     OutlinedTextField(
                         value = favoriteName,
                         onValueChange = { favoriteName = it },
                         label = { Text(if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "اسم الموقع" else "Location name") },
                         singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) TextAlign.Right else TextAlign.Left),
                     )
                 },
                 confirmButton = {
@@ -897,6 +900,7 @@ fun MapScreen(
                     }
                 },
             )
+            }
         }
 
         if (showRatingConfirmation) {
