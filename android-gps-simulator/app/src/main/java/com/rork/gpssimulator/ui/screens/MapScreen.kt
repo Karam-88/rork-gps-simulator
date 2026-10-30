@@ -107,6 +107,7 @@ import com.rork.gpssimulator.data.model.SessionKind
 import com.rork.gpssimulator.data.model.ThemeMode
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.rork.gpssimulator.i18n.K
+import com.rork.gpssimulator.i18n.localizedRouteError
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
 import com.rork.gpssimulator.ui.components.AppUpdateNoticeDialog
@@ -642,7 +643,7 @@ fun MapScreen(
                                     routeCalculating = false
                                     result.onSuccess { routePreview = it }
                                     result.onFailure { error ->
-                                        viewModel.postMessage(error.message ?: "Road routing unavailable", isError = true)
+                                        viewModel.postMessage(localizedRouteError(error, com.rork.gpssimulator.i18n.AppLanguage.effective(settings.language, settings.followSystemLanguage, context.resources.configuration.locales[0])), isError = true)
                                     }
                                 }
                             }
@@ -723,7 +724,7 @@ fun MapScreen(
                                         }
                                         result.onFailure { error ->
                                             viewModel.postMessage(
-                                                error.message ?: "Road routing unavailable", isError = true)
+                                                localizedRouteError(error, com.rork.gpssimulator.i18n.AppLanguage.effective(settings.language, settings.followSystemLanguage, context.resources.configuration.locales[0])), isError = true)
                                         }
                                     }
                                 }
