@@ -121,7 +121,6 @@ import com.rork.gpssimulator.ui.map.MapMarker
 import com.rork.gpssimulator.ui.map.MapPolyline
 import com.rork.gpssimulator.ui.map.MapView
 import com.rork.gpssimulator.ui.map.MarkerStyle
-import com.rork.gpssimulator.ui.map.TileSource
 import com.rork.gpssimulator.ui.map.rememberMapCameraState
 import com.rork.gpssimulator.ui.theme.LocalAppColors
 import com.rork.gpssimulator.ui.theme.MonoValueStyle
@@ -939,7 +938,11 @@ fun MapScreen(
         }
 
         AttributionChip(
-            text = TileSource.of(settings.mapType).attribution,
+            text = when {
+                settings.mapType == MapType.SATELLITE -> "© Esri, Maxar, Earthstar Geographics"
+                darkMap -> "© CARTO · © OpenStreetMap"
+                else -> "© OpenFreeMap · © OpenStreetMap"
+            },
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
@@ -1314,7 +1317,9 @@ private fun MapControlButton(
             .shadow(8.dp, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         shape = CircleShape,
-        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        color = if (active) MaterialTheme.colorScheme.primary
+            else if (MaterialTheme.colorScheme.surface.red < 0.22f) Color(0xFF374452)
+            else MaterialTheme.colorScheme.surface,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
