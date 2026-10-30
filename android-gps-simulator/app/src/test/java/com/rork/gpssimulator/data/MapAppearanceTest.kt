@@ -13,6 +13,23 @@ class MapAppearanceTest {
     // Same JSON configuration as AppRepository; check migration without resetting old preferences.
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; allowSpecialFloatingPointValues = true }
 
+    @Test fun freshInstallAlwaysDefaultsToDaylightEvenWhenAndroidIsDark() {
+        val fresh = AppSettings()
+        assertEquals(ThemeMode.LIGHT, fresh.theme)
+        assertEquals(ThemeMode.LIGHT, fresh.mapTheme)
+        assertEquals(com.rork.gpssimulator.data.model.MapType.STANDARD, fresh.mapType)
+        assertEquals(fresh, json.decodeFromString<AppSettings>(json.encodeToString(fresh)))
+    }
+
+    @Test fun explicitSavedThemeChoicesSurviveUpgradeAndReload() {
+        for (chosen in ThemeMode.entries) {
+            val settings = AppSettings(theme = chosen, mapTheme = chosen)
+            val restored = json.decodeFromString<AppSettings>(json.encodeToString(settings))
+            assertEquals(chosen, restored.theme)
+            assertEquals(chosen, restored.mapTheme)
+        }
+    }
+
     @Test fun existingPreferencesGainAppearanceDefaultsWithoutResettingOtherSettings() {
         val saved = json.decodeFromString<AppSettings>("""{"defaultZoom":11.0,"animateMap":false}""")
         assertEquals(11f, saved.defaultZoom, 0f)
