@@ -17,6 +17,7 @@ on:
       - feature/responsive-animated-onboarding-20261030
       - integration/all-fixes-onboarding-maps-20261030
       - fix/readable-night-map-20261030
+      - fix/daylight-default-first-launch-20261030
   pull_request:
     branches:
       - main
