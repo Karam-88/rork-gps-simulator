@@ -16,6 +16,7 @@ on:
       - feature/map-ui-route-customization-20261028
       - feature/responsive-animated-onboarding-20261030
       - integration/all-fixes-onboarding-maps-20261030
+      - fix/readable-night-map-20261030
   pull_request:
     branches:
       - main
