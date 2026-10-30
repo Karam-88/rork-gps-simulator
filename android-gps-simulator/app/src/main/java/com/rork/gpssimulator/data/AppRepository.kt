@@ -36,15 +36,25 @@ class AppRepository(context: Context) {
     // routes and other stores on their existing codec; only settings need this option.
     private val settingsJson = Json(json) { allowSpecialFloatingPointValues = true }
 
-    // A stored manual selection takes precedence. Automatic mode follows the
-    // current Android language each time the repository is created.
+    // A one-time migration also upgrades the old SYSTEM appearance default
+    // without requiring users to delete favorites, routes or other app data.
+    private val daylightMigrationApplied = prefs.getBoolean(KEY_DAYLIGHT_STARTUP_MIGRATION, false)
     private val _settings = MutableStateFlow(
-        load(KEY_SETTINGS, AppSettings()).let { saved ->
-            if (saved.followSystemLanguage) saved.copy(language = AppLanguage.fromDeviceLocale())
-            else saved
-        },
+        load(KEY_SETTINGS, AppSettings())
+            .withDaylightStartupDefault(daylightMigrationApplied)
+            .let { saved ->
+                if (saved.followSystemLanguage) saved.copy(language = AppLanguage.fromDeviceLocale())
+                else saved
+            },
     )
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+
+    init {
+        if (!daylightMigrationApplied) {
+            store(KEY_SETTINGS, _settings.value)
+            prefs.edit().putBoolean(KEY_DAYLIGHT_STARTUP_MIGRATION, true).apply()
+        }
+    }
 
     private val _saved = MutableStateFlow(loadList<SavedLocation>(KEY_SAVED))
     val saved: StateFlow<List<SavedLocation>> = _saved.asStateFlow()
@@ -236,7 +246,7 @@ class AppRepository(context: Context) {
     // ---- Destructive ----
 
     fun deleteAllLocalData() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().putBoolean(KEY_DAYLIGHT_STARTUP_MIGRATION, true).apply()
         _settings.value = AppSettings()
         _saved.value = emptyList()
         _routes.value = emptyList()
@@ -281,6 +291,7 @@ class AppRepository(context: Context) {
         private const val TAG = "AppRepository"
         private const val PREFS = "gps_simulator_prefs"
         private const val KEY_SETTINGS = "settings"
+        private const val KEY_DAYLIGHT_STARTUP_MIGRATION = "daylight_startup_default_v1"
         private const val KEY_SAVED = "saved_locations"
         private const val KEY_ROUTES = "routes"
         private const val KEY_HISTORY = "history"
