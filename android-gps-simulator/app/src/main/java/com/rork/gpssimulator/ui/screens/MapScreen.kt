@@ -610,7 +610,7 @@ fun MapScreen(
                 if (routePreview == null) {
                     Surface(
                         shape = CircleShape,
-                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(46.dp),
                     ) {
                     IconButton(
@@ -622,7 +622,7 @@ fun MapScreen(
                                     "الموقع الحالي غير متاح" else "Current location unavailable", isError = true)
                             } else {
                                 routeCalculating = true
-                                val stops = routeStops.toList().ifEmpty { listOfNotNull(routeCrosshairDestination) }
+                                val stops = routeStops.toList().ifEmpty { listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination) }
                                 val draft = SimRoute(
                                     id = java.util.UUID.randomUUID().toString(),
                                     name = "Map route",
@@ -685,7 +685,7 @@ fun MapScreen(
                             val ready = routePreview
                             if (ready != null) {
                                 startResolvedRoute(ready)
-                            } else if (routeStops.isEmpty() && routeCrosshairDestination == null) {
+                            } else if (routeStops.isEmpty() && routeCrosshairDestination == null && (!settings.directTapSelection || selected?.point == null)) {
                                 viewModel.postMessage(
                                     if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                                         "حدد وجهة واحدة على الأقل" else "Select at least one destination",
@@ -704,7 +704,7 @@ fun MapScreen(
                                     val draft = SimRoute(
                                         id = java.util.UUID.randomUUID().toString(),
                                         name = "Map route",
-                                        points = listOf(origin) + routeStops.toList().ifEmpty { listOfNotNull(routeCrosshairDestination) },
+                                        points = listOf(origin) + routeStops.toList().ifEmpty { listOfNotNull(if (settings.directTapSelection) selected?.point else routeCrosshairDestination) },
                                         profile = routeProfile,
                                     )
                                     routeScope.launch {
