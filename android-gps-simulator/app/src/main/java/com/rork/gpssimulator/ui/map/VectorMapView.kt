@@ -25,6 +25,7 @@ import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng as MlLatLng
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.Style
 import org.maplibre.android.maps.MapView as NativeMapView
 import kotlin.math.PI
 import kotlin.math.cos
@@ -34,6 +35,7 @@ import kotlin.math.sin
 private const val OPENFREEMAP_BRIGHT = "https://tiles.openfreemap.org/styles/bright"
 private const val OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
 private const val OPENFREEMAP_DARK = "https://tiles.openfreemap.org/styles/dark"
+private val SATELLITE_STYLE = """{"version":8,"name":"Satellite","sources":{"imagery":{"type":"raster","tiles":["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],"tileSize":256,"attribution":"Tiles © Esri, Maxar, Earthstar Geographics, GIS User Community"}},"layers":[{"id":"satellite","type":"raster","source":"imagery"}]}"""
 
 /**
  * Vector-map implementation for the two street-map modes.
@@ -208,14 +210,18 @@ private class VectorMapHolder(
     }
 
     fun setStyle(type: MapType, darkMap: Boolean = false) {
-        val style = if (darkMap) OPENFREEMAP_DARK else when (type) {
-            MapType.DETAILED_STREETS -> OPENFREEMAP_LIBERTY
+        val style = when {
+            type == MapType.SATELLITE -> SATELLITE_STYLE
+            darkMap -> OPENFREEMAP_DARK
+            type == MapType.DETAILED_STREETS -> OPENFREEMAP_LIBERTY
             else -> OPENFREEMAP_BRIGHT
         }
         if (currentStyle == style) return
         currentStyle = style
-        map?.setStyle(style) {
-            redrawOverlays()
+        if (type == MapType.SATELLITE) {
+            map?.setStyle(Style.Builder().fromJson(style)) { redrawOverlays() }
+        } else {
+            map?.setStyle(style) { redrawOverlays() }
         }
     }
 
