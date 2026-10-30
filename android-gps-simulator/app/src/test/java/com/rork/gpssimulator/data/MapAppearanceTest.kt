@@ -21,6 +21,23 @@ class MapAppearanceTest {
         assertEquals(fresh, json.decodeFromString<AppSettings>(json.encodeToString(fresh)))
     }
 
+    @Test fun oldSystemDefaultMigratesToDaylightOnceWithoutLosingOtherPreferences() {
+        val legacy = AppSettings(
+            theme = ThemeMode.SYSTEM, mapTheme = ThemeMode.SYSTEM,
+            defaultZoom = 11f, animateMap = false,
+        )
+        val migrated = legacy.withDaylightStartupDefault(alreadyApplied = false)
+        assertEquals(ThemeMode.LIGHT, migrated.theme)
+        assertEquals(ThemeMode.LIGHT, migrated.mapTheme)
+        assertEquals(11f, migrated.defaultZoom, 0f)
+        assertFalse(migrated.animateMap)
+
+        assertEquals(legacy, legacy.withDaylightStartupDefault(alreadyApplied = true))
+        assertEquals(AppSettings(theme = ThemeMode.DARK, mapTheme = ThemeMode.DARK),
+            AppSettings(theme = ThemeMode.DARK, mapTheme = ThemeMode.DARK)
+                .withDaylightStartupDefault(alreadyApplied = false))
+    }
+
     @Test fun explicitSavedThemeChoicesSurviveUpgradeAndReload() {
         for (chosen in ThemeMode.entries) {
             val settings = AppSettings(theme = chosen, mapTheme = chosen)
