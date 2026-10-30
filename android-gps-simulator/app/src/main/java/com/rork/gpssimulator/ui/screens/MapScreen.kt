@@ -47,7 +47,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
@@ -589,7 +589,7 @@ fun MapScreen(
                 viewModel.centerOnCurrentLocation()
             }
             MapControlButton(
-                Icons.Default.Layers,
+                Icons.Default.Map,
                 if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                     (if (settings.mapType == MapType.SATELLITE) "الخريطة العادية" else "صور الأقمار الصناعية")
                 else (if (settings.mapType == MapType.SATELLITE) "Standard map" else "Satellite map"),
