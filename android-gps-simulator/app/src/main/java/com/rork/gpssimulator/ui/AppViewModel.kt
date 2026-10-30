@@ -545,11 +545,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startRoute(route: SimRoute, onStarted: () -> Unit = {}, alreadyResolved: Boolean = false) {
-        // A single chosen destination starts at the latest available physical GPS fix.
-        // Never silently use a mock position as the origin of a new route.
+        // One destination: start from the currently active simulated point if mocking,
+        // otherwise from the latest physical GPS fix. Multi-stop routes start at stop #1.
         val routeToResolve = if (route.points.size == 1) {
-            val origin = _realSample.value?.point
-                ?: realLocation.lastKnown(settings.value.usePlayServices)?.point
+            val origin = if (_mockState.value == MockState.MOCK_ACTIVE) {
+                MockSessionBus.session.value?.point ?: _activePoint.value
+            } else {
+                _realSample.value?.point
+                    ?: realLocation.lastKnown(settings.value.usePlayServices)?.point
+            }
             if (origin == null) {
                 postMessage(routeMessage("Current location unavailable. Wait for a GPS fix."), isError = true)
                 return
