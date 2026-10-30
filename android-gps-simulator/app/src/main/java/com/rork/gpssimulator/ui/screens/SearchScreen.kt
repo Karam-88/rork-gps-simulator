@@ -1,6 +1,8 @@
 package com.rork.gpssimulator.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +71,7 @@ fun SearchScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    showMap: Boolean = true,
 ) {
     val strings = LocalStrings.current
     val appColors = LocalAppColors.current
@@ -92,8 +95,21 @@ fun SearchScreen(
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
-
-    Box(modifier = modifier.fillMaxSize()) {
+    // In embedded mode the main MapScreen already owns the live map. Back
+    // closes the search overlay without triggering NavHost's fade transition.
+    BackHandler(enabled = !showMap) {
+        keyboard?.hide()
+        onBack()
+    }
+    val overlayTouch = remember { MutableInteractionSource() }
+    Box(
+        modifier = if (showMap) modifier.fillMaxSize()
+        else modifier.fillMaxSize().clickable(
+            interactionSource = overlayTouch,
+            indication = null,
+        ) { keyboard?.hide() },
+    ) {
+        if (showMap) {
         MapView(
             camera = camera,
             mapType = settings.mapType,
@@ -120,6 +136,7 @@ fun SearchScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        }
 
         Column(
             modifier = Modifier
