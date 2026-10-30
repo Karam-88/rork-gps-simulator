@@ -990,7 +990,15 @@ fun MapScreen(
                     selectLabel = strings[K.select_point_short],
                     favoriteLabel = strings[K.favorites],
                     dangerColor = appColors.danger,
-                    onStop = { viewModel.stopMock() },
+                    onStop = {
+                        // Finishing the mock session also dismisses the selected-address capsule.
+                        // Clearing the UI selection must not alter the GPS recovery sequence.
+                        startedMockSelection = null
+                        crosshairPreviewPoint = null
+                        crosshairStreet = null
+                        viewModel.clearSelection()
+                        viewModel.stopMock()
+                    },
                     onSelect = {
                         val point = if (settings.directTapSelection) selected?.point ?: activePoint ?: camera.center else camera.center
                         if (point != activePoint) {
