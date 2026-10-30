@@ -4,7 +4,14 @@ cd "$(dirname "$0")/.."
 export ADB_INSTALL_TIMEOUT=10
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-trap 'adb shell wm size reset; adb shell wm density reset; adb shell settings put system font_scale 1.0' EXIT
+collect_and_reset() {
+  mkdir -p ../onboarding-screenshots
+  adb pull /sdcard/Android/data/com.rork.gpssimulator/files/onboarding-screenshots/. ../onboarding-screenshots/ || true
+  adb shell wm size reset
+  adb shell wm density reset
+  adb shell settings put system font_scale 1.0
+}
+trap collect_and_reset EXIT
 adb shell settings put global animator_duration_scale 0
 for spec in 'small 640x1136 320 1.0' 'standard 720x1600 320 1.0' 'large 824x1830 320 1.0' 'large-font 640x1136 320 1.6'; do
   read -r label dimensions density font <<< "$spec"

@@ -126,11 +126,25 @@ private fun DrawScope.drawPhoneMap(alpha: Float) {
     fun polygon(vararg p: Pair<Float, Float>) = Path().apply {
         moveTo(p[0].first, p[0].second); p.drop(1).forEach { lineTo(it.first, it.second) }; close()
     }
-    val outer = polygon(72f to 31f, 264f to 18f, 330f to 258f, 31f to 278f)
+    drawCircle(Brush.radialGradient(listOf(Electric.copy(alpha = .12f * alpha), Color.Transparent),
+        center = Offset(180f, 150f), radius = 148f), 148f, Offset(180f, 150f))
+    val outer = Path().apply {
+        moveTo(84f, 30f); lineTo(248f, 19f)
+        quadraticBezierTo(263f, 18f, 268f, 35f)
+        lineTo(325f, 242f); quadraticBezierTo(331f, 258f, 315f, 260f)
+        lineTo(51f, 277f); quadraticBezierTo(32f, 279f, 37f, 261f)
+        lineTo(67f, 49f); quadraticBezierTo(70f, 31f, 84f, 30f); close()
+    }
     drawPath(outer, Electric.copy(alpha = .045f * alpha), style = Stroke(18f))
     drawPath(outer, Color(0xFF3277BA).copy(alpha = alpha), style = Stroke(6f))
     drawPath(outer, Color(0xFF020915).copy(alpha = alpha))
-    val screen = polygon(80f to 42f, 256f to 31f, 315f to 248f, 46f to 266f)
+    val screen = Path().apply {
+        moveTo(88f, 42f); lineTo(244f, 32f)
+        quadraticBezierTo(253f, 31f, 257f, 44f)
+        lineTo(312f, 236f); quadraticBezierTo(315f, 247f, 304f, 248f)
+        lineTo(61f, 265f); quadraticBezierTo(47f, 266f, 50f, 252f)
+        lineTo(78f, 55f); quadraticBezierTo(80f, 43f, 88f, 42f); close()
+    }
     clipPath(screen) {
         drawRect(Brush.linearGradient(listOf(Color(0xFF12394D).copy(alpha = alpha), Color(0xFF09213D).copy(alpha = alpha))))
         val river = Path().apply { moveTo(70f, 290f); cubicTo(190f, 170f, 60f, 140f, 170f, 20f) }

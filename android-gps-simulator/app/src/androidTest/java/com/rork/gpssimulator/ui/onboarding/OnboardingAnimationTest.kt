@@ -1,6 +1,7 @@
 package com.rork.gpssimulator.ui.onboarding
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -43,7 +44,8 @@ class OnboardingAnimationTest {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val dir = File(instrumentation.targetContext.getExternalFilesDir(null), "onboarding-screenshots").apply { mkdirs() }
-        instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+        compose.waitForIdle()
+        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
             File(dir, "motion-$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
         }
