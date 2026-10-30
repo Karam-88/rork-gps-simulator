@@ -122,9 +122,9 @@ data class MapCircle(
 )
 
 /**
- * Main map surface. The previous hand-written raster renderer is replaced by
- * MapLibre Native, which provides robust vector rendering, built-in double-tap,
- * pinch/fling gestures and disk/network resource caching.
+ * Shared map surface with native Google Maps on the signed release branch.
+ * The free-map renderer is preserved unchanged on the experimental backup.
+ * Overlay and GPS simulation contracts remain identical.
  */
 @Composable
 fun MapView(
