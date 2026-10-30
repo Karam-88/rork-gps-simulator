@@ -1,7 +1,7 @@
 name: Responsive onboarding device checks
 on:
   push:
-    branches: [feature/responsive-animated-onboarding-20261030]
+    branches: [feature/responsive-animated-onboarding-20261030, integration/all-fixes-onboarding-maps-20261030]
 permissions:
   contents: read
 jobs:
