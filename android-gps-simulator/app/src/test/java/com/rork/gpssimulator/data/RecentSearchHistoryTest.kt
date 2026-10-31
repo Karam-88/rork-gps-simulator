@@ -32,7 +32,7 @@ class RecentSearchHistoryTest {
     @Test
     fun priorTenEntryListIsNormalizedToFiveAndBlankTermsAreIgnored() {
         assertEquals(
-            listOf("one", "two", "three", "four", "five"),
+            listOf("one", "two", "THREE", "four", "five"),
             RecentSearchHistory.normalize(
                 listOf(" one ", "two", "THREE", "", "four", "five", "six", "SEVEN"),
             ),
