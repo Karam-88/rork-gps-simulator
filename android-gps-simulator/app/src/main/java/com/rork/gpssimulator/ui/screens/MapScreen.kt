@@ -662,7 +662,7 @@ fun MapScreen(
                     // Visible directly above Finish, beside walk/bike/car route controls.
                     Surface(
                         shape = CircleShape,
-                        color = if (routeStops.isNotEmpty()) MaterialTheme.colorScheme.surface
+                        color = if (routeStops.isNotEmpty() && !routeCalculating) Color(0xFFE53935)
                             else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(46.dp),
                     ) {
@@ -681,14 +681,14 @@ fun MapScreen(
                                 Icons.Default.Undo,
                                 contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
                                     "التراجع عن آخر نقطة" else "Undo last waypoint",
-                                tint = if (routeStops.isNotEmpty()) MaterialTheme.colorScheme.onSurface
+                                tint = if (routeStops.isNotEmpty() && !routeCalculating) Color.White
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                     Surface(
                         shape = CircleShape,
-                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) Color(0xFF16A34A) else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(46.dp),
                     ) {
                     IconButton(
@@ -718,7 +718,7 @@ fun MapScreen(
                     ) {
                         Icon(Icons.Default.Check,
                             contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC) "انتهيت من إضافة نقاط المسار" else "Finish adding route stops",
-                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            tint = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     }
                 } else {
