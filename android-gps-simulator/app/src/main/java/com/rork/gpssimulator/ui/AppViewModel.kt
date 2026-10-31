@@ -689,6 +689,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun commitSearch(query: String) = repository.addRecentSearch(query)
 
+    fun deleteRecentSearch(query: String) = repository.deleteRecentSearch(query)
+
     fun clearSearchResults() {
         searchJob?.cancel()
         _searchResults.value = emptyList()
