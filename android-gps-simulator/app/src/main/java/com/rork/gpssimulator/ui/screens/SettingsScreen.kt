@@ -102,6 +102,7 @@ import com.rork.gpssimulator.i18n.AppLanguage
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
 import com.rork.gpssimulator.ui.AppViewModel
+import com.rork.gpssimulator.ui.privacy.AnalyticsConsent
 import com.rork.gpssimulator.ui.components.ConfirmDialog
 import com.rork.gpssimulator.ui.components.ExpandableSection
 import com.rork.gpssimulator.ui.components.GroupCard
@@ -170,6 +171,8 @@ fun SettingsScreen(
     val history by viewModel.history.collectAsState()
 
     val transfer = remember { TransferService(context) }
+    var analyticsEnabled by remember { mutableStateOf(AnalyticsConsent.isAllowed(context)) }
+    val analyticsCopy = analyticsSettingCopy(strings.language)
 
     var searchOpen by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -794,6 +797,7 @@ fun SettingsScreen(
 
             // ================= DATA & PRIVACY =================
             val dataTerms = arrayOf(
+                "analytics", "statistics", "statistik", "تحليلات",
                 strings[K.save_history], strings[K.import_export], strings[K.clear_history],
                 strings[K.local_data_info], strings[K.delete_all_data], "history", "privacy",
                 "export", "import", "data", "backup",
@@ -801,6 +805,19 @@ fun SettingsScreen(
             if (filter.matches(*dataTerms)) {
                 SectionHeader(strings[K.section_data_privacy])
                 GroupCard {
+                    if (filter.matches("analytics", "statistics", "statistik", "تحليلات", "privacy")) {
+                        SwitchRow(
+                            icon = Icons.Default.Analytics,
+                            title = analyticsCopy.first,
+                            description = analyticsCopy.second,
+                            checked = analyticsEnabled,
+                            onCheckedChange = { allowed ->
+                                AnalyticsConsent.setAllowed(context, allowed)
+                                analyticsEnabled = allowed
+                            },
+                        )
+                        RowDivider()
+                    }
                     if (filter.matches(strings[K.save_history], "history", "privacy")) {
                         SwitchRow(
                             icon = Icons.Default.History,
@@ -1293,7 +1310,24 @@ private fun openAppSettings(context: android.content.Context) {
     }
 }
 
-private const val PRIVACY_POLICY_URL = "https://mohammad-km.github.io/rork-gps-simulator/privacy-policy.html"
+
+/** Keep the optional Analytics switch intelligible in all supported app languages. */
+private fun analyticsSettingCopy(language: AppLanguage): Pair<String, String> = when (language) {
+    AppLanguage.ARABIC -> "إحصاءات الاستخدام" to "مشاركة إحصاءات Firebase Analytics اختياريًا. تعطيلها لا يؤثر على GPS."
+    AppLanguage.GERMAN -> "Nutzungsstatistiken" to "Optionale Firebase-Analytics-Daten. GPS funktioniert auch ohne Zustimmung."
+    AppLanguage.FRENCH -> "Statistiques d’utilisation" to "Firebase Analytics facultatif. Le GPS fonctionne sans consentement."
+    AppLanguage.SPANISH -> "Estadísticas de uso" to "Firebase Analytics opcional. El GPS funciona aunque lo desactives."
+    AppLanguage.PORTUGUESE_BRAZIL -> "Estatísticas de uso" to "Firebase Analytics é opcional. O GPS funciona sem consentimento."
+    AppLanguage.TURKISH -> "Kullanım istatistikleri" to "Firebase Analytics isteğe bağlıdır. GPS izin olmadan da çalışır."
+    AppLanguage.RUSSIAN -> "Статистика использования" to "Firebase Analytics необязателен. GPS работает и без согласия."
+    AppLanguage.HINDI -> "उपयोग आँकड़े" to "Firebase Analytics वैकल्पिक है। सहमति के बिना भी GPS काम करता है।"
+    AppLanguage.INDONESIAN -> "Statistik penggunaan" to "Firebase Analytics opsional. GPS tetap berfungsi tanpa persetujuan."
+    AppLanguage.JAPANESE -> "利用統計" to "Firebase Analytics は任意です。拒否しても GPS は動作します。"
+    AppLanguage.CHINESE_SIMPLIFIED -> "使用情况统计" to "Firebase Analytics 为可选功能。拒绝后 GPS 仍可使用。"
+    AppLanguage.ENGLISH -> "Usage analytics" to "Optional Firebase Analytics statistics. GPS works without consent."
+}
+
+private const val PRIVACY_POLICY_URL = "https://karam-88.github.io/rork-gps-simulator/privacy-policy.html"
 
 private fun openPrivacyPolicy(context: android.content.Context) {
     try {
