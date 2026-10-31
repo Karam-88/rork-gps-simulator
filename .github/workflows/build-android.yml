@@ -21,6 +21,7 @@ on:
       - fix/daylight-default-first-launch-20261030
       - fix/arabic-menu-rating-rtl-20261030
       - fix/search-overlay-no-ghosting-20261030
+      - fix/route-numbered-waypoints-undo-v35-20261031
   pull_request:
     branches:
       - main
@@ -71,13 +72,25 @@ jobs:
       # a Play-signed internal-track install may still be required if the upload
       # certificate differs from the Play App Signing certificate.
       - name: Verify native Google Maps renderer in Play release
-        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'main'
+        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031' || github.ref_name == 'main'
         run: |
           grep -q 'import com.google.android.gms.maps.GoogleMap' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/build.gradle.kts
-          grep -q 'versionCode = 34' app/build.gradle.kts
+          grep -Eq 'versionCode = (34|37)' app/build.gradle.kts
           echo 'Google Maps renderer verified for Play internal build.'
+
+      - name: Verify waypoint undo and stable native map overlays
+        if: github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031'
+        run: |
+          grep -Fq 'MarkerStyle.ROUTE_WAYPOINT' app/src/main/java/com/rork/gpssimulator/ui/screens/MapScreen.kt
+          grep -Fq 'routeStops.removeAt(routeStops.lastIndex)' app/src/main/java/com/rork/gpssimulator/ui/screens/MapScreen.kt
+          grep -Fq 'Icons.Default.Undo' app/src/main/java/com/rork/gpssimulator/ui/screens/RouteEditorSheet.kt
+          grep -Fq 'displayedMarkers = pendingMarkers.toList()' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
+          if grep -Fq 'readyMap.clear()' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt; then
+            echo "::error::Full map clear triggers visible flicker"; exit 1
+          fi
+          echo 'Numbered route waypoints, one-step undo and persistent native markers checked.'
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
