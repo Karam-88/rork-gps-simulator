@@ -22,6 +22,7 @@ on:
       - fix/arabic-menu-rating-rtl-20261030
       - fix/search-overlay-no-ghosting-20261030
       - feature/firebase-analytics-basic-usage-20261031
+      - release/firebase-analytics-internal-v35-20261031
   pull_request:
     branches:
       - main
@@ -72,16 +73,16 @@ jobs:
       # a Play-signed internal-track install may still be required if the upload
       # certificate differs from the Play App Signing certificate.
       - name: Verify native Google Maps renderer in Play release
-        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'main'
+        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'release/firebase-analytics-internal-v35-20261031' || github.ref_name == 'main'
         run: |
           grep -q 'import com.google.android.gms.maps.GoogleMap' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/build.gradle.kts
-          grep -q 'versionCode = 34' app/build.gradle.kts
+          grep -Eq 'versionCode = (34|35)' app/build.gradle.kts
           echo 'Google Maps renderer verified for Play internal build.'
 
       - name: Verify minimal, privacy-conscious Analytics integration
-        if: github.ref_name == 'feature/firebase-analytics-basic-usage-20261031'
+        if: github.ref_name == 'feature/firebase-analytics-basic-usage-20261031' || github.ref_name == 'release/firebase-analytics-internal-v35-20261031' || github.ref_name == 'main'
         run: |
           grep -Fq 'implementation("com.google.firebase:firebase-analytics")' app/build.gradle.kts
           grep -Fq 'google_analytics_adid_collection_enabled' app/src/main/AndroidManifest.xml
