@@ -1293,7 +1293,7 @@ private fun openAppSettings(context: android.content.Context) {
     }
 }
 
-private const val PRIVACY_POLICY_URL = "https://mohammad-km.github.io/rork-gps-simulator/privacy-policy.html"
+private const val PRIVACY_POLICY_URL = "https://karam-88.github.io/rork-gps-simulator/privacy-policy.html"
 
 private fun openPrivacyPolicy(context: android.content.Context) {
     try {
