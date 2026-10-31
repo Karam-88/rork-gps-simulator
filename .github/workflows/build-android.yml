@@ -21,6 +21,7 @@ on:
       - fix/daylight-default-first-launch-20261030
       - fix/arabic-menu-rating-rtl-20261030
       - fix/search-overlay-no-ghosting-20261030
+      - feature/firebase-analytics-basic-usage-20261031
   pull_request:
     branches:
       - main
@@ -78,6 +79,15 @@ jobs:
           ! grep -q 'org.maplibre' app/build.gradle.kts
           grep -q 'versionCode = 34' app/build.gradle.kts
           echo 'Google Maps renderer verified for Play internal build.'
+
+      - name: Verify minimal, privacy-conscious Analytics integration
+        if: github.ref_name == 'feature/firebase-analytics-basic-usage-20261031'
+        run: |
+          grep -Fq 'implementation("com.google.firebase:firebase-analytics")' app/build.gradle.kts
+          grep -Fq 'google_analytics_adid_collection_enabled' app/src/main/AndroidManifest.xml
+          grep -Fq 'tools:node="remove"' app/src/main/AndroidManifest.xml
+          grep -Fq 'FirebaseAnalytics.Event.SCREEN_VIEW' app/src/main/java/com/rork/gpssimulator/ui/navigation/AppNavigation.kt
+          echo 'Analytics dependency, static screen views and AD_ID restrictions verified.'
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
