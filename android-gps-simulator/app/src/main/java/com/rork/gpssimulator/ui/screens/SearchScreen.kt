@@ -348,18 +348,30 @@ fun SearchScreen(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
                                 ) {
                                     // Swipe-to-delete affordance; the row covers it at rest.
+                                    // Reveal the trash icon on the physical RIGHT as the
+                                    // row moves LEFT, regardless of Arabic RTL layout.
                                     Box(
                                         modifier = Modifier
                                             .matchParentSize()
                                             .background(Color(0xFFE53935)),
-                                        contentAlignment = Alignment.Center,
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(22.dp),
-                                        )
+                                        androidx.compose.runtime.CompositionLocalProvider(
+                                            androidx.compose.ui.platform.LocalLayoutDirection provides
+                                                androidx.compose.ui.unit.LayoutDirection.Ltr,
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize()
+                                                    .padding(end = 18.dp),
+                                                contentAlignment = Alignment.CenterEnd,
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = null,
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(22.dp),
+                                                )
+                                            }
+                                        }
                                     }
                                     Row(
                                         modifier = Modifier
