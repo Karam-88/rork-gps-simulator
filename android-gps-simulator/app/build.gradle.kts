@@ -47,8 +47,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 34
-        versionName = "1.1.29-internal-test"
+        versionCode = 37
+        versionName = "1.1.32-route-qa"
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
