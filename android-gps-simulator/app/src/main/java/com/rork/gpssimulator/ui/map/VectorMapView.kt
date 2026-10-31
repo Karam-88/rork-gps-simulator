@@ -347,7 +347,7 @@ private class GoogleMapHolder(
                 nativeMarkers[index]?.let { existing ->
                     if (previous?.point != marker.point) existing.position = position
                     if (previous?.style != marker.style || previous?.color != marker.color ||
-                        previous.label != marker.label || previous.visualScale != marker.visualScale
+                        previous?.label != marker.label || previous.visualScale != marker.visualScale
                     ) {
                         existing.setIcon(markerIcon(mapView.context, marker))
                         existing.setAnchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f)
