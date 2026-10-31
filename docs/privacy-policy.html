@@ -1,209 +1,125 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Privacy Policy — GPS Simulator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
-  h1 { font-size: 1.8em; }
-  h2 { font-size: 1.25em; margin-top: 2em; }
-  .updated { color: #666; font-size: 0.9em; }
-  .app-info { background: #f4f6f8; border-radius: 6px; padding: 0.7em 1em; }
-  footer { margin-top: 3em; color: #666; font-size: 0.9em; border-top: 1px solid #ddd; padding-top: 1em; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="How GPS Simulator: Fake GPS by Karam Mobile handles location, Firebase Analytics, problem reports, and other data.">
+  <title>Privacy Policy | GPS Simulator: Fake GPS</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.7; color: #152335; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 36px 20px 72px; }
+    header { padding: 30px 30px 24px; background: #102a41; border-radius: 20px; color: #fff; }
+    .eyebrow { margin: 0 0 8px; color: #85dbb5; font-size: .83rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.25; }
+    header p { color: #d7e5ee; margin-bottom: 0; }
+    main { margin-top: 18px; padding: 30px; border: 1px solid #e2e9f0; border-radius: 20px; background: #fff; }
+    h2 { margin: 32px 0 8px; font-size: 1.25rem; color: #103c58; line-height: 1.35; }
+    h2:first-child { margin-top: 0; }
+    p, li { overflow-wrap: anywhere; }
+    ul { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    .meta { font-size: .94rem; }
+    .note { background: #eaf6f0; border-left: 4px solid #13845f; border-radius: 8px; padding: 13px 16px; }
+    .note p { margin: 5px 0; }
+    .ar { direction: rtl; text-align: right; background: #f1f5fa; padding: 16px 20px; border-radius: 12px; margin: 20px 0; font-family: Tahoma, Arial, sans-serif; }
+    .ar h2 { color: #123e5c; margin-top: 0; }
+    a { color: #08658b; text-underline-offset: 2px; }
+    a:focus-visible { outline: 3px solid #0f8f72; outline-offset: 3px; }
+    footer { margin-top: 18px; color: #516276; text-align: center; font-size: .9rem; }
+    @media (max-width: 560px) { .wrap { padding: 14px 12px 35px; } header, main { padding: 22px 18px; border-radius: 12px; } }
+  </style>
 </head>
 <body>
-<h1>Privacy Policy — GPS Simulator</h1>
-<p class="updated">Last updated: September 20, 2026</p>
-
-<p class="app-info"><strong>App name:</strong> GPS Simulator<br>
-<strong>Developer:</strong> Karam Mobile<br>
-<strong>Package name:</strong> com.rork.gpssimulator</p>
-
-<p>This is the privacy policy for the Android app GPS Simulator ("the
-App"), published by Karam Mobile ("the developer"). The App is a
-developer testing tool that lets a user supply a mock (simulated)
-location to Android's location system, for software testing and
-development purposes. This policy explains what data the App accesses,
-what it sends over the network, what it stores on your device, and what
-it never does.</p>
-
-<h2>Summary</h2>
-<ul>
-  <li>The developer runs no server and receives none of your data. The
-  App has no accounts, no analytics, no advertising, no tracking, and no
-  cookies.</li>
-  <li>The App reads your real location (only with your permission, and
-  without background location access) to show it on the map, and it
-  feeds the location you choose to Android's mock location provider so
-  other apps on your device can see it.</li>
-  <li>The App connects directly from your device to third-party map tile
-  providers and to the OpenStreetMap Nominatim service. They receive the
-  visible map area, place-search text or selected coordinates, and your
-  IP address.</li>
-  <li>Settings, saved places, routes, history, and the last position
-  stay on your device. If Android device backup is turned on, Android
-  may copy them to your Google account backup.</li>
-</ul>
-
-<h2>No Account, No Server of Ours</h2>
-<p>The App has no user accounts, and Karam Mobile does not operate any
-backend server. The developer does not receive or collect any of your
-personal data, your location, or the data stored in the App, and does
-not sell it. The App contains no analytics, advertising,
-crash-reporting, or tracking SDKs, does not use cookies or advertising
-identifiers, and does not read device identifiers such as your Android
-ID or IMEI. The only network connections the App makes go directly from
-your device to the third-party services described in "Map Tiles and
-Place Search" below. The App uses only open-source libraries (such as
-AndroidX, Kotlin, Ktor, and Koin), none of which is an analytics,
-advertising, or crash-reporting library.</p>
-
-<h2>Location Access</h2>
-<p>The App requests foreground location permission (ACCESS_FINE_LOCATION /
-ACCESS_COARSE_LOCATION) to show your real current position on the in-app
-map, so you can pick a point to simulate or compare it against your
-simulated position, and to show live values in its GPS Diagnostics
-screen. The real position is read through Android's location providers:
-GPS, network, or, if "Use Google Play Location Services" is enabled
-(which it is by default), the fused provider that Google Play services
-supplies on your device. The App does not include any Google Play
-services SDK.</p>
-<p>The App does not request background location permission, but the
-real-location listener may keep running while the app's process is alive
-and its screen is bound (for example while the app is open, even if
-temporarily not on screen), not only at the exact moment the screen is
-visible. It stops when the app's screen component is destroyed. Your
-real position itself is kept in memory only, and the App does not send
-it to the developer or to any server of its own. It can indirectly reach
-the map tile providers described below if you center the map on it.</p>
-
-<h2>Map Tiles and Place Search (Third-Party Servers)</h2>
-<p>To display the map, the App downloads map tiles from third-party map
-providers depending on the map type you choose: OpenStreetMap, Esri
-World Imagery, OpenTopoMap, or OpenStreetMap France (Humanitarian
-tiles). Loading a map tile sends the tile coordinates of the visible map
-area (which can include your real location if you center the map on it)
-and your IP address to that provider's servers, the same way any map app
-or web page with an embedded map would. Each request also carries a
-User-Agent that identifies the App ("GPSSimulator/1.0 (Android developer
-testing tool)"); the App sends no account identifiers, device
-identifiers, or cookies. All of these connections use HTTPS. Map tiles
-are kept in memory while the App runs and are not saved to your device's
-storage.</p>
-<p>If you use the in-app place search, or select a point (on the map,
-from a search result, or by entering coordinates), the App sends the
-text you type in the search box (as you type) or the coordinates of the
-selected point to the OpenStreetMap Nominatim geocoding service, which
-is operated by the OpenStreetMap Foundation, in order to return a place
-name or address. These requests carry the same User-Agent. This happens
-when you search, select a point, or when the App restores your last
-simulated point at startup (if "Restore Last Test Location" is enabled,
-which it is by default) — not continuously and not in the background.</p>
-<p>These providers are independent third parties with their own privacy
-practices; the App does not control what they log. No account
-identifiers, contact information, or other personal data beyond what
-this section describes is sent to them.</p>
-
-<h2>Mock Location Data</h2>
-<p>Coordinates you choose to simulate are used to feed Android's mock
-location provider (via Developer Options → "Select mock location app")
-on your own device. The App supplies them to the device's GPS and
-network location providers and, on Android 12 and later, to the fused
-provider, so other apps on your device that request location see the
-simulated location while you test them. While a simulated session is
-running, the App keeps supplying it from a foreground service that shows
-a persistent notification (which displays the simulated coordinates)
-until you stop the session. What other apps do with the simulated
-location is governed by their own privacy policies, not by this
-one.</p>
-<p>This data stays on your device for the mock-location purpose described
-above and is never sent to the developer. The only time the App itself
-sends a chosen coordinate over the network is the place-name lookup
-described in the "Map Tiles and Place Search" section above, when
-applicable. If you choose to share, copy, or export a location or
-route, it goes to the app, clipboard, or file you pick; the App does not
-send it anywhere on its own.</p>
-
-<h2>Local Storage on Your Device</h2>
-<p>The App stores the following locally on your device only — never
-transmitted to the developer:</p>
-<ul>
-  <li>App settings and preferences (map style, units, etc.)</li>
-  <li>If "Remember Last Map Position" is enabled (on by default), the
-  last map centre shown — which may be your real location if you last
-  viewed the map there</li>
-  <li>The last point you simulated. It is saved whenever a simulated
-  session runs, and if "Restore Last Test Location" is enabled (on by
-  default) it is selected again when you reopen the App</li>
-  <li>The most recent simulated session's state, including its
-  coordinates and place name, so a running session can resume if Android
-  restarts the App's service. After you stop a session it is marked
-  inactive but stays stored until your next session or until you delete
-  the App's data</li>
-  <li>If "Save Location History" is enabled (on by default), a history
-  of your simulated sessions (place name, address, coordinates, start
-  time, and duration)</li>
-  <li>Your recent searches (the last 10 search queries you entered)</li>
-  <li>Your favourites and presets, your saved routes, and the
-  geofences you create</li>
-</ul>
-<p>This data never leaves your device via any developer-operated
-service, and is deleted when you uninstall the App or clear its data.
-In Settings you can turn off "Remember Last Map Position" and "Save
-Location History", clear the history with "Clear History", or remove
-everything with "Delete All Local App Data".</p>
-<p>The last simulated point and the most recent session's state are
-stored regardless of these switches (including "Restore Last Test
-Location", which only controls whether the point is selected again when
-you reopen the App); "Delete All Local App Data" removes them.</p>
-<p>Android backup: the App allows Android's standard app-data backup. If
-device backup is turned on (for example, backup to your Google account),
-Android may include this local data in your backup and restore it when
-you set up a new device. That backup is created and controlled by
-Android and Google under your account settings; Karam Mobile cannot
-access it. You can turn backup off in your device's system settings.</p>
-
-<h2>Permissions Summary</h2>
-<ul>
-  <li><strong>Location (ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION;
-  foreground only):</strong> to show your real position on the map and
-  in GPS Diagnostics, as described above.</li>
-  <li><strong>Mock location (ACCESS_MOCK_LOCATION):</strong> declared so
-  that the App can be chosen under Developer Options → "Select mock
-  location app". Android lets the App supply mock locations only after
-  you choose it there.</li>
-  <li><strong>Internet and network state (INTERNET,
-  ACCESS_NETWORK_STATE):</strong> to download map tiles, to perform the
-  place lookups described above, and to check whether a network is
-  available (shown in GPS Diagnostics).</li>
-  <li><strong>Foreground service and notifications (FOREGROUND_SERVICE,
-  FOREGROUND_SERVICE_LOCATION, POST_NOTIFICATIONS):</strong> to keep a
-  simulated session running with the required "Mock location active"
-  notification, which shows the simulated coordinates, and to let you
-  stop the session from the notification.</li>
-</ul>
-<p>The App does not request background location, contacts, camera,
-microphone, SMS, or storage permissions. If you use Export or Import,
-the App reads or writes only the file you choose in Android's file
-picker. You can withdraw any permission at any time in your device's
-system settings.</p>
-
-<h2>Children's Privacy</h2>
-<p>The App is a developer tool and is not directed at children. It does
-not knowingly collect data from anyone, including children.</p>
-
-<h2>Changes to This Policy</h2>
-<p>If this policy changes, the updated version will be published at this
-same address with a new "Last updated" date.</p>
-
-<h2>Contact</h2>
-<p>Questions about this policy or the App can be sent to Karam Mobile:
-<strong>mhmd88mmk88@gmail.com</strong>. If you contact the developer by
-email, the developer receives your email address and message and uses
-them only to reply.</p>
-
-<footer>GPS Simulator by Karam Mobile — a developer tool for testing location-aware apps.</footer>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Karam Mobile · Android</p>
+    <h1>Privacy Policy — GPS Simulator: Fake GPS</h1>
+    <p class="meta"><strong>Last updated:</strong> October 31, 2026<br>
+      <strong>App package:</strong> com.rork.gpssimulator<br>
+      <strong>Developer:</strong> Karam Mobile</p>
+  </header>
+  <main>
+    <section aria-label="Summary">
+      <h2>1. Overview</h2>
+      <p>This policy explains how GPS Simulator: Fake GPS (“App”, “we” or “our”), published by Karam Mobile, processes information when you use mock GPS features, maps, routes, settings, diagnostics, optional problem reporting, and app analytics. The App is free and does not display advertisements or sell personal information.</p>
+      <div class="note">
+        <p><strong>Key distinction:</strong> Your chosen mock GPS coordinates and real GPS readings are not included in the custom Firebase Analytics screen-view events we send. Some map, search, geocoding and route features do send locations or route endpoints to their service providers to perform the feature you request.</p>
+        <p>Firebase Analytics also processes app usage, technical identifiers, device information and approximate geography; see Section 4.</p>
+      </div>
+      <p>You can use the main GPS simulator without creating a personal sign-in account. An anonymous Firebase account identifier may be created if you submit a problem report.</p>
+    </section>
+    <section class="ar" lang="ar" aria-label="ملخص الخصوصية بالعربية">
+      <h2>ملخص الخصوصية بالعربية</h2>
+      <p>يستخدم تطبيق GPS Simulator الموقع الحقيقي بإذن منك لعرضه على الخريطة، ويُنشئ موقعًا وهميًا على جهازك عند تشغيل المحاكاة. تُخزَّن الإعدادات والمفضلة وسجل المواقع محليًا، وقد تُرسل بيانات المواقع أو نقاط المسارات إلى خدمات الخرائط والبحث والتوجيه لتنفيذ طلبك.</p>
+      <p>نستخدم Firebase Analytics لقياس عدد المستخدمين ومرات فتح التطبيق وأسماء الشاشات، دون إضافة إحداثيات GPS الحقيقية أو الوهمية إلى أحداث التحليلات المخصّصة. وقد تجمع Google معرّف تثبيت التطبيق ومعلومات الجهاز والموقع التقريبي المستنتج من الاتصال. عند إرسال بلاغ، يُرسل وصف المشكلة ونوع الجهاز وإصدار النظام والتطبيق ومعرّف مجهول إلى Firebase.</p>
+      <p>التطبيق مجاني وخالٍ من الإعلانات، وجمع معرّف الإعلانات معطّل. يمكن طلب الاطلاع على البيانات أو حذف البلاغات عبر البريد المذكور أدناه. للمعلومات القانونية والتفاصيل الكاملة، يُرجى قراءة الأقسام الإنجليزية.</p>
+    </section>
+    <section>
+      <h2>2. Location access and mock GPS</h2>
+      <p>With Android's foreground location permission, the App reads your real location to show your position on the map, center the map when requested and provide GPS diagnostics. It may use Google Play services' fused location provider. It does not request the Android <em>ACCESS_BACKGROUND_LOCATION</em> permission.</p>
+      <p>When you enable Android's “Select mock location app” option and start simulation, your chosen simulated position is supplied to Android location providers through a foreground service. Other apps on your device may then receive that simulated position, subject to their own settings and policies. A foreground notification may display the simulated position while simulation is active.</p>
+      <p>Real and simulated location readings are used to operate GPS and map features. The App does not intentionally transmit raw real or simulated GPS coordinates as parameters of its custom Firebase Analytics screen-view events. It does not sell your location history. External services may receive location-related requests as described in Section 3.</p>
+    </section>
+    <section>
+      <h2>3. Maps, place search and route services</h2>
+      <p><strong>Google Maps:</strong> Current signed Google Play releases use the Google Maps SDK for standard and satellite map display. Google may process network information, device information, map viewport and interactions to provide map imagery, according to <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google's Privacy Policy</a>. Experimental or older builds may use OpenFreeMap, CARTO, Esri or OpenStreetMap-related map sources, which can receive map-tile requests and your IP address.</p>
+      <p><strong>Place search and geocoding:</strong> When you search for a place or ask the App to resolve a location to an address, the App may send the search text or relevant coordinates to the <a href="https://nominatim.org/" rel="noopener noreferrer">OpenStreetMap Nominatim</a> service. Its server may receive your IP address and technical request information.</p>
+      <p><strong>Route planning:</strong> To calculate road-following routes (for example walking, cycling or driving), the App may transmit route start points, destinations and intermediate waypoints to public <a href="https://routing.openstreetmap.de/" rel="noopener noreferrer">OSRM routing services</a>. Their operators can process these points and your IP address as part of the request.</p>
+      <p>These providers are separate from Firebase Analytics. We do not control their independent server logs or retention periods. Avoid searching for, selecting or routing to sensitive locations if you do not want relevant location details sent to the service used for that feature.</p>
+    </section>
+    <section>
+      <h2>4. Firebase Analytics and app usage</h2>
+      <p>App versions that include Firebase Analytics use <strong>Google Analytics for Firebase</strong> to understand aggregate app activity, diagnose feature usage and improve usability. The SDK may automatically process app opens and first launches, session statistics, engagement, app version, operating system, device model, an app-instance identifier and approximate geographic region (which can be inferred from network information such as an IP address).</p>
+      <p>We also send events for a fixed allowlist of screen names, such as <code>Map</code>, <code>Search</code>, <code>Settings</code>, and <code>Routes</code>. These custom events do not contain precise GPS coordinates, simulated positions, searched addresses, saved locations or routes.</p>
+      <p>The App disables advertising ID collection in Firebase Analytics and does not request the Android AD_ID permission. It also disables analytics ad-personalization signals. These restrictions do <em>not</em> mean Analytics collects no technical or installation identifiers.</p>
+      <p>Firebase Analytics data is processed by Google according to its applicable terms, privacy documentation and configured data-retention controls. See <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase Privacy and Security</a> and <a href="https://support.google.com/firebase/answer/6318039" rel="noopener noreferrer">Firebase Analytics Data Collection</a>.</p>
+    </section>
+    <section>
+      <h2>5. Optional problem reports and Firebase services</h2>
+      <p>If you voluntarily use the “Report a problem” feature, the App sends your written report, a problem category, app version, Android version, device manufacturer/model, report timestamp and a Firebase anonymous user identifier to <strong>Google Firebase Authentication and Cloud Firestore</strong>. This information is used to receive, investigate and resolve the reported issue. Please do not include sensitive information, passwords or precise locations in the free-text description.</p>
+      <p>Firebase App Check / Play Integrity may also process technical app and device integrity signals to protect these services against abuse. No personal sign-up is required to use the App's core GPS features.</p>
+      <p>Information entered into a support email or problem report is used for support, and is not sold to advertisers.</p>
+    </section>
+    <section>
+      <h2>6. Data stored on your device</h2>
+      <p>Depending on your preferences and use, local app storage can include map appearance and other settings, last map position, recent searches, saved places and favourites, route plans, geofences, mock-session details and history. These are not uploaded to Firebase Analytics by our custom screen-view tracking.</p>
+      <p>You can clear history, remove saved items or delete all local app data using the App's settings, or clear the App's storage through Android. Android's optional device-backup feature may include some locally stored app data in your Google account backup; Android and Google control those backups.</p>
+    </section>
+    <section>
+      <h2>7. Purposes, security, retention and deletion</h2>
+      <p>We use data to provide the map and GPS features you request, protect the App's backend against misuse, process reports you choose to submit, and understand aggregate app usage. Internet communications with the named services use encrypted HTTPS connections where supported.</p>
+      <p>Local information stays until you remove it, clear app data or uninstall the App, subject to any Android device backups. Problem reports and associated anonymous identifiers are kept in Firebase for support and issue resolution until they are no longer needed or are deleted following a valid request, subject to applicable obligations. Analytics information is retained under the Google Analytics property's configured retention settings and provider policies, and may be aggregated or deleted according to those controls.</p>
+      <p>To request access to or deletion of information held by the developer, including a report you submitted, email <a href="mailto:mhmd88mmk88@gmail.com">mhmd88mmk88@gmail.com</a> with sufficient details to locate the report. We may request reasonable verification before acting. Uninstalling the App stops future collection from that installation but does not by itself erase server-held support reports or already processed analytics information.</p>
+    </section>
+    <section>
+      <h2>8. Choices and privacy rights</h2>
+      <p>You may deny or revoke location permissions through Android settings, stop a mock location session, delete local data and refrain from submitting problem reports. If you live in the European Economic Area or another jurisdiction with data-protection rights, you may contact us to request information, access, correction, deletion, objection or other available rights, subject to applicable law.</p>
+      <p>Analytics collection and consent choices depend on the installed App version and implemented controls. Some versions may automatically collect analytics data on launch and may not provide a separate in-app Analytics opt-out switch. If you have questions about analytics collection or the handling of a request, contact the developer. Where applicable law requires consent for Analytics, appropriate consent controls must be implemented in the App separately from publishing this policy.</p>
+    </section>
+    <section>
+      <h2>9. Permissions</h2>
+      <ul>
+        <li><strong>Precise / approximate location:</strong> show real position, diagnostics and map centering with your permission.</li>
+        <li><strong>Mock location:</strong> supply simulated positions when you select the App in Android Developer Options.</li>
+        <li><strong>Internet and network state:</strong> maps, searches, route planning, Firebase services and Analytics.</li>
+        <li><strong>Foreground service and notifications:</strong> keep active mock sessions operating and display status controls.</li>
+      </ul>
+      <p>The App does not require camera, microphone, contacts or SMS access for its described core features.</p>
+    </section>
+    <section>
+      <h2>10. Children</h2>
+      <p>GPS Simulator is not designed or marketed specifically for children. If you believe that a child's personal information was submitted in a support report, contact us and we will review the request.</p>
+    </section>
+    <section>
+      <h2>11. Updates and contact</h2>
+      <p>We may update this Privacy Policy when the App's functionality, service providers or legal requirements change. Changes will be published at this same page with a revised “Last updated” date.</p>
+      <p><strong>Developer / privacy contact:</strong> Karam Mobile — <a href="mailto:mhmd88mmk88@gmail.com">mhmd88mmk88@gmail.com</a>.</p>
+    </section>
+  </main>
+  <footer>GPS Simulator: Fake GPS · Karam Mobile · Privacy Policy · October 31, 2026</footer>
+</div>
 </body>
 </html>
