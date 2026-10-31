@@ -227,7 +227,9 @@ private class GoogleMapHolder(
         readyMap.mapType = when (type) {
             MapType.STANDARD -> GoogleMap.MAP_TYPE_NORMAL
             MapType.DETAILED_STREETS -> GoogleMap.MAP_TYPE_NORMAL
-            MapType.SATELLITE -> GoogleMap.MAP_TYPE_SATELLITE
+            // HYBRID keeps satellite imagery while overlaying Google road and place labels.
+            // SATELLITE intentionally has no labels; it is not suitable for route selection.
+            MapType.SATELLITE -> GoogleMap.MAP_TYPE_HYBRID
             MapType.TERRAIN -> GoogleMap.MAP_TYPE_TERRAIN
         }
     }
