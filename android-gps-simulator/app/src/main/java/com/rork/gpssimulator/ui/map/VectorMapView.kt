@@ -341,7 +341,7 @@ private class GoogleMapHolder(
                         MarkerOptions()
                             .position(position)
                             .icon(markerIcon(mapView.context, marker))
-                            .anchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
+                            .anchor(0.5f, if (marker.style == MarkerStyle.CANDIDATE || marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
                     ),
                 )
             } else {
@@ -352,7 +352,7 @@ private class GoogleMapHolder(
                         previous?.label != marker.label || previous.visualScale != marker.visualScale
                     ) {
                         existing.setIcon(markerIcon(mapView.context, marker))
-                        existing.setAnchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f)
+                        existing.setAnchor(0.5f, if (marker.style == MarkerStyle.CANDIDATE || marker.style == MarkerStyle.DESTINATION) 1f else 0.5f)
                     }
                 }
             }
@@ -371,7 +371,9 @@ private class GoogleMapHolder(
 
 private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
     val density = context.resources.displayMetrics.density
-    val px = (34f * density).roundToInt().coerceAtLeast(24)
+    // A tapped selection is a prominent pointed pin, not a small location ring.
+    val iconSizeDp = if (marker.style == MarkerStyle.CANDIDATE) 44f else 34f
+    val px = (iconSizeDp * density).roundToInt().coerceAtLeast(24)
     val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -395,17 +397,6 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             canvas.drawCircle(center, center, px * 0.31f, paint)
             // Match the real-location dot: solid centre with a white outer rim.
             canvas.restore()
-        }
-        MarkerStyle.CANDIDATE -> {
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = (2.2f * density).coerceAtLeast(2f)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(center, center, px * 0.31f, paint)
-            paint.strokeWidth = (1.4f * density).coerceAtLeast(1.5f)
-            paint.color = marker.color.toArgb()
-            canvas.drawCircle(center, center, px * 0.31f, paint)
-            paint.style = Paint.Style.FILL
-            canvas.drawCircle(center, center, px * 0.07f, paint)
         }
         MarkerStyle.REAL -> {
             // Compact Google-Maps-like dot: translucent halo, slim white rim, solid blue core.
@@ -434,7 +425,10 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             paint.textAlign = Paint.Align.CENTER
             canvas.drawText(number, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
         }
-        MarkerStyle.DESTINATION -> {
+        MarkerStyle.CANDIDATE, MarkerStyle.DESTINATION -> {
+            // An unmistakable teardrop: white rim, solid blue/red body and
+            // white round center. Candidate is blue; route destination stays red.
+            // Pointed bottom tip is anchored to the exact tapped coordinate.
             val pin = Path().apply {
                 moveTo(center, px * 0.95f)
                 cubicTo(px * 0.22f, px * 0.56f, px * 0.17f, px * 0.42f,
