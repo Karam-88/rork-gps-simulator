@@ -345,11 +345,11 @@ fun MapScreen(
             add(
                 MapMarker(
                     point = it.point,
-                    // A solid Google-style blue pin marks the directly tapped destination.
-                    // Do not confuse this selected point with the small real-GPS blue dot.
-                    color = Color(0xFF1A73E8),
+                    // Solid Google-style RED pin for the directly tapped destination.
+                    // Real GPS remains a distinct, smaller blue dot.
+                    color = Color(0xFFE53935),
                     style = MarkerStyle.CANDIDATE,
-                    // Render the pointed blue pin in native Google Maps (not a hollow ring).
+                    // Render the pointed red pin in native Google Maps (never a hollow ring).
                     renderInOverlay = false,
                 ),
             )
