@@ -95,6 +95,8 @@ enum class MarkerStyle {
     CANDIDATE,
     REAL,
     DESTINATION,
+    /** Numbered circular stop badge in a route editor. */
+    ROUTE_WAYPOINT,
 }
 
 data class MapMarker(
