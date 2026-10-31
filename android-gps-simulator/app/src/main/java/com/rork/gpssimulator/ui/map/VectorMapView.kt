@@ -341,7 +341,7 @@ private class GoogleMapHolder(
                         MarkerOptions()
                             .position(position)
                             .icon(markerIcon(mapView.context, marker))
-                            .anchor(0.5f, if (marker.style == MarkerStyle.CANDIDATE || marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
+                            .anchor(0.5f, markerAnchorY(marker.style)),
                     ),
                 )
             } else {
@@ -352,7 +352,7 @@ private class GoogleMapHolder(
                         previous?.label != marker.label || previous.visualScale != marker.visualScale
                     ) {
                         existing.setIcon(markerIcon(mapView.context, marker))
-                        existing.setAnchor(0.5f, if (marker.style == MarkerStyle.CANDIDATE || marker.style == MarkerStyle.DESTINATION) 1f else 0.5f)
+                        existing.setAnchor(0.5f, markerAnchorY(marker.style))
                     }
                 }
             }
@@ -367,6 +367,93 @@ private class GoogleMapHolder(
             .bearing(0f)
             .tilt(0f)
             .build()
+}
+
+/**
+ * Align the tip of the chosen red pin precisely with the tapped Google Maps
+ * coordinate; unrelated route/real-GPS markers keep their original anchors.
+ */
+private fun markerAnchorY(style: MarkerStyle): Float = when (style) {
+    MarkerStyle.CANDIDATE -> 0.96f
+    MarkerStyle.DESTINATION -> 1f
+    else -> 0.5f
+}
+
+/**
+ * An original glossy, gently raised red location pin matching the user's third
+ * reference in silhouette: red curved shell, dark bevel, open circular center,
+ * pointed bottom, and transparent backdrop. No downloaded/watermarked assets.
+ *
+ * The pin is rasterized only for a native Google Maps Marker descriptor.
+ */
+private fun drawGlossyDirectTapPin(canvas: Canvas, size: Float, density: Float) {
+    val center = size / 2f
+    val top = size * 0.075f
+    val body = Path().apply {
+        moveTo(center, size * 0.96f)
+        cubicTo(size * 0.41f, size * 0.80f, size * 0.22f, size * 0.58f, size * 0.18f, size * 0.39f)
+        cubicTo(size * 0.12f, size * 0.18f, size * 0.27f, top, center, top)
+        cubicTo(size * 0.73f, top, size * 0.88f, size * 0.18f, size * 0.82f, size * 0.39f)
+        cubicTo(size * 0.78f, size * 0.58f, size * 0.59f, size * 0.80f, center, size * 0.96f)
+        close()
+    }
+
+    val shellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        shader = android.graphics.LinearGradient(
+            size * 0.16f, size * 0.16f, size * 0.83f, size * 0.87f,
+            intArrayOf(0xFFFF8376.toInt(), 0xFFF12F26.toInt(), 0xFFDF1714.toInt(), 0xFF9B080C.toInt()),
+            floatArrayOf(0f, 0.30f, 0.64f, 1f),
+            android.graphics.Shader.TileMode.CLAMP,
+        )
+        setShadowLayer(2.6f * density, 0f, 1.3f * density, 0x66000000)
+    }
+    canvas.drawPath(body, shellPaint)
+    shellPaint.clearShadowLayer()
+    shellPaint.shader = null
+
+    // A gentle side bevel gives it volume without flattening the silhouette.
+    val leftHighlight = Path().apply {
+        moveTo(size * 0.31f, size * 0.16f)
+        cubicTo(size * 0.17f, size * 0.26f, size * 0.23f, size * 0.47f, size * 0.32f, size * 0.62f)
+    }
+    canvas.drawPath(leftHighlight, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x99FFFFFF.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f * density
+        strokeCap = Paint.Cap.ROUND
+    })
+    val rightShade = Path().apply {
+        moveTo(size * 0.78f, size * 0.32f)
+        cubicTo(size * 0.82f, size * 0.54f, size * 0.61f, size * 0.79f, size * 0.51f, size * 0.92f)
+    }
+    canvas.drawPath(rightShade, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xAA8F0309.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = 2.1f * density
+        strokeCap = Paint.Cap.ROUND
+    })
+
+    // Raised dark-red bevel around the open center of the pin.
+    val apertureY = size * 0.34f
+    canvas.drawCircle(center, apertureY, size * 0.193f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF79070A.toInt()
+        style = Paint.Style.FILL
+    })
+    canvas.drawCircle(center, apertureY, size * 0.172f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = android.graphics.LinearGradient(
+            center - size * 0.17f, apertureY - size * 0.17f,
+            center + size * 0.15f, apertureY + size * 0.18f,
+            0xFFFFAAA0.toInt(), 0xFF9C0C0D.toInt(),
+            android.graphics.Shader.TileMode.CLAMP,
+        )
+    })
+
+    // The transparent opening reproduces the third visual reference's
+    // see-through center; it is not a ring used as a location marker.
+    canvas.drawCircle(center, apertureY, size * 0.139f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
+    })
 }
 
 private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
@@ -425,10 +512,14 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             paint.textAlign = Paint.Align.CENTER
             canvas.drawText(number, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
         }
-        MarkerStyle.CANDIDATE, MarkerStyle.DESTINATION -> {
-            // An unmistakable teardrop: white rim, solid blue/red body and
-            // white round center. Candidate is blue; route destination stays red.
-            // Pointed bottom tip is anchored to the exact tapped coordinate.
+        MarkerStyle.CANDIDATE -> {
+            // Original, watermark-free illustrated red pin based on the supplied
+            // *visual reference*, not a copied image. Its inner aperture is
+            // genuinely transparent so the map remains visible through the pin.
+            drawGlossyDirectTapPin(canvas, px.toFloat(), density)
+        }
+        MarkerStyle.DESTINATION -> {
+            // Preserve the compact route-end marker; this is NOT direct tap.
             val pin = Path().apply {
                 moveTo(center, px * 0.95f)
                 cubicTo(px * 0.22f, px * 0.56f, px * 0.17f, px * 0.42f,
