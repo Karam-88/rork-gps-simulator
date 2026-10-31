@@ -113,6 +113,12 @@ jobs:
           grep -Fq 'analytics.resetAnalyticsData()' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
           grep -Fq 'android_asset/privacy-policy.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt || grep -Fq 'assets.open("privacy-policy.html")' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
           cmp app/src/main/assets/privacy-policy.html ../docs/privacy-policy.html
+          test -s app/src/main/assets/privacy-policy-ar.html
+          grep -Fq 'hasReachedPrivacyPolicyEnd(' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          test "$(grep -Fc 'enabled = reachedPolicyEnd' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt)" -eq 2
+          grep -Fq 'computeVerticalScrollRange()' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          test -f app/src/test/java/com/rork/gpssimulator/ui/screens/PrivacyScrollGateTest.kt
+          echo 'Arabic policy, dark appearance and scroll-to-end consent gate checked.'
           echo 'Explicit consent gate, SDK default-off, opt-out and complete offline policy verified.'
 
       - name: Build Debug APK
