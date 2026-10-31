@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsRun
@@ -177,11 +177,9 @@ fun RouteEditorSheet(
                                 add(
                                     MapMarker(
                                         point = point,
-                                        color = when (index) {
-                                            0 -> appColors.success
-                                            points.lastIndex -> appColors.danger
-                                            else -> MaterialTheme.colorScheme.primary
-                                        },
+                                        color = androidx.compose.ui.graphics.Color(0xFF20232B),
+                                        label = (index + 1).toString(),
+                                        style = MarkerStyle.ROUTE_WAYPOINT,
                                     ),
                                 )
                             }
@@ -225,7 +223,12 @@ fun RouteEditorSheet(
                             currentLocation?.let { camera.snapTo(it) }
                         }
                         if (points.isNotEmpty()) {
-                            SmallMapAction(Icons.Default.Close, strings[K.delete]) {
+                            // Remove only the latest waypoint (not the whole route).
+                            SmallMapAction(
+                                Icons.Default.Undo,
+                                if (settings.language == AppLanguage.ARABIC) "تراجع عن آخر نقطة"
+                                    else "Undo last waypoint",
+                            ) {
                                 points.removeAt(points.lastIndex)
                             }
                         }
