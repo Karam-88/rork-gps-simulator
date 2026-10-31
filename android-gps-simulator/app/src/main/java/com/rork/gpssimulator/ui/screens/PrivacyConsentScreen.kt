@@ -85,17 +85,20 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
                 AndroidView(
                     factory = { ctx ->
                         var finishedLoading = false
-                        val tolerancePx = (20 * ctx.resources.displayMetrics.density).toInt()
+                        // WebView may temporarily report scrollRange == viewportHeight
+                        // immediately after onPageFinished, before its long HTML page is laid
+                        // out. Never interpret that transient value as "policy read".
+                        var hasActuallyScrolledDown = false
+                        val tolerancePx = (12 * ctx.resources.displayMetrics.density).toInt()
                         val policyView = object : WebView(ctx) {
                             fun checkBottom() {
-                                // WebView scroll range and extent are in matching physical units.
-                                // Never unlock during loading or merely because the view is at top.
                                 if (hasReachedPrivacyPolicyEnd(
-                                        finishedLoading,
-                                        scrollY,
-                                        computeVerticalScrollExtent(),
-                                        computeVerticalScrollRange(),
-                                        tolerancePx,
+                                        pageLoaded = finishedLoading,
+                                        hasActuallyScrolledDown = hasActuallyScrolledDown,
+                                        scrollY = scrollY,
+                                        viewportExtentPx = computeVerticalScrollExtent(),
+                                        scrollRangePx = computeVerticalScrollRange(),
+                                        tolerancePx = tolerancePx,
                                     )
                                 ) {
                                     reachedPolicyEnd = true
@@ -104,6 +107,12 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
 
                             override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
                                 super.onScrollChanged(l, t, oldl, oldt)
+                                // A real downward scroll after loading is required. This
+                                // works with touch, TalkBack scrolling and other accessible
+                                // scrolling inputs; merely loading does not grant consent.
+                                if (finishedLoading && t > 0 && t > oldt) {
+                                    hasActuallyScrolledDown = true
+                                }
                                 checkBottom()
                             }
                         }
@@ -118,7 +127,8 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
                                     finishedLoading = true
-                                    policyView.post { policyView.checkBottom() }
+                                    // Do NOT check/unlock here: WebView's initial scroll range
+                                    // is not reliable until content layout and user scrolling.
                                 }
 
                                 override fun shouldOverrideUrlLoading(
@@ -195,21 +205,30 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
 
 
 /**
- * Enforces read-to-end for both optional choices equally. A policy that fits
- * entirely in the viewport needs no scrolling (e.g. large accessibility text).
- * For scrollable content, an actual positive scroll offset is mandatory.
+ * Both choices unlock only after a real downward scroll reaches the actual end.
+ * WebView often reports scrollRange <= viewportHeight momentarily during first
+ * render; such a state MUST NOT unlock either choice.
+ *
+ * A policy that cannot scroll stays gated. Our full privacy policy spans many
+ * screens; never auto-consent because a short/unfinished range is reported.
+ * Scrolling by assistive technologies is supported via onScrollChanged.
  */
 internal fun hasReachedPrivacyPolicyEnd(
     pageLoaded: Boolean,
+    hasActuallyScrolledDown: Boolean,
     scrollY: Int,
     viewportExtentPx: Int,
     scrollRangePx: Int,
     tolerancePx: Int,
 ): Boolean {
-    if (!pageLoaded || viewportExtentPx <= 0 || scrollRangePx <= 0) return false
-    if (scrollRangePx <= viewportExtentPx) return true
-    return scrollY > 0 &&
-        scrollY + viewportExtentPx >= scrollRangePx - tolerancePx.coerceAtLeast(0)
+    if (!pageLoaded || !hasActuallyScrolledDown) return false
+    if (viewportExtentPx <= 0 || scrollY <= 0) return false
+    // The full policy is long. A near-empty/transient scroll range is unsafe.
+    if (scrollRangePx <= viewportExtentPx + maxOf(tolerancePx.coerceAtLeast(0) * 2, viewportExtentPx / 2)) {
+        return false
+    }
+    return scrollY.toLong() + viewportExtentPx.toLong() >=
+        scrollRangePx.toLong() - tolerancePx.coerceAtLeast(0).toLong()
 }
 
 private fun scrollInstruction(language: AppLanguage, ready: Boolean): String = when (language) {
