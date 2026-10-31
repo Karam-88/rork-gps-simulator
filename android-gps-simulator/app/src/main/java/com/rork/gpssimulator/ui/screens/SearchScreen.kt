@@ -1,6 +1,8 @@
 package com.rork.gpssimulator.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.activity.compose.BackHandler
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -36,21 +40,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.i18n.K
 import com.rork.gpssimulator.i18n.LocalStrings
@@ -209,6 +220,8 @@ fun SearchScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
+                            // A completed search counts; intermediate keystrokes do not.
+                            viewModel.commitSearch(query)
                             viewModel.search(query)
                             keyboard?.hide()
                         },
@@ -323,30 +336,74 @@ fun SearchScreen(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
                 ) {
                     Column {
-                        recents.take(4).forEach { recent ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(role = Role.Button) {
-                                        query = recent
-                                        viewModel.search(recent)
+                        // Show all five stored entries, newest first. A physical swipe
+                        // from right to left deletes just the swiped entry (also in RTL).
+                        val density = LocalDensity.current
+                        val deleteThresholdPx = with(density) { 70.dp.toPx() }
+                        val maxDragPx = with(density) { 120.dp.toPx() }
+                        recents.take(5).forEach { recent ->
+                            key(recent) {
+                                var dragX by remember(recent) { mutableFloatStateOf(0f) }
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
+                                ) {
+                                    // Swipe-to-delete affordance; the row covers it at rest.
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(Color(0xFFE53935)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp),
+                                        )
                                     }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Default.History,
-                                    contentDescription = null,
-                                    tint = appColors.muted,
-                                    modifier = Modifier.size(21.dp),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = recent,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .offset { IntOffset(dragX.roundToInt(), 0) }
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .clickable(role = Role.Button) {
+                                                query = recent
+                                                viewModel.search(recent)
+                                            }
+                                            .pointerInput(recent, deleteThresholdPx, maxDragPx) {
+                                                detectHorizontalDragGestures(
+                                                    onHorizontalDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragX = (dragX + dragAmount)
+                                                            .coerceIn(-maxDragPx, 0f)
+                                                    },
+                                                    onDragEnd = {
+                                                        if (dragX <= -deleteThresholdPx) {
+                                                            viewModel.deleteRecentSearch(recent)
+                                                        }
+                                                        dragX = 0f
+                                                    },
+                                                    onDragCancel = { dragX = 0f },
+                                                )
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.History,
+                                            contentDescription = null,
+                                            tint = appColors.muted,
+                                            modifier = Modifier.size(21.dp),
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        Text(
+                                            text = recent,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
