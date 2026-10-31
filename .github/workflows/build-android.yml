@@ -22,6 +22,7 @@ on:
       - fix/arabic-menu-rating-rtl-20261030
       - fix/search-overlay-no-ghosting-20261030
       - fix/route-numbered-waypoints-undo-v35-20261031
+      - integration/gps-v38-routes-analytics-consent-20261031
   pull_request:
     branches:
       - main
@@ -72,16 +73,16 @@ jobs:
       # a Play-signed internal-track install may still be required if the upload
       # certificate differs from the Play App Signing certificate.
       - name: Verify native Google Maps renderer in Play release
-        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031' || github.ref_name == 'main'
+        if: github.ref_name == 'release/google-maps-internal-20261030' || github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031' || github.ref_name == 'integration/gps-v38-routes-analytics-consent-20261031' || github.ref_name == 'main'
         run: |
           grep -q 'import com.google.android.gms.maps.GoogleMap' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/build.gradle.kts
-          grep -Eq 'versionCode = (34|37)' app/build.gradle.kts
+          grep -Eq 'versionCode = (34|37|38)' app/build.gradle.kts
           echo 'Google Maps renderer verified for Play internal build.'
 
       - name: Verify waypoint undo and stable native map overlays
-        if: github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031'
+        if: github.ref_name == 'fix/route-numbered-waypoints-undo-v35-20261031' || github.ref_name == 'integration/gps-v38-routes-analytics-consent-20261031'
         run: |
           grep -Fq 'MarkerStyle.ROUTE_WAYPOINT' app/src/main/java/com/rork/gpssimulator/ui/screens/MapScreen.kt
           grep -Fq 'routeStops.removeAt(routeStops.lastIndex)' app/src/main/java/com/rork/gpssimulator/ui/screens/MapScreen.kt
@@ -91,6 +92,28 @@ jobs:
             echo "::error::Full map clear triggers visible flicker"; exit 1
           fi
           echo 'Numbered route waypoints, one-step undo and persistent native markers checked.'
+
+      - name: Verify minimal, privacy-conscious Analytics integration
+        if: github.ref_name == 'integration/gps-v38-routes-analytics-consent-20261031'
+        run: |
+          grep -Fq 'implementation("com.google.firebase:firebase-analytics")' app/build.gradle.kts
+          grep -Fq 'google_analytics_adid_collection_enabled' app/src/main/AndroidManifest.xml
+          grep -Fq 'tools:node="remove"' app/src/main/AndroidManifest.xml
+          grep -Fq 'FirebaseAnalytics.Event.SCREEN_VIEW' app/src/main/java/com/rork/gpssimulator/ui/navigation/AppNavigation.kt
+          echo 'Analytics dependency, static screen views and AD_ID restrictions verified.'
+
+      - name: Verify privacy consent is off by default
+        if: github.ref_name == 'integration/gps-v38-routes-analytics-consent-20261031'
+        run: |
+          grep -Fq 'firebase_analytics_collection_enabled" android:value="false"' app/src/main/AndroidManifest.xml
+          grep -Fq 'AnalyticsConsent.initialize(this)' app/src/main/java/com/rork/gpssimulator/MainActivity.kt
+          grep -Fq 'AnalyticsConsent.isAllowed(context)' app/src/main/java/com/rork/gpssimulator/ui/navigation/AppNavigation.kt
+          grep -Fq 'AnalyticsConsent.setAllowed(context, false)' app/src/main/java/com/rork/gpssimulator/ui/navigation/AppNavigation.kt
+          grep -Fq 'setAnalyticsCollectionEnabled(allowed)' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
+          grep -Fq 'analytics.resetAnalyticsData()' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
+          grep -Fq 'android_asset/privacy-policy.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt || grep -Fq 'assets.open("privacy-policy.html")' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          cmp app/src/main/assets/privacy-policy.html ../docs/privacy-policy.html
+          echo 'Explicit consent gate, SDK default-off, opt-out and complete offline policy verified.'
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
