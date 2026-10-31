@@ -37,6 +37,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.rork.gpssimulator.ui.privacy.AnalyticsConsent
+import com.rork.gpssimulator.ui.screens.PrivacyConsentScreen
 import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
@@ -98,6 +100,7 @@ fun AppNavigation() {
         mutableStateOf(onboardingPrefs.getBoolean("completed", false))
     }
     var setupSeen by remember { mutableStateOf(onboardingPrefs.getBoolean("gps_setup_modal_v2_completed", false)) }
+    var analyticsChoiceMade by remember { mutableStateOf(AnalyticsConsent.hasDecision(context)) }
     // Onboarding happens outside the NavHost; log only these fixed, non-location labels.
     LaunchedEffect(onboardingComplete, setupSeen) {
         val screenName = when {
@@ -105,7 +108,7 @@ fun AppNavigation() {
             !setupSeen -> "GpsReadiness"
             else -> null
         }
-        if (screenName != null) {
+        if (screenName != null && AnalyticsConsent.isAllowed(context)) {
             FirebaseAnalytics.getInstance(context).logEvent(
                 FirebaseAnalytics.Event.SCREEN_VIEW,
                 Bundle().apply {
@@ -142,6 +145,18 @@ fun AppNavigation() {
                     onFinished = {
                         onboardingPrefs.edit().putBoolean("completed", true).apply()
                         onboardingComplete = true
+                    },
+                )
+            } else if (!analyticsChoiceMade) {
+                PrivacyConsentScreen(
+                    language = effectiveLanguage,
+                    onAgree = {
+                        AnalyticsConsent.setAllowed(context, true)
+                        analyticsChoiceMade = true
+                    },
+                    onDecline = {
+                        AnalyticsConsent.setAllowed(context, false)
+                        analyticsChoiceMade = true
                     },
                 )
             } else if (!setupSeen) {
@@ -214,7 +229,7 @@ private fun AppScaffold(
             Routes.LICENSES -> "Licenses"
             else -> null
         }
-        if (screenName != null) {
+        if (screenName != null && AnalyticsConsent.isAllowed(context)) {
             FirebaseAnalytics.getInstance(context).logEvent(
                 FirebaseAnalytics.Event.SCREEN_VIEW,
                 Bundle().apply {
