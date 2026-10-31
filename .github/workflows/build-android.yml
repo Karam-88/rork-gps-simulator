@@ -101,7 +101,7 @@ jobs:
           grep -Fq 'setAnalyticsCollectionEnabled(allowed)' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
           grep -Fq 'analytics.resetAnalyticsData()' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
           grep -Fq 'android_asset/privacy-policy.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt || grep -Fq 'assets.open("privacy-policy.html")' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
-          cmp app/src/main/assets/privacy-policy.html docs/privacy-policy.html
+          cmp app/src/main/assets/privacy-policy.html ../docs/privacy-policy.html
           echo 'Explicit consent gate, SDK default-off, opt-out and complete offline policy verified.'
 
       - name: Build Debug APK
