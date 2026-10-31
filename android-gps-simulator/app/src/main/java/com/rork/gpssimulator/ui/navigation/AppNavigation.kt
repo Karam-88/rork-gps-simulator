@@ -2,7 +2,6 @@ package com.rork.gpssimulator.ui.navigation
 
 import android.Manifest
 import android.content.Context
-import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -36,7 +35,6 @@ import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.rork.gpssimulator.data.model.ThemeMode
 import com.rork.gpssimulator.data.model.MockState
 import com.rork.gpssimulator.i18n.AppLanguage
@@ -98,23 +96,6 @@ fun AppNavigation() {
         mutableStateOf(onboardingPrefs.getBoolean("completed", false))
     }
     var setupSeen by remember { mutableStateOf(onboardingPrefs.getBoolean("gps_setup_modal_v2_completed", false)) }
-    // Onboarding happens outside the NavHost; log only these fixed, non-location labels.
-    LaunchedEffect(onboardingComplete, setupSeen) {
-        val screenName = when {
-            !onboardingComplete -> "Onboarding"
-            !setupSeen -> "GpsReadiness"
-            else -> null
-        }
-        if (screenName != null) {
-            FirebaseAnalytics.getInstance(context).logEvent(
-                FirebaseAnalytics.Event.SCREEN_VIEW,
-                Bundle().apply {
-                    putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
-                    putString(FirebaseAnalytics.Param.SCREEN_CLASS, "MainActivity")
-                },
-            )
-        }
-    }
     var shouldCenterOnFirstRealFix by remember {
         mutableStateOf(!onboardingPrefs.getBoolean("initial_map_centered", false))
     }
@@ -194,36 +175,6 @@ private fun AppScaffold(
     var showRatingPreview by remember { mutableStateOf(false) }
     var mapIdle by remember { mutableStateOf(false) }
     val entry by navController.currentBackStackEntryAsState()
-    // Only allowlisted, static screen labels are sent to Analytics.
-    // Never log any map center, GPS coordinates, searched text or mock locations.
-    LaunchedEffect(entry?.destination?.route) {
-        val screenName = when (entry?.destination?.route) {
-            Routes.MAP -> "Map"
-            Routes.ROUTES -> "Routes"
-            Routes.PRESETS -> "Favorites"
-            Routes.HISTORY -> "History"
-            Routes.SETTINGS -> "Settings"
-            Routes.CROSSHAIR -> "CrosshairSettings"
-            Routes.MOCK_MARKER -> "MockMarkerSettings"
-            Routes.SEARCH -> "Search"
-            Routes.DIAGNOSTICS -> "Diagnostics"
-            Routes.GEOFENCE -> "Geofence"
-            Routes.COORDINATE_TOOLS -> "CoordinateTools"
-            Routes.MOCK_SETUP -> "GpsSetup"
-            Routes.ABOUT -> "About"
-            Routes.LICENSES -> "Licenses"
-            else -> null
-        }
-        if (screenName != null) {
-            FirebaseAnalytics.getInstance(context).logEvent(
-                FirebaseAnalytics.Event.SCREEN_VIEW,
-                Bundle().apply {
-                    putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
-                    putString(FirebaseAnalytics.Param.SCREEN_CLASS, "MainActivity")
-                },
-            )
-        }
-    }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val safeForRating = com.rork.gpssimulator.ui.rating.RatingPromptPolicy.safeToShow(
