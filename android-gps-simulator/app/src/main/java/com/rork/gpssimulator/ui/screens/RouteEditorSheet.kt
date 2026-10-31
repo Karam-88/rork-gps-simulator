@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextDirection
 import com.rork.gpssimulator.i18n.AppLanguage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -228,6 +229,8 @@ fun RouteEditorSheet(
                                 Icons.Default.Undo,
                                 if (settings.language == AppLanguage.ARABIC) "تراجع عن آخر نقطة"
                                     else "Undo last waypoint",
+                                containerColor = Color(0xFFE53935),
+                                iconColor = Color.White,
                             ) {
                                 points.removeAt(points.lastIndex)
                             }
@@ -550,19 +553,21 @@ private fun MovementProfilePanel(
 private fun SmallMapAction(
     icon: ImageVector,
     description: String,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    iconColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .size(46.dp)
-            .background(MaterialTheme.colorScheme.surface, CircleShape)
+            .background(containerColor, CircleShape)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = description,
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = iconColor,
             modifier = Modifier.size(22.dp),
         )
     }
