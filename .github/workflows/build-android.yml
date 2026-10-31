@@ -78,7 +78,7 @@ jobs:
           grep -q 'import com.google.android.gms.maps.GoogleMap' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/src/main/java/com/rork/gpssimulator/ui/map/VectorMapView.kt
           ! grep -q 'org.maplibre' app/build.gradle.kts
-          grep -Eq 'versionCode = (34|35)' app/build.gradle.kts
+          grep -Eq 'versionCode = (34|35|39)' app/build.gradle.kts
           echo 'Google Maps renderer verified for Play internal build.'
 
       - name: Verify minimal, privacy-conscious Analytics integration
