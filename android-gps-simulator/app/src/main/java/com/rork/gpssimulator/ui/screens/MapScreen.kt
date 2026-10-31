@@ -327,7 +327,7 @@ fun MapScreen(
     }
     val markers = buildList {
         // The device's real GPS fix must remain visible in BOTH selection modes.
-        // Keep it distinct from the crosshair and the red tap-selected destination.
+        // Keep it distinct from the green aim-mode crosshair and solid-blue tap pin.
         if (!isMockActive) {
             realSample?.let {
                 add(
@@ -345,10 +345,11 @@ fun MapScreen(
             add(
                 MapMarker(
                     point = it.point,
-                    // Red is reserved for a manually selected destination, never real GPS.
-                    color = Color(0xFFE7302D),
+                    // A solid Google-style blue pin marks the directly tapped destination.
+                    // Do not confuse this selected point with the small real-GPS blue dot.
+                    color = Color(0xFF1A73E8),
                     style = MarkerStyle.CANDIDATE,
-                    // Native map renderer draws the actual red pin; overlay draws circles only.
+                    // Render the pointed blue pin in native Google Maps (not a hollow ring).
                     renderInOverlay = false,
                 ),
             )
