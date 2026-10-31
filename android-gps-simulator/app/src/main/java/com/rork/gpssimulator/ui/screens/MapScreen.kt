@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -367,9 +368,15 @@ fun MapScreen(
             )
         }
     }
+    // Stable circular numbered badges for selected route stops (1, 2, 3...).
+    // Keep standalone destination and live location icons unchanged.
     val draftMarkers = routeStops.mapIndexed { index, stop ->
-        MapMarker(point = stop, color = Color(0xFF222222),
-            label = (index + 1).toString(), style = MarkerStyle.DESTINATION)
+        MapMarker(
+            point = stop,
+            color = Color(0xFF20232B),
+            label = (index + 1).toString(),
+            style = MarkerStyle.ROUTE_WAYPOINT,
+        )
     }
     val mapMarkers = markers + draftMarkers + (routeProgress?.route?.points?.lastOrNull()?.let { destination ->
         listOf(MapMarker(point = destination, color = Color(0xFFE53935),
@@ -650,6 +657,34 @@ fun MapScreen(
                     }
                 }
                 if (routePreview == null) {
+                    // Undo only the most recent selected stop; preserve the older ones.
+                    // Visible directly above Finish, beside walk/bike/car route controls.
+                    Surface(
+                        shape = CircleShape,
+                        color = if (routeStops.isNotEmpty()) MaterialTheme.colorScheme.surface
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.size(46.dp),
+                    ) {
+                        IconButton(
+                            enabled = routeStops.isNotEmpty() && !routeCalculating,
+                            onClick = {
+                                routeStops.removeAt(routeStops.lastIndex)
+                                routePreview = null
+                                if (routeStops.isEmpty()) {
+                                    routeCrosshairDestination = null
+                                    viewModel.clearSelection()
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Undo,
+                                contentDescription = if (settings.language == com.rork.gpssimulator.i18n.AppLanguage.ARABIC)
+                                    "التراجع عن آخر نقطة" else "Undo last waypoint",
+                                tint = if (routeStops.isNotEmpty()) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     Surface(
                         shape = CircleShape,
                         color = if ((routeStops.isNotEmpty() || routeCrosshairDestination != null || (settings.directTapSelection && selected?.point != null)) && !routeCalculating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
