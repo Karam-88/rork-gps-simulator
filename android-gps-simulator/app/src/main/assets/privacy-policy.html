@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="How GPS Simulator: Fake GPS by Karam Mobile handles location, Firebase Analytics, problem reports, and other data.">
+  <title>Privacy Policy | GPS Simulator: Fake GPS</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.7; color: #152335; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 36px 20px 72px; }
+    header { padding: 30px 30px 24px; background: #102a41; border-radius: 20px; color: #fff; }
+    .eyebrow { margin: 0 0 8px; color: #85dbb5; font-size: .83rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.25; }
+    header p { color: #d7e5ee; margin-bottom: 0; }
+    main { margin-top: 18px; padding: 30px; border: 1px solid #e2e9f0; border-radius: 20px; background: #fff; }
+    h2 { margin: 32px 0 8px; font-size: 1.25rem; color: #103c58; line-height: 1.35; }
+    h2:first-child { margin-top: 0; }
+    p, li { overflow-wrap: anywhere; }
+    ul { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    .meta { font-size: .94rem; }
+    .note { background: #eaf6f0; border-left: 4px solid #13845f; border-radius: 8px; padding: 13px 16px; }
+    .note p { margin: 5px 0; }
+    .ar { direction: rtl; text-align: right; background: #f1f5fa; padding: 16px 20px; border-radius: 12px; margin: 20px 0; font-family: Tahoma, Arial, sans-serif; }
+    .ar h2 { color: #123e5c; margin-top: 0; }
+    a { color: #08658b; text-underline-offset: 2px; }
+    a:focus-visible { outline: 3px solid #0f8f72; outline-offset: 3px; }
+    footer { margin-top: 18px; color: #516276; text-align: center; font-size: .9rem; }
+    @media (max-width: 560px) { .wrap { padding: 14px 12px 35px; } header, main { padding: 22px 18px; border-radius: 12px; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Karam Mobile · Android</p>
+    <h1>Privacy Policy — GPS Simulator: Fake GPS</h1>
+    <p class="meta"><strong>Last updated:</strong> October 31, 2026<br>
+      <strong>App package:</strong> com.rork.gpssimulator<br>
+      <strong>Developer:</strong> Karam Mobile</p>
+  </header>
+  <main>
+    <section aria-label="Summary">
+      <h2>1. Overview</h2>
+      <p>This policy explains how GPS Simulator: Fake GPS (“App”, “we” or “our”), published by Karam Mobile, processes information when you use mock GPS features, maps, routes, settings, diagnostics, optional problem reporting, and app analytics. The App is free and does not display advertisements or sell personal information.</p>
+      <div class="note">
+        <p><strong>Key distinction:</strong> Your chosen mock GPS coordinates and real GPS readings are not included in the custom Firebase Analytics screen-view events we send. Some map, search, geocoding and route features do send locations or route endpoints to their service providers to perform the feature you request.</p>
+        <p>Firebase Analytics also processes app usage, technical identifiers, device information and approximate geography; see Section 4.</p>
+      </div>
+      <p>You can use the main GPS simulator without creating a personal sign-in account. An anonymous Firebase account identifier may be created if you submit a problem report.</p>
+    </section>
+    <section class="ar" lang="ar" aria-label="ملخص الخصوصية بالعربية">
+      <h2>ملخص الخصوصية بالعربية</h2>
+      <p>يستخدم تطبيق GPS Simulator الموقع الحقيقي بإذن منك لعرضه على الخريطة، ويُنشئ موقعًا وهميًا على جهازك عند تشغيل المحاكاة. تُخزَّن الإعدادات والمفضلة وسجل المواقع محليًا، وقد تُرسل بيانات المواقع أو نقاط المسارات إلى خدمات الخرائط والبحث والتوجيه لتنفيذ طلبك.</p>
+      <p>نستخدم Firebase Analytics لقياس عدد المستخدمين ومرات فتح التطبيق وأسماء الشاشات، دون إضافة إحداثيات GPS الحقيقية أو الوهمية إلى أحداث التحليلات المخصّصة. وقد تجمع Google معرّف تثبيت التطبيق ومعلومات الجهاز والموقع التقريبي المستنتج من الاتصال. عند إرسال بلاغ، يُرسل وصف المشكلة ونوع الجهاز وإصدار النظام والتطبيق ومعرّف مجهول إلى Firebase.</p>
+      <p>التطبيق مجاني وخالٍ من الإعلانات، وجمع معرّف الإعلانات معطّل. يمكن طلب الاطلاع على البيانات أو حذف البلاغات عبر البريد المذكور أدناه. للمعلومات القانونية والتفاصيل الكاملة، يُرجى قراءة الأقسام الإنجليزية.</p>
+    </section>
+    <section>
+      <h2>2. Location access and mock GPS</h2>
+      <p>With Android's foreground location permission, the App reads your real location to show your position on the map, center the map when requested and provide GPS diagnostics. It may use Google Play services' fused location provider. It does not request the Android <em>ACCESS_BACKGROUND_LOCATION</em> permission.</p>
+      <p>When you enable Android's “Select mock location app” option and start simulation, your chosen simulated position is supplied to Android location providers through a foreground service. Other apps on your device may then receive that simulated position, subject to their own settings and policies. A foreground notification may display the simulated position while simulation is active.</p>
+      <p>Real and simulated location readings are used to operate GPS and map features. The App does not intentionally transmit raw real or simulated GPS coordinates as parameters of its custom Firebase Analytics screen-view events. It does not sell your location history. External services may receive location-related requests as described in Section 3.</p>
+    </section>
+    <section>
+      <h2>3. Maps, place search and route services</h2>
+      <p><strong>Google Maps:</strong> Current signed Google Play releases use the Google Maps SDK for standard and satellite map display. Google may process network information, device information, map viewport and interactions to provide map imagery, according to <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google's Privacy Policy</a>. Experimental or older builds may use OpenFreeMap, CARTO, Esri or OpenStreetMap-related map sources, which can receive map-tile requests and your IP address.</p>
+      <p><strong>Place search and geocoding:</strong> When you search for a place or ask the App to resolve a location to an address, the App may send the search text or relevant coordinates to the <a href="https://nominatim.org/" rel="noopener noreferrer">OpenStreetMap Nominatim</a> service. Its server may receive your IP address and technical request information.</p>
+      <p><strong>Route planning:</strong> To calculate road-following routes (for example walking, cycling or driving), the App may transmit route start points, destinations and intermediate waypoints to public <a href="https://routing.openstreetmap.de/" rel="noopener noreferrer">OSRM routing services</a>. Their operators can process these points and your IP address as part of the request.</p>
+      <p>These providers are separate from Firebase Analytics. We do not control their independent server logs or retention periods. Avoid searching for, selecting or routing to sensitive locations if you do not want relevant location details sent to the service used for that feature.</p>
+    </section>
+    <section>
+      <h2>4. Firebase Analytics and app usage</h2>
+      <p>App versions that include Firebase Analytics use <strong>Google Analytics for Firebase</strong> to understand aggregate app activity, diagnose feature usage and improve usability. The SDK may automatically process app opens and first launches, session statistics, engagement, app version, operating system, device model, an app-instance identifier and approximate geographic region (which can be inferred from network information such as an IP address).</p>
+      <p>We also send events for a fixed allowlist of screen names, such as <code>Map</code>, <code>Search</code>, <code>Settings</code>, and <code>Routes</code>. These custom events do not contain precise GPS coordinates, simulated positions, searched addresses, saved locations or routes.</p>
+      <p>The App disables advertising ID collection in Firebase Analytics and does not request the Android AD_ID permission. It also disables analytics ad-personalization signals. These restrictions do <em>not</em> mean Analytics collects no technical or installation identifiers.</p>
+      <p>Firebase Analytics data is processed by Google according to its applicable terms, privacy documentation and configured data-retention controls. See <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase Privacy and Security</a> and <a href="https://support.google.com/firebase/answer/6318039" rel="noopener noreferrer">Firebase Analytics Data Collection</a>.</p>
+    </section>
+    <section>
+      <h2>5. Optional problem reports and Firebase services</h2>
+      <p>If you voluntarily use the “Report a problem” feature, the App sends your written report, a problem category, app version, Android version, device manufacturer/model, report timestamp and a Firebase anonymous user identifier to <strong>Google Firebase Authentication and Cloud Firestore</strong>. This information is used to receive, investigate and resolve the reported issue. Please do not include sensitive information, passwords or precise locations in the free-text description.</p>
+      <p>Firebase App Check / Play Integrity may also process technical app and device integrity signals to protect these services against abuse. No personal sign-up is required to use the App's core GPS features.</p>
+      <p>Information entered into a support email or problem report is used for support, and is not sold to advertisers.</p>
+    </section>
+    <section>
+      <h2>6. Data stored on your device</h2>
+      <p>Depending on your preferences and use, local app storage can include map appearance and other settings, last map position, recent searches, saved places and favourites, route plans, geofences, mock-session details and history. These are not uploaded to Firebase Analytics by our custom screen-view tracking.</p>
+      <p>You can clear history, remove saved items or delete all local app data using the App's settings, or clear the App's storage through Android. Android's optional device-backup feature may include some locally stored app data in your Google account backup; Android and Google control those backups.</p>
+    </section>
+    <section>
+      <h2>7. Purposes, security, retention and deletion</h2>
+      <p>We use data to provide the map and GPS features you request, protect the App's backend against misuse, process reports you choose to submit, and understand aggregate app usage. Internet communications with the named services use encrypted HTTPS connections where supported.</p>
+      <p>Local information stays until you remove it, clear app data or uninstall the App, subject to any Android device backups. Problem reports and associated anonymous identifiers are kept in Firebase for support and issue resolution until they are no longer needed or are deleted following a valid request, subject to applicable obligations. Analytics information is retained under the Google Analytics property's configured retention settings and provider policies, and may be aggregated or deleted according to those controls.</p>
+      <p>To request access to or deletion of information held by the developer, including a report you submitted, email <a href="mailto:mhmd88mmk88@gmail.com">mhmd88mmk88@gmail.com</a> with sufficient details to locate the report. We may request reasonable verification before acting. Uninstalling the App stops future collection from that installation but does not by itself erase server-held support reports or already processed analytics information.</p>
+    </section>
+    <section>
+      <h2>8. Choices and privacy rights</h2>
+      <p>You may deny or revoke location permissions through Android settings, stop a mock location session, delete local data and refrain from submitting problem reports. If you live in the European Economic Area or another jurisdiction with data-protection rights, you may contact us to request information, access, correction, deletion, objection or other available rights, subject to applicable law.</p>
+      <p>Analytics collection and consent choices depend on the installed App version and implemented controls. Some versions may automatically collect analytics data on launch and may not provide a separate in-app Analytics opt-out switch. If you have questions about analytics collection or the handling of a request, contact the developer. Where applicable law requires consent for Analytics, appropriate consent controls must be implemented in the App separately from publishing this policy.</p>
+    </section>
+    <section>
+      <h2>9. Permissions</h2>
+      <ul>
+        <li><strong>Precise / approximate location:</strong> show real position, diagnostics and map centering with your permission.</li>
+        <li><strong>Mock location:</strong> supply simulated positions when you select the App in Android Developer Options.</li>
+        <li><strong>Internet and network state:</strong> maps, searches, route planning, Firebase services and Analytics.</li>
+        <li><strong>Foreground service and notifications:</strong> keep active mock sessions operating and display status controls.</li>
+      </ul>
+      <p>The App does not require camera, microphone, contacts or SMS access for its described core features.</p>
+    </section>
+    <section>
+      <h2>10. Children</h2>
+      <p>GPS Simulator is not designed or marketed specifically for children. If you believe that a child's personal information was submitted in a support report, contact us and we will review the request.</p>
+    </section>
+    <section>
+      <h2>11. Updates and contact</h2>
+      <p>We may update this Privacy Policy when the App's functionality, service providers or legal requirements change. Changes will be published at this same page with a revised “Last updated” date.</p>
+      <p><strong>Developer / privacy contact:</strong> Karam Mobile — <a href="mailto:mhmd88mmk88@gmail.com">mhmd88mmk88@gmail.com</a>.</p>
+    </section>
+  </main>
+  <footer>GPS Simulator: Fake GPS · Karam Mobile · Privacy Policy · October 31, 2026</footer>
+</div>
+</body>
+</html>
