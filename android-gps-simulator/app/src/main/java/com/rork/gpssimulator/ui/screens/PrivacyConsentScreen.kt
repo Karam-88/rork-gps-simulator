@@ -22,7 +22,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -39,17 +43,23 @@ import java.io.InputStreamReader
 
 /**
  * Full offline policy, clear separate choice on optional Analytics.
- * The GPS simulator works when the user declines. No forced scrolling,
- * pre-ticked consent or hidden reject control.
+ * The GPS simulator works when the user declines. Both consent choices have
+ * equal prominence and unlock together after the policy has been scrolled to
+ * its end. No pre-ticked consent and no location values are collected here.
  */
 @Composable
 fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: () -> Unit) {
     val context = LocalContext.current
     val copy = remember(language) { consentCopy(language) }
-    val policyHtml = remember {
-        context.assets.open("privacy-policy.html").use { stream ->
+    var reachedPolicyEnd by remember(language) { mutableStateOf(false) }
+    val policyHtml = remember(context, language) {
+        val asset = if (language == AppLanguage.ARABIC) "privacy-policy-ar.html" else "privacy-policy.html"
+        val original = context.assets.open(asset).use { stream ->
             BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).readText()
         }
+        // Embedded WebView uses the application's premium navy palette, not a
+        // bright white webpage. The full published English policy remains intact.
+        original.replace("</head>", EMBEDDED_POLICY_STYLE + "</head>")
     }
     val navy = Color(0xFF061626)
     val white = Color.White
@@ -71,27 +81,74 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
                 textAlign = if (language == AppLanguage.ARABIC) TextAlign.Right else TextAlign.Start,
             )
             Text(copy.introduction, fontSize = 14.sp, lineHeight = 21.sp, color = Color(0xFFCFD9E6))
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        settings.javaScriptEnabled = false
-                        settings.domStorageEnabled = false
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        setBackgroundColor(android.graphics.Color.WHITE)
-                        webViewClient = object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                                val uri = request?.url ?: return true
-                                if (uri.scheme == "https" || uri.scheme == "mailto") {
-                                    try { ctx.startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) { }
+            key(language) {
+                AndroidView(
+                    factory = { ctx ->
+                        var finishedLoading = false
+                        val tolerancePx = (20 * ctx.resources.displayMetrics.density).toInt()
+                        val policyView = object : WebView(ctx) {
+                            fun checkBottom() {
+                                // WebView scroll range and extent are in matching physical units.
+                                // Never unlock during loading or merely because the view is at top.
+                                if (hasReachedPrivacyPolicyEnd(
+                                        finishedLoading,
+                                        scrollY,
+                                        computeVerticalScrollExtent(),
+                                        computeVerticalScrollRange(),
+                                        tolerancePx,
+                                    )
+                                ) {
+                                    reachedPolicyEnd = true
                                 }
-                                return true
+                            }
+
+                            override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+                                super.onScrollChanged(l, t, oldl, oldt)
+                                checkBottom()
                             }
                         }
-                        loadDataWithBaseURL(null, policyHtml, "text/html", "UTF-8", null)
-                    }
-                },
-                modifier = Modifier.weight(1f).fillMaxWidth().border(1.dp, Color(0xFF406187), RoundedCornerShape(12.dp)),
+                        policyView.apply {
+                            settings.javaScriptEnabled = false
+                            settings.domStorageEnabled = false
+                            settings.allowFileAccess = false
+                            settings.allowContentAccess = false
+                            isVerticalScrollBarEnabled = true
+                            setBackgroundColor(android.graphics.Color.rgb(10, 27, 44))
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    finishedLoading = true
+                                    policyView.post { policyView.checkBottom() }
+                                }
+
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView?,
+                                    request: WebResourceRequest?,
+                                ): Boolean {
+                                    val uri = request?.url ?: return true
+                                    if (uri.scheme == "https" || uri.scheme == "mailto") {
+                                        try {
+                                            ctx.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                        } catch (_: Exception) {
+                                            // No external app available; remain on the policy.
+                                        }
+                                    }
+                                    return true
+                                }
+                            }
+                            loadDataWithBaseURL(null, policyHtml, "text/html", "UTF-8", null)
+                        }
+                    },
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                        .border(1.dp, Color(0xFF406187), RoundedCornerShape(12.dp)),
+                )
+            }
+            Text(
+                text = scrollInstruction(language, reachedPolicyEnd),
+                fontSize = 12.sp,
+                color = if (reachedPolicyEnd) Color(0xFF98DFBE) else Color(0xFFB5C9DE),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
             )
             Text(
                 copy.choice,
@@ -103,20 +160,30 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = onAgree,
+                    onClick = { if (reachedPolicyEnd) onAgree() },
+                    enabled = reachedPolicyEnd,
                     modifier = Modifier.weight(1f).height(52.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = blue, contentColor = white),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = blue, contentColor = white,
+                        disabledContainerColor = Color(0xFF34475B),
+                        disabledContentColor = Color(0xFFB8C5D1),
+                    ),
                 ) {
                     Text(copy.agree, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 2)
                 }
                 Button(
-                    onClick = onDecline,
+                    onClick = { if (reachedPolicyEnd) onDecline() },
+                    enabled = reachedPolicyEnd,
                     modifier = Modifier.weight(1f).height(52.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = white, contentColor = navy),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E354C), contentColor = white,
+                        disabledContainerColor = Color(0xFF34475B),
+                        disabledContentColor = Color(0xFFB8C5D1),
+                    ),
                 ) {
                     Text(copy.decline, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 2)
                 }
@@ -125,6 +192,56 @@ fun PrivacyConsentScreen(language: AppLanguage, onAgree: () -> Unit, onDecline: 
         }
     }
 }
+
+
+/**
+ * Enforces read-to-end for both optional choices equally. A policy that fits
+ * entirely in the viewport needs no scrolling (e.g. large accessibility text).
+ * For scrollable content, an actual positive scroll offset is mandatory.
+ */
+internal fun hasReachedPrivacyPolicyEnd(
+    pageLoaded: Boolean,
+    scrollY: Int,
+    viewportExtentPx: Int,
+    scrollRangePx: Int,
+    tolerancePx: Int,
+): Boolean {
+    if (!pageLoaded || viewportExtentPx <= 0 || scrollRangePx <= 0) return false
+    if (scrollRangePx <= viewportExtentPx) return true
+    return scrollY > 0 &&
+        scrollY + viewportExtentPx >= scrollRangePx - tolerancePx.coerceAtLeast(0)
+}
+
+private fun scrollInstruction(language: AppLanguage, ready: Boolean): String = when (language) {
+    AppLanguage.ARABIC -> if (ready) "وصلت إلى نهاية السياسة. اختر الموافقة أو الرفض." else "مرّر إلى نهاية سياسة الخصوصية لتفعيل الخيارين."
+    AppLanguage.GERMAN -> if (ready) "Ende erreicht. Du kannst zustimmen oder ablehnen." else "Scrolle bis zum Ende, um beide Optionen freizuschalten."
+    AppLanguage.FRENCH -> if (ready) "Fin atteinte. Choisissez accepter ou refuser." else "Faites défiler jusqu'en bas pour activer les deux choix."
+    AppLanguage.SPANISH -> if (ready) "Has llegado al final. Elige aceptar o rechazar." else "Desplázate hasta el final para activar ambas opciones."
+    AppLanguage.PORTUGUESE_BRAZIL -> if (ready) "Fim da política. Escolha aceitar ou recusar." else "Role até o fim para ativar as duas opções."
+    AppLanguage.TURKISH -> if (ready) "Sonuna ulaştınız. Kabul veya reddet seçin." else "Her iki seçeneği açmak için sona kaydırın."
+    AppLanguage.RUSSIAN -> if (ready) "Конец политики. Можно согласиться или отказаться." else "Прокрутите до конца, чтобы открыть оба варианта."
+    AppLanguage.HINDI -> if (ready) "नीति पूरी हुई। स्वीकार या अस्वीकार चुनें।" else "दोनों विकल्प चालू करने के लिए अंत तक स्क्रॉल करें।"
+    AppLanguage.INDONESIAN -> if (ready) "Sudah sampai akhir. Pilih setuju atau tolak." else "Gulir sampai akhir untuk mengaktifkan kedua pilihan."
+    AppLanguage.JAPANESE -> if (ready) "最後まで確認しました。同意または拒否を選択してください。" else "最後までスクロールすると両方のボタンが有効になります。"
+    AppLanguage.CHINESE_SIMPLIFIED -> if (ready) "已阅读到末尾。请选择同意或拒绝。" else "滚动至底部后即可启用两个选项。"
+    AppLanguage.ENGLISH -> if (ready) "End reached. Choose Agree or Decline." else "Scroll to the bottom to enable both choices."
+}
+
+// Dark embedded rendering only; the public English policy HTML is unchanged.
+private const val EMBEDDED_POLICY_STYLE = """
+<style>
+:root, html, body { color-scheme: dark !important; background: #0A1B2C !important; color: #E8F1FB !important; }
+.wrap { padding: 12px 12px 36px !important; }
+header { background: #122D45 !important; color: #F4F9FF !important; border: 1px solid #31516C !important; padding: 20px 18px !important; }
+header p { color: #DAE6F2 !important; }
+main { background: #0F263B !important; color: #E1EBF6 !important; border: 1px solid #2E4C67 !important; padding: 20px 18px !important; }
+h2, .ar h2 { color: #9AD8FC !important; }
+.note, .ar { background: #193849 !important; color: #E9F1F9 !important; border-color: #31846B !important; }
+a { color: #8CD4FF !important; }
+footer { color: #A4B6C9 !important; }
+code { color: #A8E0FF !important; }
+</style>
+"""
 
 private data class ConsentCopy(
     val title: String,
