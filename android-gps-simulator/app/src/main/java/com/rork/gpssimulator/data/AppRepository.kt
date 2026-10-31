@@ -68,8 +68,17 @@ class AppRepository(context: Context) {
     private val _geofences = MutableStateFlow(loadList<Geofence>(KEY_GEOFENCES))
     val geofences: StateFlow<List<Geofence>> = _geofences.asStateFlow()
 
-    private val _recentSearches = MutableStateFlow(loadList<String>(KEY_RECENT))
+    // Upgrade existing installs from the old 10-entry history to five immediately.
+    private val _recentSearches = MutableStateFlow(
+        RecentSearchHistory.normalize(loadList<String>(KEY_RECENT)),
+    )
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
+
+    init {
+        if (prefs.contains(KEY_RECENT)) {
+            store(KEY_RECENT, _recentSearches.value)
+        }
+    }
 
     private val _mockSession = MutableStateFlow(load(KEY_MOCK_SESSION, MockSessionRecord()))
     val mockSessionRecord: StateFlow<MockSessionRecord> = _mockSession.asStateFlow()
@@ -235,10 +244,15 @@ class AppRepository(context: Context) {
     // ---- Recent searches ----
 
     fun addRecentSearch(query: String) {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return
-        val list = (listOf(trimmed) + _recentSearches.value.filterNot { it.equals(trimmed, true) })
-            .take(MAX_RECENT)
+        val list = RecentSearchHistory.add(_recentSearches.value, query)
+        if (list == _recentSearches.value) return
+        _recentSearches.value = list
+        store(KEY_RECENT, list)
+    }
+
+    fun deleteRecentSearch(query: String) {
+        val list = RecentSearchHistory.remove(_recentSearches.value, query)
+        if (list == _recentSearches.value) return
         _recentSearches.value = list
         store(KEY_RECENT, list)
     }
@@ -299,7 +313,6 @@ class AppRepository(context: Context) {
         private const val KEY_RECENT = "recent_searches"
         private const val KEY_MOCK_SESSION = "mock_session"
         private const val MAX_HISTORY = 200
-        private const val MAX_RECENT = 10
 
         @Volatile
         private var instance: AppRepository? = null
