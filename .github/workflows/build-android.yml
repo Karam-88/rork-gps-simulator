@@ -111,7 +111,9 @@ jobs:
           grep -Fq 'AnalyticsConsent.setAllowed(context, false)' app/src/main/java/com/rork/gpssimulator/ui/navigation/AppNavigation.kt
           grep -Fq 'setAnalyticsCollectionEnabled(allowed)' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
           grep -Fq 'analytics.resetAnalyticsData()' app/src/main/java/com/rork/gpssimulator/ui/privacy/AnalyticsConsent.kt
-          grep -Fq 'android_asset/privacy-policy.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt || grep -Fq 'assets.open("privacy-policy.html")' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          grep -Fq 'context.assets.open(asset)' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          grep -Fq 'privacy-policy-ar.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
+          grep -Fq 'privacy-policy.html' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
           cmp app/src/main/assets/privacy-policy.html ../docs/privacy-policy.html
           test -s app/src/main/assets/privacy-policy-ar.html
           grep -Fq 'hasReachedPrivacyPolicyEnd(' app/src/main/java/com/rork/gpssimulator/ui/screens/PrivacyConsentScreen.kt
