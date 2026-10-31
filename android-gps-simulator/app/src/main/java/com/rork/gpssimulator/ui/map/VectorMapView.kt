@@ -121,6 +121,14 @@ private class GoogleMapHolder(
     private var pendingMarkers: List<MapMarker> = emptyList()
     private var pendingPolylines: List<MapPolyline> = emptyList()
     private var pendingCircles: List<MapCircle> = emptyList()
+    // Keep native Google Maps overlay objects alive across Compose/GPS refreshes.
+    // Clearing the whole map every time caused all pins to flash or disappear.
+    private val nativeMarkers = mutableListOf<com.google.android.gms.maps.model.Marker?>()
+    private val nativePolylines = mutableListOf<com.google.android.gms.maps.model.Polyline>()
+    private val nativeCircles = mutableListOf<com.google.android.gms.maps.model.Circle>()
+    private var displayedMarkers: List<MapMarker> = emptyList()
+    private var displayedPolylines: List<MapPolyline> = emptyList()
+    private var displayedCircles: List<MapCircle> = emptyList()
     private var started = false
     private var updatingFromCompose = false
     private var userGestureMovedCamera = false
@@ -260,48 +268,94 @@ private class GoogleMapHolder(
 
     private fun redrawOverlays() {
         val readyMap = map ?: return
-        readyMap.clear()
-
-        pendingCircles.forEach { circle ->
-            readyMap.addCircle(
-                CircleOptions()
-                    .center(GoogleLatLng(circle.center.lat, circle.center.lng))
-                    .radius(circle.radiusMeters)
-                    .strokeColor(circle.strokeColor.toArgb())
-                    .fillColor(circle.fillColor.toArgb())
-                    .strokeWidth(2f),
-            )
-        }
-
-        pendingPolylines.forEach { line ->
-            if (line.points.size < 2) return@forEach
-            readyMap.addPolyline(
-                PolylineOptions()
-                    .addAll(line.points.map { GoogleLatLng(it.lat, it.lng) })
-                    .color(line.color.toArgb())
-                    .width(line.widthPx)
-                    .geodesic(true),
-            )
-        }
-
-        pendingMarkers.forEach { marker ->
-            if (marker.radiusMeters > 0.0) {
-                readyMap.addCircle(
-                    CircleOptions()
-                        .center(GoogleLatLng(marker.point.lat, marker.point.lng))
-                        .radius(marker.radiusMeters)
-                        .strokeColor(marker.color.copy(alpha = 0.30f).toArgb())
-                        .fillColor(marker.color.copy(alpha = 0.14f).toArgb())
-                        .strokeWidth(2f),
+        // Do not call GoogleMap.clear(). In a running mock route the location /
+        // camera state changes frequently and clearing every overlay causes
+        // every fixed waypoint to blink. Reuse existing native objects instead.
+        val circles = pendingCircles + pendingMarkers
+            .filter { it.radiusMeters > 0.0 }
+            .map { marker ->
+                MapCircle(
+                    marker.point,
+                    marker.radiusMeters,
+                    marker.color.copy(alpha = 0.30f),
+                    marker.color.copy(alpha = 0.14f),
                 )
             }
-            readyMap.addMarker(
-                MarkerOptions()
-                    .position(GoogleLatLng(marker.point.lat, marker.point.lng))
-                    .icon(markerIcon(mapView.context, marker))
-                    .anchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
-            )
+
+        while (nativeCircles.size > circles.size) nativeCircles.removeAt(nativeCircles.lastIndex).remove()
+        circles.forEachIndexed { index, circle ->
+            val point = GoogleLatLng(circle.center.lat, circle.center.lng)
+            if (index >= nativeCircles.size) {
+                nativeCircles.add(
+                    readyMap.addCircle(
+                        CircleOptions()
+                            .center(point)
+                            .radius(circle.radiusMeters)
+                            .strokeColor(circle.strokeColor.toArgb())
+                            .fillColor(circle.fillColor.toArgb())
+                            .strokeWidth(2f),
+                    ),
+                )
+            } else if (displayedCircles.getOrNull(index) != circle) {
+                nativeCircles[index].apply {
+                    center = point
+                    radius = circle.radiusMeters
+                    strokeColor = circle.strokeColor.toArgb()
+                    fillColor = circle.fillColor.toArgb()
+                }
+            }
         }
+        displayedCircles = circles.toList()
+
+        val lines = pendingPolylines.filter { it.points.size >= 2 }
+        while (nativePolylines.size > lines.size) nativePolylines.removeAt(nativePolylines.lastIndex).remove()
+        lines.forEachIndexed { index, line ->
+            if (index >= nativePolylines.size) {
+                nativePolylines.add(
+                    readyMap.addPolyline(
+                        PolylineOptions()
+                            .addAll(line.points.map { GoogleLatLng(it.lat, it.lng) })
+                            .color(line.color.toArgb())
+                            .width(line.widthPx)
+                            .geodesic(false),
+                    ),
+                )
+            } else if (displayedPolylines.getOrNull(index) != line) {
+                nativePolylines[index].apply {
+                    points = line.points.map { GoogleLatLng(it.lat, it.lng) }
+                    color = line.color.toArgb()
+                    width = line.widthPx
+                }
+            }
+        }
+        displayedPolylines = lines.toList()
+
+        while (nativeMarkers.size > pendingMarkers.size) nativeMarkers.removeAt(nativeMarkers.lastIndex)?.remove()
+        pendingMarkers.forEachIndexed { index, marker ->
+            val position = GoogleLatLng(marker.point.lat, marker.point.lng)
+            if (index >= nativeMarkers.size) {
+                nativeMarkers.add(
+                    readyMap.addMarker(
+                        MarkerOptions()
+                            .position(position)
+                            .icon(markerIcon(mapView.context, marker))
+                            .anchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f),
+                    ),
+                )
+            } else {
+                val previous = displayedMarkers.getOrNull(index)
+                nativeMarkers[index]?.let { existing ->
+                    if (previous?.point != marker.point) existing.position = position
+                    if (previous?.style != marker.style || previous?.color != marker.color ||
+                        previous.label != marker.label || previous.visualScale != marker.visualScale
+                    ) {
+                        existing.setIcon(markerIcon(mapView.context, marker))
+                        existing.setAnchor(0.5f, if (marker.style == MarkerStyle.DESTINATION) 1f else 0.5f)
+                    }
+                }
+            }
+        }
+        displayedMarkers = pendingMarkers.toList()
     }
 
     private fun cameraPosition(camera: MapCameraState): CameraPosition =
@@ -360,6 +414,23 @@ private fun markerIcon(context: Context, marker: MapMarker): BitmapDescriptor {
             canvas.drawCircle(center, center, px * 0.265f, paint)
             paint.color = marker.color.toArgb()
             canvas.drawCircle(center, center, px * 0.205f, paint)
+        }
+        MarkerStyle.ROUTE_WAYPOINT -> {
+            // White numbered discs with a dark border, matching the route editor.
+            val radius = px * 0.39f
+            paint.style = Paint.Style.FILL
+            paint.setShadowLayer(2f * density, 0f, 1.2f * density, 0x55000000)
+            paint.color = marker.color.toArgb()
+            canvas.drawCircle(center, center, radius, paint)
+            paint.clearShadowLayer()
+            paint.color = android.graphics.Color.WHITE
+            canvas.drawCircle(center, center, radius - (2.8f * density), paint)
+            paint.color = 0xFF20232B.toInt()
+            paint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            val number = marker.label.orEmpty()
+            paint.textSize = (if (number.length > 1) 12f else 15f) * density
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText(number, center, center - (paint.ascent() + paint.descent()) / 2f, paint)
         }
         MarkerStyle.DESTINATION -> {
             val pin = Path().apply {
